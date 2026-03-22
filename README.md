@@ -91,10 +91,27 @@ git push
 
 ### Hacer una Pull Request a dev
 
+Una Pull Request (PR) es la forma de integrar el trabajo de tu rama en `dev`. Básicamente le dices a Git: _"tengo cambios en mi rama que quiero unir a dev, ¿los revisamos antes?"_
+
+```
+feature/backend-glaira    ──── PR ────►  dev  ──── PR ────►  main
+feature/frontend-[nombre] ──── PR ────►  dev
+```
+
+**¿Por qué no pushear directamente a `dev`?**
+
+- Evita que una rompa el trabajo de la otra sin querer
+- Permite revisar los cambios antes de que entren
+- Si hay conflictos (las dos tocaron el mismo archivo), se resuelven en la PR antes de mergear
+
+**Cómo hacerla:**
+
 1. Ve a GitHub → **Pull Requests** → **New pull request**
 2. Base: `dev` ← Compare: `feature/tu-rama`
 3. Escribe una descripción breve de los cambios
 4. Avisa a la otra para que revise antes de mergear
+
+> Como somos dos, podemos mergear nuestra propia PR sin esperar revisión, **excepto** cuando las dos hayamos tocado archivos compartidos (como `docker-compose.yml` raíz). En ese caso, revisamos juntas antes de mergear.
 
 ---
 
