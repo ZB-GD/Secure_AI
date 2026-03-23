@@ -23,7 +23,9 @@ Secure_AI/
 │   │   └── docker-compose.e3-p4.yml # E3: limpieza post-lab por fase
 │   └── requirements.txt
 ├── frontend/                        # Interfaz de usuario (React)
-└── docker-compose.yml               # Compose raíz
+├── docker-compose.yml               # Compose raíz
+├── setup.sh                         # Setup del entorno de desarrollo (ejecutar dentro de la VM)
+└── TROUBLESHOOTING.md               # Problemas conocidos y soluciones
 ```
 
 ### Los tres estados del sistema
@@ -36,14 +38,127 @@ Secure_AI/
 
 ---
 
+## 🖥️ Setup del entorno de desarrollo
+
+El backend corre dentro de una VM (VirtualBox + Ubuntu Server). El frontend llama al backend por API REST desde fuera de la VM.
+
+### 1. Instalar VirtualBox 7.0
+
+> Si ya tienes VirtualBox 7.0 instalado, salta al paso 2.
+> Si tienes VirtualBox 6.1, debes actualizarlo — consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+Descarga e instala VirtualBox 7.0 desde la [página oficial](https://www.virtualbox.org/wiki/Downloads).
+
+En **Linux (Ubuntu/Debian)**, instala desde el repositorio oficial de Oracle:
+
+```bash
+sudo apt remove --purge virtualbox* -y
+wget -O- https://www.virtualbox.org/download/oracle_vbox_2016.asc | \
+  sudo gpg --dearmor --yes --output /usr/share/keyrings/oracle-virtualbox-2016.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-2016.gpg] \
+  https://download.virtualbox.org/virtualbox/debian jammy contrib" | \
+  sudo tee /etc/apt/sources.list.d/virtualbox.list
+sudo apt update && sudo apt install virtualbox-7.0 -y
+sudo usermod -aG vboxusers $USER
+```
+
+### 2. Crear la VM
+
+Descarga la ISO de Ubuntu Server 22.04:
+
+```bash
+wget https://releases.ubuntu.com/22.04.5/ubuntu-22.04.5-live-server-amd64.iso -P ~/Downloads/
+```
+
+Crea y configura la VM:
+
+```bash
+VBoxManage createvm --name "SecureAI-Lab" --ostype Ubuntu_64 --register
+VBoxManage modifyvm "SecureAI-Lab" --memory 2048 --cpus 2
+VBoxManage createhd --filename ~/VirtualBox\ VMs/SecureAI-Lab/SecureAI-Lab.vdi --size 20480
+VBoxManage storagectl "SecureAI-Lab" --name "SATA" --add sata --controller IntelAhci
+VBoxManage storageattach "SecureAI-Lab" --storagectl "SATA" --port 0 --device 0 --type hdd \
+  --medium ~/VirtualBox\ VMs/SecureAI-Lab/SecureAI-Lab.vdi
+VBoxManage storagectl "SecureAI-Lab" --name "IDE" --add ide
+VBoxManage storageattach "SecureAI-Lab" --storagectl "IDE" --port 0 --device 0 --type dvddrive \
+  --medium ~/Downloads/ubuntu-22.04.5-live-server-amd64.iso
+VBoxManage modifyvm "SecureAI-Lab" --boot1 dvd --boot2 disk --boot3 none --boot4 none
+VBoxManage modifyvm "SecureAI-Lab" --nic1 nat
+VBoxManage modifyvm "SecureAI-Lab" --natpf1 "ssh,tcp,,2222,,22"
+VBoxManage modifyvm "SecureAI-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
+```
+
+### 3. Instalar Ubuntu Server
+
+Arranca la VM:
+
+```bash
+VBoxManage startvm "SecureAI-Lab" --type headless
+```
+
+Conéctate para ver la pantalla de instalación:
+
+```bash
+# Opción A — SSH (cuando el instalador lo permita)
+ssh -p 2222 <tu_usuario>@localhost
+
+# Opción B — RDP con Remmina (requiere Extension Pack instalado)
+# Nueva conexión → RDP → localhost:3389
+```
+
+Sigue el instalador de Ubuntu Server. Cuando te pregunte:
+
+- **Installer update**: selecciona _Continue without updating_
+- **SSH**: activa _Install OpenSSH server_
+- **Snaps adicionales**: no selecciones ninguno (Docker se instala con el setup.sh)
+
+Una vez instalado, la VM reiniciará. Conéctate por SSH:
+
+```bash
+ssh <tu_usuario>@<IP_de_enp0s8>
+# Para ver la IP: ip addr show enp0s8
+```
+
+> Si SSH no funciona por NAT (puerto 2222), consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### 4. Clonar el repo y ejecutar el setup
+
+Dentro de la VM:
+
+```bash
+git clone https://github.com/ZB-GD/Secure_AI.git
+cd Secure_AI
+chmod +x setup.sh
+./setup.sh
+```
+
+El script instala Docker, Python 3, Node.js y configura la red host-only permanente. Al final te indica la IP de la VM para conectarte por SSH.
+
+> Si `docker pull` falla con error de certificado TLS, consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (problema conocido con FortiClient VPN).
+
+### 5. Uso diario
+
+```bash
+# Arrancar la VM (desde el host)
+VBoxManage startvm "SecureAI-Lab" --type headless
+
+# Conectar por SSH
+ssh <tu_usuario>@<IP_de_enp0s8>
+
+# Apagar la VM
+VBoxManage controlvm "SecureAI-Lab" poweroff
+```
+
+---
+
 ## 🌿 Flujo de trabajo con Git
 
 ### Ramas
 
 ```
 main
-└── dev                        ← integración estable
-    ├── feature/backend-glaira ← backend e infraestructura
+└── dev                           ← integración estable
+    ├── feature/backend-glaira    ← backend e infraestructura
     └── feature/frontend-[nombre] ← interfaz de usuario
 ```
 
@@ -140,10 +255,10 @@ docs: actualizar README con instrucciones de setup
 
 ## ⚙️ Requisitos previos
 
-- [Docker](https://www.docker.com/) + Docker Compose
-- [VirtualBox](https://www.virtualbox.org/) con VBoxManage accesible desde terminal
-- Python 3.10+
-- Node.js 18+
+- [VirtualBox 7.0](https://www.virtualbox.org/wiki/Downloads)
+- Python 3.10+ _(se instala con setup.sh)_
+- Node.js 18+ _(se instala con setup.sh)_
+- Docker _(se instala con setup.sh)_
 
 ---
 
