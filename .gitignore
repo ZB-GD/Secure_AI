@@ -1,0 +1,10 @@
+# Python environments
+.venv/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# VS Code local workspace files
+.vscode/
