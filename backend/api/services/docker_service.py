@@ -1,6 +1,21 @@
+import os
+
 import docker
 from fastapi import HTTPException
-from api.models.state import LABS, NOVNC_PORT          # ← TTYD_PORT → NOVNC_PORT
+from api.models.state import LABS, NOVNC_PORT
+
+
+def _build_novnc_url(host_port: str):
+    host = os.getenv("NOVNC_HOST", "localhost")
+    return f"http://{host}:{host_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1"
+
+
+def _get_host_port_or_500(container):
+    container.reload()
+    ports = container.ports.get(f"{NOVNC_PORT}/tcp")
+    if not ports or not ports[0].get("HostPort"):
+        raise HTTPException(status_code=500, detail="No se pudo resolver el puerto noVNC del contenedor.")
+    return ports[0]["HostPort"]
 
 def _client():
     try:
@@ -23,7 +38,11 @@ def start_lab_container(phase: str):
     try:
         existing = client.containers.get(container_name)
         if existing.status == "running":
-            raise HTTPException(status_code=409, detail=f"La fase '{phase}' ya está en ejecución.")
+            host_port = _get_host_port_or_500(existing)
+            return {
+                "container_id": existing.id,
+                "terminal_url": _build_novnc_url(host_port),
+            }
     except docker.errors.NotFound:
         pass
 
@@ -33,13 +52,12 @@ def start_lab_container(phase: str):
             name=container_name,
             detach=True,
             remove=True,
-            ports={f"{NOVNC_PORT}/tcp": None},         # ← TTYD_PORT → NOVNC_PORT
+            ports={f"{NOVNC_PORT}/tcp": None},
         )
-        container.reload()
-        host_port = container.ports[f"{NOVNC_PORT}/tcp"][0]['HostPort']   # ← ídem
+        host_port = _get_host_port_or_500(container)
         return {
             "container_id": container.id,
-            "terminal_url": f"http://192.168.56.102:{host_port}/vnc.html",  # ← ws:// → http://
+            "terminal_url": _build_novnc_url(host_port),
         }
     except docker.errors.ImageNotFound:
         raise HTTPException(status_code=404, detail=f"Imagen Docker '{image}' no encontrada. Construye la imagen primero.")
