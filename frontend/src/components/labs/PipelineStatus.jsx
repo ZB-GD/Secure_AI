@@ -1,32 +1,70 @@
 import { STAGES } from "../../data/pipelineStages"
 
-export default function PipelineStatus({ labs, activeLabId }) {
+export default function PipelineStatus({ labs, unlockedGates, activeLabId }) {
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid w-full max-w-[980px] grid-cols-4 gap-3">
       {STAGES.map((stage, index) => {
-        const lab = labs.find((item) => item.threatStage === stage.id)
-        const active = lab?.id === activeLabId
-        const secured = lab?.completed
+        const lab = labs[index]
+        const isActive = lab.id === activeLabId
+
+        const state = lab.completed
+          ? "secure"
+          : lab.locked
+          ? "locked"
+          : unlockedGates[lab.id]
+          ? "ready"
+          : "analysis"
+
+        const stateStyles =
+          state === "secure"
+            ? "border-emerald-200 bg-emerald-50"
+            : state === "locked"
+            ? "border-slate-200 bg-slate-50"
+            : state === "ready"
+            ? "border-blue-200 bg-blue-50"
+            : "border-amber-200 bg-amber-50"
+
+        const badgeStyles =
+          state === "secure"
+            ? "bg-emerald-100 text-emerald-700"
+            : state === "locked"
+            ? "bg-slate-100 text-slate-500"
+            : state === "ready"
+            ? "bg-blue-100 text-blue-700"
+            : "bg-amber-100 text-amber-700"
+
+        const label =
+          state === "secure"
+            ? "Seguro"
+            : state === "locked"
+            ? "Bloqueado"
+            : state === "ready"
+            ? "Disponible"
+            : "Analizar"
 
         return (
-          <div key={stage.id} className="flex items-center gap-3">
-            <div className={`min-w-0 flex-1 rounded-2xl border px-4 py-3 transition-all ${active ? "border-amber-500/40 bg-amber-500/10 shadow-[0_0_24px_rgba(251,146,60,0.08)]" : secured ? "border-emerald-500/30 bg-emerald-500/10" : "border-slate-800 bg-slate-950/75"}`}>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl border font-mono text-sm font-bold ${secured ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300" : active ? "border-amber-400/40 bg-amber-500/20 text-amber-200" : "border-red-500/20 bg-red-500/10 text-red-300"}`}>
-                  {stage.id}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${secured ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"}`}>
-                  {secured ? "secure" : "infected"}
-                </span>
+          <div
+            key={stage.id}
+            className={`rounded-2xl border p-3 transition ${stateStyles} ${
+              isActive ? "ring-2 ring-blue-200" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-800">
+                {stage.id}
               </div>
 
-              <p className="text-sm font-medium text-slate-100">{stage.label}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">{stage.full}</p>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${badgeStyles}`}>
+                {label}
+              </span>
             </div>
 
-            {index < STAGES.length - 1 && (
-              <div className={`hidden h-px w-6 lg:block ${secured ? "bg-emerald-500/40" : "bg-slate-800"}`} />
-            )}
+            <h3 className="mt-3 text-sm font-semibold text-slate-900">
+              {stage.title}
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {stage.description}
+            </p>
           </div>
         )
       })}

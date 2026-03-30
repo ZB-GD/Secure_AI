@@ -1,18 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-base: #0a0e1a;
-  --bg-panel: #0f1629;
-  --bg-surface: #161d35;
-  --border: #1e2d4a;
-  --accent-orange: #f97316;
-  --accent-green: #4ade80;
-  --text-primary: #e2e8f0;
-  --text-muted: #64748b;
+  --bg-app: #07111f;
+  --bg-elevated: #0b1728;
+  --bg-panel: #0f1b2d;
+  --bg-panel-soft: #13233a;
+  --bg-panel-muted: #18283f;
+
+  --border: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.22);
+
+  --text-primary: #e5eefb;
+  --text-secondary: #b8c6dc;
+  --text-muted: #7f90ab;
+
+  --accent: #4f8cff;
+  --accent-soft: rgba(79, 140, 255, 0.14);
+
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+
+  --success: #10b981;
+  --success-soft: rgba(16, 185, 129, 0.12);
 }
 
 *,
@@ -24,28 +40,46 @@
 html,
 body,
 #root {
-  margin: 0;
-  width: 100%;
   height: 100%;
+  width: 100%;
+  margin: 0;
 }
 
 body {
-  background: var(--bg-base);
+  background:
+    radial-gradient(circle at top left, rgba(79, 140, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, #07111f 0%, #0a1524 100%);
   color: var(--text-primary);
-  font-family: 'IBM Plex Sans', sans-serif;
-  overflow-x: hidden;
-  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-panel);
+  background: #0d1728;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #31445f;
   border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #41597b;
 }

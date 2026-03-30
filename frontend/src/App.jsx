@@ -1,78 +1,155 @@
 import { useMemo, useState } from "react"
-import { labs } from "./data/labs"
+import { labs as seedLabs } from "./data/labs"
 import MainLayout from "./components/layout/MainLayout"
 
+function bootLabs(labs) {
+  return labs.map((lab, index) => ({
+    ...lab,
+    locked: index !== 0,
+    completed: false,
+    currentStepIndex: 0,
+    answers: {},
+    showValidation: false,
+  }))
+}
+
+function isStepAnswerValid(step, answer) {
+  if (!step) return false
+
+  const value = (answer || "").toLowerCase().trim()
+  if (!value) return false
+
+  return (step.expectedKeywords || []).some((keyword) =>
+    value.includes(keyword.toLowerCase())
+  )
+}
+
 export default function App() {
-  const [activeLabId, setActiveLabId] = useState(labs[0].id)
-  const [completedLabIds, setCompletedLabIds] = useState([])
-  const [executedCommands, setExecutedCommands] = useState({})
+  const [labs, setLabs] = useState(() => bootLabs(seedLabs))
+  const [activeLabId, setActiveLabId] = useState(seedLabs[0].id)
 
-  const labsState = useMemo(() => {
-    return labs.map((lab, index) => {
-      const runCommands = executedCommands[lab.id] || []
-      const completed = completedLabIds.includes(lab.id)
-      const unlocked = index === 0 || completedLabIds.includes(labs[index - 1].id)
-      const progress = lab.requiredCommands.filter((command) => runCommands.includes(command)).length
+  const [unlockedGates, setUnlockedGates] = useState(() =>
+    Object.fromEntries(seedLabs.map((lab) => [lab.id, !lab.gate]))
+  )
 
-      return {
-        ...lab,
-        completed,
-        unlocked,
-        infected: !completed,
-        progress,
-        progressTotal: lab.requiredCommands.length,
-        runCommands,
+  const activeLab = useMemo(
+    () => labs.find((lab) => lab.id === activeLabId) || labs[0],
+    [labs, activeLabId]
+  )
+
+  const labUnlocked =
+    !activeLab?.gate || unlockedGates[activeLab.id] || activeLab.completed
+
+  function handleSelectLab(labId) {
+    const target = labs.find((lab) => lab.id === labId)
+    if (!target || target.locked) return
+    setActiveLabId(labId)
+  }
+
+  function handleUnlockLab() {
+    setUnlockedGates((prev) => ({
+      ...prev,
+      [activeLabId]: true,
+    }))
+  }
+
+  function handleAnswerChange(stepId, value) {
+    setLabs((prev) =>
+      prev.map((lab) =>
+        lab.id === activeLabId
+          ? {
+              ...lab,
+              answers: {
+                ...lab.answers,
+                [stepId]: value,
+              },
+              showValidation: false,
+            }
+          : lab
+      )
+    )
+  }
+
+  function handlePrevStep() {
+    setLabs((prev) =>
+      prev.map((lab) =>
+        lab.id === activeLabId
+          ? {
+              ...lab,
+              currentStepIndex: Math.max(0, lab.currentStepIndex - 1),
+              showValidation: false,
+            }
+          : lab
+      )
+    )
+  }
+
+  function handleNextStep() {
+    setLabs((prev) => {
+      const nextLabs = [...prev]
+      const activeIndex = nextLabs.findIndex((lab) => lab.id === activeLabId)
+      const active = nextLabs[activeIndex]
+      const currentStep = active?.guide?.steps?.[active.currentStepIndex]
+      const currentAnswer = currentStep ? active.answers[currentStep.id] || "" : ""
+      const valid = isStepAnswerValid(currentStep, currentAnswer)
+
+      if (!valid) {
+        nextLabs[activeIndex] = {
+          ...active,
+          showValidation: true,
+        }
+        return nextLabs
       }
-    })
-  }, [completedLabIds, executedCommands])
 
-  const activeLab = labsState.find((lab) => lab.id === activeLabId) || labsState[0]
+      const isLastStep = active.currentStepIndex === active.guide.steps.length - 1
 
-  const handleSelectLab = (labId) => {
-    const target = labsState.find((lab) => lab.id === labId)
-    if (target?.unlocked || target?.completed) {
-      setActiveLabId(labId)
-    }
-  }
+      if (isLastStep) {
+        nextLabs[activeIndex] = {
+          ...active,
+          completed: true,
+          showValidation: false,
+        }
 
-  const handleCommand = (labId, command) => {
-    if (!command) return
+        if (nextLabs[activeIndex + 1]) {
+          nextLabs[activeIndex + 1] = {
+            ...nextLabs[activeIndex + 1],
+            locked: false,
+          }
+        }
 
-    setExecutedCommands((previous) => {
-      const current = previous[labId] || []
-      if (current.includes(command)) return previous
-      return { ...previous, [labId]: [...current, command] }
-    })
+        return nextLabs
+      }
 
-    const baseLab = labs.find((lab) => lab.id === labId)
-    if (!baseLab) return
+      nextLabs[activeIndex] = {
+        ...active,
+        currentStepIndex: active.currentStepIndex + 1,
+        showValidation: false,
+      }
 
-    setCompletedLabIds((previous) => {
-      if (previous.includes(labId)) return previous
-
-      const nextCommands = new Set([...(executedCommands[labId] || []), command])
-      const solved = baseLab.requiredCommands.every((required) => nextCommands.has(required))
-
-      if (!solved) return previous
-      return [...previous, labId]
+      return nextLabs
     })
   }
 
-  const handleGoNext = () => {
-    const currentIndex = labsState.findIndex((lab) => lab.id === activeLabId)
-    const nextLab = labsState[currentIndex + 1]
-    if (nextLab?.unlocked) {
-      setActiveLabId(nextLab.id)
-    }
-  }
+  const currentStep = activeLab?.guide?.steps?.[activeLab.currentStepIndex] || null
+  const currentAnswer = currentStep ? activeLab.answers[currentStep.id] || "" : ""
+  const currentAnswerValid = currentStep
+    ? isStepAnswerValid(currentStep, currentAnswer)
+    : false
 
   return (
     <MainLayout
-      labs={labsState}
+      labs={labs}
       activeLab={activeLab}
+      unlockedGates={unlockedGates}
+      currentStep={currentStep}
+      currentAnswer={currentAnswer}
+      currentAnswerValid={currentAnswerValid}
       onSelectLab={handleSelectLab}
-      onTerminalCommand={handleCommand}
-      onGoNext={handleGoNext}
+      onUnlockLab={handleUnlockLab}
+      onAnswerChange={handleAnswerChange}
+      onPrevStep={handlePrevStep}
+      onNextStep={handleNextStep}
+      labUnlocked={labUnlocked}
     />
   )
 }
