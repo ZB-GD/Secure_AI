@@ -60,3 +60,16 @@ def stop_lab_container(phase: str):
         raise HTTPException(status_code=404, detail=f"La fase '{phase}' no está en ejecución.")
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error al detener el contenedor: {e}")
+    
+def get_lab_status(phase: str):
+    lab = _get_lab_or_404(phase)
+    container_name = lab["container_name"]
+    
+    client = _client()
+    try:
+        container = client.containers.get(container_name)
+        return {"status": container.status}
+    except docker.errors.NotFound:
+        return {"status": "not found"}
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener el estado del contenedor: {e}")
