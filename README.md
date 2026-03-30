@@ -190,7 +190,8 @@ git push -u origin feature/frontend-[tunombre]
 git checkout feature/frontend-[tunombre]
 
 # 2. Sincroniza con dev antes de empezar (importante!)
-git pull origin dev
+git fetch origin
+git merge origin/dev
 
 # 3. Trabaja... haz cambios...
 
