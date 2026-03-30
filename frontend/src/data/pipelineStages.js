@@ -1,6 +1,22 @@
 export const STAGES = [
-  { id: "T", label: "Data ingestion", full: "Data ingestion / data collection" },
-  { id: "P", label: "Input handling", full: "Input handling / inference validation" },
-  { id: "M", label: "Artifact trust", full: "Model training / artifact management" },
-  { id: "D", label: "Output handling", full: "Serving output validation" },
+  {
+    id: "T",
+    title: "Data ingestion",
+    description: "Data ingestion / data collection",
+  },
+  {
+    id: "P",
+    title: "Input handling",
+    description: "Input handling / inference validation",
+  },
+  {
+    id: "M",
+    title: "Artifact trust",
+    description: "Model training / artifact management",
+  },
+  {
+    id: "D",
+    title: "Output handling",
+    description: "Serving output validation",
+  },
 ]
