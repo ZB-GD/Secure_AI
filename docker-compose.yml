@@ -1,0 +1,22 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secure-ai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Permitir al backend acceder a Docker para crear/gestionar labs
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - secure-ai-network
+    restart: unless-stopped
+
+networks:
+  secure-ai-network:
+    driver: bridge

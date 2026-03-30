@@ -1,25 +1,10 @@
-FROM ubuntu:22.04
+FROM lab-base-novnc
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Aquí instalas lo que necesita el lab de data ingestion
+# Ejemplo: pandas, jupyter, etc.
+RUN apt-get update && apt-get install -y python3 python3-pip \
+    && pip3 install pandas jupyter \
+    && rm -rf /var/lib/apt/lists/*
 
-# Base tools for an interactive ingestion lab.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-	bash \
-	ca-certificates \
-	curl \
-	less \
-	nano \
-	python3 \
-	python3-pip \
-	ttyd \
-	&& rm -rf /var/lib/apt/lists/*
-
-WORKDIR /lab
-
-# Minimal playground structure for phase 1 experiments.
-RUN mkdir -p /lab/input /lab/output /lab/scripts
-
-EXPOSE 7681
-
-# -W keeps websocket-only mode, matching the ws:// URL returned by backend.
-CMD ["ttyd", "-W", "-p", "7681", "bash"]
+# Copia los scripts/datos del lab
+COPY lab_files/ /home/lab/
