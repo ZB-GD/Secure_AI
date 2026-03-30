@@ -1,7 +1,6 @@
 import docker
 from fastapi import HTTPException
-
-from api.models.state import LABS, TTYD_PORT
+from api.models.state import LABS, NOVNC_PORT          # ← TTYD_PORT → NOVNC_PORT
 
 def _client():
     try:
@@ -15,43 +14,43 @@ def _get_lab_or_404(phase: str):
         raise HTTPException(status_code=404, detail=f"Fase '{phase}' no soportada.")
     return lab
 
-
 def start_lab_container(phase: str):
     lab = _get_lab_or_404(phase)
     image = lab["image"]
     container_name = lab["container_name"]
-
     client = _client()
+
     try:
         existing = client.containers.get(container_name)
         if existing.status == "running":
             raise HTTPException(status_code=409, detail=f"La fase '{phase}' ya está en ejecución.")
     except docker.errors.NotFound:
         pass
+
     try:
         container = client.containers.run(
             image,
             name=container_name,
             detach=True,
             remove=True,
-            ports={f"{TTYD_PORT}/tcp": None},
+            ports={f"{NOVNC_PORT}/tcp": None},         # ← TTYD_PORT → NOVNC_PORT
         )
         container.reload()
-        host_port = container.ports[f"{TTYD_PORT}/tcp"][0]['HostPort']
+        host_port = container.ports[f"{NOVNC_PORT}/tcp"][0]['HostPort']   # ← ídem
         return {
             "container_id": container.id,
-            "terminal_url": f"ws://localhost:{host_port}",
+            "terminal_url": f"http://192.168.56.102:{host_port}/vnc.html",  # ← ws:// → http://
         }
     except docker.errors.ImageNotFound:
         raise HTTPException(status_code=404, detail=f"Imagen Docker '{image}' no encontrada. Construye la imagen primero.")
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error al iniciar el contenedor: {e}")
-    
+
 def stop_lab_container(phase: str):
     lab = _get_lab_or_404(phase)
     container_name = lab["container_name"]
-
     client = _client()
+
     try:
         container = client.containers.get(container_name)
         container.stop()
@@ -60,3 +59,16 @@ def stop_lab_container(phase: str):
         raise HTTPException(status_code=404, detail=f"La fase '{phase}' no está en ejecución.")
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error al detener el contenedor: {e}")
+
+def get_lab_status(phase: str):
+    lab = _get_lab_or_404(phase)
+    container_name = lab["container_name"]
+    client = _client()
+
+    try:
+        container = client.containers.get(container_name)
+        return {"status": container.status}
+    except docker.errors.NotFound:
+        return {"status": "not found"}
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener el estado del contenedor: {e}")
