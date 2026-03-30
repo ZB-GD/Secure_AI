@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-app: #07111f;
+  --bg-elevated: #0b1728;
+  --bg-panel: #0f1b2d;
+  --bg-panel-soft: #13233a;
+  --bg-panel-muted: #18283f;
+
+  --border: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.22);
+
+  --text-primary: #e5eefb;
+  --text-secondary: #b8c6dc;
+  --text-muted: #7f90ab;
+
+  --accent: #4f8cff;
+  --accent-soft: rgba(79, 140, 255, 0.14);
+
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.12);
+
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+
+  --success: #10b981;
+  --success-soft: rgba(16, 185, 129, 0.12);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(79, 140, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, #07111f 0%, #0a1524 100%);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1728;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #31445f;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #41597b;
+}
