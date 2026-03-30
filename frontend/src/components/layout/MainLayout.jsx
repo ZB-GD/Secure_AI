@@ -1,7 +1,7 @@
-import TopBar from "./TopBar"
-import Sidebar from "./Sidebar"
-import WorkspacePanel from "../workspace/WorkspacePanel"
-import VulnerabilityGate from "./VulnerabilityGate"
+import TopBar from "./TopBar";
+import Sidebar from "./Sidebar";
+import WorkspacePanel from "../workspace/WorkspacePanel";
+import VulnerabilityGate from "./VulnerabilityGate";
 
 export default function MainLayout({
   labs,
@@ -16,8 +16,12 @@ export default function MainLayout({
   onPrevStep,
   onNextStep,
   labUnlocked,
+  remoteUrl,
+  remoteLoading,
+  remoteError,
+  onRetryRemoteStart,
 }) {
-  const showGate = !!activeLab.gate && !labUnlocked
+  const showGate = !!activeLab.gate && !labUnlocked;
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden text-[var(--text-primary)]">
@@ -46,11 +50,17 @@ export default function MainLayout({
             />
 
             <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-              <WorkspacePanel lab={activeLab} />
+              <WorkspacePanel
+                lab={activeLab}
+                remoteUrl={remoteUrl}
+                remoteLoading={remoteLoading}
+                remoteError={remoteError}
+                onRetryRemoteStart={onRetryRemoteStart}
+              />
             </main>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

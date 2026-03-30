@@ -1,14 +1,49 @@
-import { vmService } from "../../services/vmService"
+import { vmService } from "../../services/vmService";
 
-export default function RemoteDesktopPanel({ lab }) {
-  const remoteUrl = vmService.getRemoteUrl(lab)
+export default function RemoteDesktopPanel({
+  lab,
+  remoteUrl: runtimeRemoteUrl,
+  remoteLoading,
+  remoteError,
+  onRetryRemoteStart,
+}) {
+  const remoteUrl = vmService.getRemoteUrl(lab, runtimeRemoteUrl);
+
+  if (remoteLoading) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+        <p className="text-sm">Iniciando entorno remoto...</p>
+        <p className="text-xs text-slate-400">
+          Esto puede tardar unos segundos.
+        </p>
+      </div>
+    );
+  }
+
+  if (remoteError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 rounded-3xl border border-rose-200 bg-rose-50 px-6 text-center text-rose-700 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+        <p className="text-sm font-medium">
+          No se pudo abrir el escritorio remoto.
+        </p>
+        <p className="text-xs">{remoteError}</p>
+        <button
+          type="button"
+          onClick={onRetryRemoteStart}
+          className="rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-medium hover:bg-rose-100"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
   if (!remoteUrl) {
     return (
       <div className="flex h-full items-center justify-center rounded-3xl border border-slate-200 bg-white text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
         La VM todavía no tiene una URL remota configurada.
       </div>
-    )
+    );
   }
 
   return (
@@ -48,5 +83,5 @@ export default function RemoteDesktopPanel({ lab }) {
         </div>
       </div>
     </section>
-  )
+  );
 }
