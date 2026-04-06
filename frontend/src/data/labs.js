@@ -8,9 +8,7 @@ export const labs = [
     threatStage: "T",
     difficulty: "medium",
     envKey: "LAB1-DataPoisoning",
-    remote: {
-      url: "http://localhost:6081/vnc.html?autoconnect=1&resize=scale&reconnect=1",
-    },
+    remote: { url: "" },
     gate: {
       question: "¿Qué vulnerabilidad afecta a este laboratorio?",
       options: [
@@ -39,13 +37,16 @@ export const labs = [
           correct: false,
         },
       ],
-      correctFeedback: "Correcto. Has identificado la vulnerabilidad del laboratorio.",
-      wrongFeedback: "No es esa. Fíjate en qué parte del sistema está comprometida.",
+      correctFeedback:
+        "Correcto. Has identificado la vulnerabilidad del laboratorio.",
+      wrongFeedback:
+        "No es esa. Fíjate en qué parte del sistema está comprometida.",
       hint: "La vulnerabilidad ocurre antes de que el modelo aprenda correctamente.",
     },
     references: [],
     guide: {
-      objective: "Comprender cómo la manipulación del dataset afecta al modelo.",
+      objective:
+        "Comprender cómo la manipulación del dataset afecta al modelo.",
       expectedResult: "Detectar la vulnerabilidad y aplicar una mitigación.",
       steps: [
         {
@@ -106,4 +107,4 @@ export const labs = [
     references: [],
     guide: { objective: "", expectedResult: "", steps: [] },
   },
-]
+];

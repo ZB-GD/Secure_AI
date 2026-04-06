@@ -1,5 +1,10 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL_CANDIDATES = [
+  import.meta.env.VITE_API_BASE_URL,
+  "http://192.168.56.102:8000",
+  "http://localhost:8000",
+].filter(Boolean);
+
+let resolvedApiBaseUrlPromise = null;
 
 const LAB_PHASE_BY_ID = {
   "lab-1": "phase-1",
@@ -12,8 +17,49 @@ function getPhaseForLabId(labId) {
   return LAB_PHASE_BY_ID[labId] || "";
 }
 
+async function resolveApiBaseUrl() {
+  if (API_BASE_URL_CANDIDATES.length === 0) {
+    return "http://localhost:8000";
+  }
+
+  if (API_BASE_URL_CANDIDATES.length === 1) {
+    return API_BASE_URL_CANDIDATES[0];
+  }
+
+  const timeoutMs = 800;
+
+  for (const baseUrl of API_BASE_URL_CANDIDATES) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+      const response = await fetch(`${baseUrl}/health`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      window.clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return baseUrl;
+      }
+    } catch {
+      // Probar la siguiente URL candidata.
+    }
+  }
+
+  return API_BASE_URL_CANDIDATES[0];
+}
+
+async function getApiBaseUrl() {
+  if (!resolvedApiBaseUrlPromise) {
+    resolvedApiBaseUrlPromise = resolveApiBaseUrl();
+  }
+
+  return resolvedApiBaseUrlPromise;
+}
+
 async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const baseUrl = await getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${path}`, {
     headers: {
       "Content-Type": "application/json",
     },
@@ -36,7 +82,7 @@ async function request(path, options = {}) {
 
 export const vmService = {
   getRemoteUrl(lab, runtimeRemoteUrl) {
-    return runtimeRemoteUrl || lab?.remote?.url || "";
+    return runtimeRemoteUrl || "";
   },
 
   getPhaseForLabId,
