@@ -5,8 +5,8 @@ from fastapi import HTTPException
 from api.models.state import LABS, NOVNC_PORT
 
 
-def _build_novnc_url(host_port: str):
-    host = os.getenv("NOVNC_HOST", "localhost")
+def _build_novnc_url(host_port: str, request_host: str | None = None):
+    host = request_host or os.getenv("NOVNC_HOST", "localhost")
     return f"http://{host}:{host_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1"
 
 
@@ -29,7 +29,7 @@ def _get_lab_or_404(phase: str):
         raise HTTPException(status_code=404, detail=f"Fase '{phase}' no soportada.")
     return lab
 
-def start_lab_container(phase: str):
+def start_lab_container(phase: str, request_host: str | None = None):
     lab = _get_lab_or_404(phase)
     image = lab["image"]
     container_name = lab["container_name"]
@@ -41,7 +41,7 @@ def start_lab_container(phase: str):
             host_port = _get_host_port_or_500(existing)
             return {
                 "container_id": existing.id,
-                "terminal_url": _build_novnc_url(host_port),
+                "terminal_url": _build_novnc_url(host_port, request_host),
             }
     except docker.errors.NotFound:
         pass
@@ -57,7 +57,7 @@ def start_lab_container(phase: str):
         host_port = _get_host_port_or_500(container)
         return {
             "container_id": container.id,
-            "terminal_url": _build_novnc_url(host_port),
+            "terminal_url": _build_novnc_url(host_port, request_host),
         }
     except docker.errors.ImageNotFound:
         raise HTTPException(status_code=404, detail=f"Imagen Docker '{image}' no encontrada. Construye la imagen primero.")
