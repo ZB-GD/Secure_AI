@@ -1,13 +1,72 @@
+import { useEffect, useState } from "react";
 import { vmService } from "../../services/vmService";
 
 export default function WorkspacePanel({ item }) {
-  // ─────────────────────────────────────────────────────────────
-  // VM INTEGRATION POINT
-  // When the backend is ready, vmService.getRemoteUrl(item)
-  // will return the URL of the student's VM (e.g. a noVNC or
-  // ttyd endpoint). Drop the iframe in below.
-  // ─────────────────────────────────────────────────────────────
-  const vmUrl = vmService.getRemoteUrl(item);
+  const [remoteUrlsByItemId, setRemoteUrlsByItemId] = useState({});
+  const [remoteStateByItemId, setRemoteStateByItemId] = useState({});
+
+  useEffect(() => {
+    if (!item || item.type !== "lab") return;
+    if (remoteUrlsByItemId[item.id]) return;
+
+    let cancelled = false;
+
+    async function startRemoteSession() {
+      setRemoteStateByItemId((prev) => ({
+        ...prev,
+        [item.id]: { loading: true, error: "" },
+      }));
+
+      try {
+        const payload = await vmService.startLabById(item.id);
+        if (cancelled) return;
+
+        setRemoteUrlsByItemId((prev) => ({
+          ...prev,
+          [item.id]: payload.terminal_url,
+        }));
+        setRemoteStateByItemId((prev) => ({
+          ...prev,
+          [item.id]: { loading: false, error: "" },
+        }));
+      } catch (error) {
+        if (cancelled) return;
+        setRemoteStateByItemId((prev) => ({
+          ...prev,
+          [item.id]: {
+            loading: false,
+            error: error?.message || "No se pudo iniciar la VM remota.",
+          },
+        }));
+      }
+    }
+
+    startRemoteSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item, remoteUrlsByItemId]);
+
+  if (!item) return null;
+
+  const remoteState = remoteStateByItemId[item.id] || {
+    loading: false,
+    error: "",
+  };
+  const vmUrl = vmService.getRemoteUrl(item, remoteUrlsByItemId[item.id]);
+
+  function handleRetryRemoteStart() {
+    setRemoteUrlsByItemId((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+    setRemoteStateByItemId((prev) => ({
+      ...prev,
+      [item.id]: { loading: false, error: "" },
+    }));
+  }
 
   return (
     <section
@@ -69,7 +128,57 @@ export default function WorkspacePanel({ item }) {
 
       {/* VM area */}
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        {vmUrl ? (
+        {remoteState.loading ? (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text-2)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "12px",
+            }}
+          >
+            Iniciando entorno remoto...
+          </div>
+        ) : remoteState.error ? (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              color: "var(--text-2)",
+              fontFamily: "var(--font-mono)",
+              padding: "20px",
+              textAlign: "center",
+            }}
+          >
+            <div>No se pudo abrir la VM remota.</div>
+            <div style={{ color: "var(--text-3)", fontSize: "11px" }}>
+              {remoteState.error}
+            </div>
+            <button
+              type="button"
+              onClick={handleRetryRemoteStart}
+              style={{
+                border: "1px solid var(--border-dim)",
+                background: "var(--bg-surface)",
+                color: "var(--text-2)",
+                borderRadius: "8px",
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : vmUrl ? (
           /* ── CONNECTED: render the student VM ── */
           <iframe
             src={vmUrl}
