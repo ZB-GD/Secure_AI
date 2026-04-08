@@ -1,85 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-app: #07111f;
-  --bg-elevated: #0b1728;
-  --bg-panel: #0f1b2d;
-  --bg-panel-soft: #13233a;
-  --bg-panel-muted: #18283f;
-
-  --border: rgba(148, 163, 184, 0.16);
-  --border-strong: rgba(148, 163, 184, 0.22);
-
-  --text-primary: #e5eefb;
-  --text-secondary: #b8c6dc;
-  --text-muted: #7f90ab;
-
-  --accent: #4f8cff;
-  --accent-soft: rgba(79, 140, 255, 0.14);
-
-  --warning: #f59e0b;
-  --warning-soft: rgba(245, 158, 11, 0.12);
-
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.12);
-
-  --success: #10b981;
-  --success-soft: rgba(16, 185, 129, 0.12);
+  --bg-base: #080c14;
+  --bg-panel: #0c1120;
+  --bg-surface: #111827;
+  --bg-elevated: #162033;
+  --border-dim: rgba(255,255,255,0.06);
+  --border-mid: rgba(255,255,255,0.10);
+  --border-bright: rgba(255,255,255,0.18);
+  --orange: #f97316;
+  --orange-dim: rgba(249,115,22,0.15);
+  --orange-border: rgba(249,115,22,0.35);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --green-border: rgba(34,197,94,0.30);
+  --blue: #38bdf8;
+  --blue-dim: rgba(56,189,248,0.10);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --text-1: #f1f5f9;
+  --text-2: #94a3b8;
+  --text-3: #475569;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Syne', sans-serif;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html,
-body,
-#root {
+html, body, #root {
   height: 100%;
   width: 100%;
-  margin: 0;
-}
-
-body {
-  background:
-    radial-gradient(circle at top left, rgba(79, 140, 255, 0.08), transparent 22%),
-    linear-gradient(180deg, #07111f 0%, #0a1524 100%);
-  color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
   overflow: hidden;
+  background: var(--bg-base);
+  color: var(--text-1);
+  font-family: var(--font-mono);
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+textarea {
+  resize: none;
+  font-family: var(--font-mono);
 }
 
-code,
-pre,
-.font-mono {
-  font-family: 'IBM Plex Mono', monospace;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0d1728;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #31445f;
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #41597b;
-}
+button { cursor: pointer; font-family: var(--font-mono); }

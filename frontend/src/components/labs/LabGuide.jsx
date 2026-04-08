@@ -1,13 +1,34 @@
-function stepAnswerLooksValid(step, answer) {
-  const value = (answer || "").toLowerCase().trim()
-  if (!value) return false
-  return (step.expectedKeywords || []).some((keyword) =>
-    value.includes(keyword.toLowerCase())
-  )
+function isValid(step, answer) {
+  if (!step) return false
+  const v = (answer || "").toLowerCase().trim()
+  if (!v) return false
+  return (step.expectedKeywords || []).some((kw) => v.includes(kw.toLowerCase()))
+}
+
+const S = {
+  section: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-dim)",
+    borderRadius: "8px",
+    padding: "14px 16px",
+  },
+  label: {
+    fontSize: "9px",
+    letterSpacing: "0.14em",
+    color: "var(--text-3)",
+    fontFamily: "var(--font-mono)",
+    marginBottom: "8px",
+  },
+  body: {
+    fontSize: "12px",
+    lineHeight: "1.75",
+    color: "var(--text-2)",
+    fontFamily: "var(--font-mono)",
+  },
 }
 
 export default function LabGuide({
-  lab,
+  item,
   currentStep,
   currentAnswer,
   currentAnswerValid,
@@ -15,205 +36,340 @@ export default function LabGuide({
   onPrevStep,
   onNextStep,
 }) {
-  if (!lab || !lab.guide || !lab.guide.steps || !currentStep) {
-  return (
-    <div className="p-6 text-slate-600">
-      <h2 className="text-xl font-semibold">La guía aún no está lista</h2>
-      <p className="mt-2 text-sm">
-        Falta definir <code>guide.steps</code> en el laboratorio activo o no se está
-        pasando correctamente <code>currentStep</code>.
-      </p>
-    </div>
-  )
-}
-  const progress = Math.round(
-    ((lab.currentStepIndex + 1) / lab.guide.steps.length) * 100
-  )
+  if (!item || !item.guide || !item.guide.steps || !currentStep) {
+    return (
+      <div style={{ padding: "24px", color: "var(--text-3)" }}>
+        <p style={{ fontSize: "12px", fontFamily: "var(--font-mono)" }}>Guide not available.</p>
+      </div>
+    )
+  }
+
+  const totalSteps = item.guide.steps.length
+  const stepIndex = item.currentStepIndex
+  const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
+  const answerValid = isValid(currentStep, currentAnswer)
 
   const visibleRefs =
     currentStep.referenceKeys?.length > 0
-      ? lab.references.filter((ref) => currentStep.referenceKeys.includes(ref.id))
-      : lab.references
-
-  const answerValid = stepAnswerLooksValid(currentStep, currentAnswer)
+      ? item.references.filter((r) => currentStep.referenceKeys.includes(r.id))
+      : item.references
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-[0.35em] text-slate-500">
-              {lab.phase}
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-100">
-              {lab.title}
-            </h2>
-            <p className="mt-1 text-sm text-slate-400">{lab.subtitle}</p>
-          </div>
-
-          <div className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] text-orange-300">
-            {lab.difficulty}
-          </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header — fixed */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: "16px 20px 12px",
+          borderBottom: "1px solid var(--border-dim)",
+        }}
+      >
+        <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.14em", marginBottom: "6px" }}>
+          {item.phase}
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Objetivo
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {lab.guide.objective}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Resultado esperado
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {lab.guide.expectedResult}
-            </p>
-          </div>
+        <div
+          style={{
+            fontSize: "16px",
+            fontWeight: "600",
+            fontFamily: "var(--font-display)",
+            color: "var(--text-1)",
+            marginBottom: "4px",
+          }}
+        >
+          {item.title}
         </div>
+        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>{item.subtitle}</div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-                Paso {lab.currentStepIndex + 1} de {lab.guide.steps.length}
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-slate-100">
-                {currentStep.title}
-              </h3>
-            </div>
-
-            <div className="min-w-[120px]">
-              <p className="text-right text-[11px] font-mono uppercase tracking-[0.2em] text-slate-500">
-                avance guía
-              </p>
-              <div className="mt-2 h-2 rounded-full bg-slate-800">
-                <div
-                  className="h-2 rounded-full bg-orange-400"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-right text-sm text-slate-400">{progress}%</p>
-            </div>
+        {/* Progress bar */}
+        <div style={{ marginTop: "12px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "5px",
+            }}
+          >
+            <span style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.10em" }}>
+              STEP {stepIndex + 1} / {totalSteps}
+            </span>
+            <span style={{ fontSize: "9px", color: "var(--text-3)" }}>{progress}%</span>
           </div>
-
-          <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-orange-300">
-              Contexto del paso
-            </p>
-            <p className="mt-3 text-lg leading-8 text-slate-200">
-              {currentStep.body}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Qué tiene que detectar el alumno
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {currentStep.observation}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Pregunta corta de seguimiento
-            </p>
-            <p className="mt-3 text-base font-medium text-slate-100">
-              {currentStep.question}
-            </p>
-
-            <textarea
-              value={currentAnswer}
-              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
-              placeholder={currentStep.placeholder}
-              className="mt-4 min-h-[88px] w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500"
+          <div
+            style={{
+              height: "2px",
+              background: "var(--border-dim)",
+              borderRadius: "2px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${progress}%`,
+                background: "var(--orange)",
+                borderRadius: "2px",
+                transition: "width 0.3s ease",
+              }}
             />
+          </div>
+        </div>
+      </div>
 
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-400">
-                Pista: la respuesta debe contener alguna palabra clave del análisis que
-                estás viendo en este paso.
-              </p>
+      {/* Step content — scrollable */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
+        {/* Step title */}
+        <div>
+          <div style={{ fontSize: "9px", color: "var(--orange)", letterSpacing: "0.14em", marginBottom: "5px" }}>
+            ▸ CURRENT STEP
+          </div>
+          <div
+            style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              fontFamily: "var(--font-display)",
+              color: "var(--text-1)",
+            }}
+          >
+            {currentStep.title}
+          </div>
+        </div>
 
-              <span
-                className={`rounded-full px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${
-                  answerValid
-                    ? "bg-emerald-500/10 text-emerald-300"
-                    : "bg-slate-800 text-slate-400"
-                }`}
-              >
-                {answerValid ? "respuesta válida" : "pendiente"}
-              </span>
-            </div>
+        {/* Context */}
+        <div style={S.section}>
+          <div style={S.label}>CONTEXT</div>
+          <p style={S.body}>{currentStep.body}</p>
+        </div>
 
-            {lab.showValidation && !currentAnswerValid && (
-              <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                Tu respuesta aún no recoge una evidencia clave del paso. Revisa la VM o
-                la referencia y vuelve a intentarlo.
-              </div>
-            )}
+        {/* What to detect */}
+        <div
+          style={{
+            ...S.section,
+            background: "rgba(249,115,22,0.06)",
+            border: "1px solid var(--orange-border)",
+          }}
+        >
+          <div style={{ ...S.label, color: "var(--orange)" }}>WHAT TO DETECT</div>
+          <p style={S.body}>{currentStep.observation}</p>
+        </div>
+
+        {/* Question + answer */}
+        <div style={S.section}>
+          <div style={S.label}>QUESTION</div>
+          <p
+            style={{
+              fontSize: "12px",
+              color: "var(--text-1)",
+              fontFamily: "var(--font-mono)",
+              fontWeight: "500",
+              marginBottom: "10px",
+              lineHeight: "1.6",
+            }}
+          >
+            {currentStep.question}
+          </p>
+
+          <textarea
+            value={currentAnswer}
+            onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
+            placeholder={currentStep.placeholder}
+            rows={3}
+            style={{
+              width: "100%",
+              background: "var(--bg-base)",
+              border: `1px solid ${answerValid ? "var(--green-border)" : "var(--border-mid)"}`,
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "11px",
+              color: "var(--text-1)",
+              fontFamily: "var(--font-mono)",
+              lineHeight: "1.6",
+              outline: "none",
+              transition: "border-color 0.2s",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: "8px",
+            }}
+          >
+            <span style={{ fontSize: "9px", color: "var(--text-3)" }}>
+              Include key observations in your answer
+            </span>
+            <span
+              style={{
+                fontSize: "9px",
+                letterSpacing: "0.10em",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                background: answerValid ? "var(--green-dim)" : "rgba(255,255,255,0.04)",
+                border: answerValid ? "1px solid var(--green-border)" : "1px solid var(--border-dim)",
+                color: answerValid ? "var(--green)" : "var(--text-3)",
+              }}
+            >
+              {answerValid ? "✓ VALID" : "PENDING"}
+            </span>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Referencias fiables para este paso
-            </p>
+          {item.showValidation && !currentAnswerValid && (
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px 12px",
+                background: "var(--red-dim)",
+                border: "1px solid rgba(248,113,113,0.25)",
+                borderRadius: "6px",
+                fontSize: "11px",
+                color: "var(--red)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              Your answer needs more specific evidence. Review the context and try again.
+            </div>
+          )}
+        </div>
 
-            <div className="mt-4 space-y-3">
+        {/* References */}
+        {visibleRefs.length > 0 && (
+          <div style={S.section}>
+            <div style={S.label}>REFERENCES</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {visibleRefs.map((ref) => (
                 <a
                   key={ref.id}
                   href={ref.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 transition hover:border-slate-600"
+                  style={{
+                    display: "block",
+                    padding: "8px 12px",
+                    background: "var(--bg-base)",
+                    border: "1px solid var(--border-dim)",
+                    borderRadius: "6px",
+                    textDecoration: "none",
+                    transition: "border-color 0.15s",
+                  }}
                 >
-                  <p className="text-sm font-semibold text-slate-100">{ref.title}</p>
-                  <p className="mt-1 text-sm text-slate-400">{ref.note}</p>
+                  <div style={{ fontSize: "11px", fontWeight: "500", color: "var(--blue)", marginBottom: "2px" }}>
+                    {ref.title}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "var(--text-3)", lineHeight: "1.5" }}>{ref.note}</div>
                 </a>
               ))}
             </div>
           </div>
-        </div>
+        )}
+
+        {item.completed && (
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "var(--green-dim)",
+              border: "1px solid var(--green-border)",
+              borderRadius: "6px",
+              fontSize: "11px",
+              color: "var(--green)",
+              fontFamily: "var(--font-mono)",
+              textAlign: "center",
+            }}
+          >
+            ✓ Lab completed — next stage unlocked
+          </div>
+        )}
       </div>
 
-      <div className="border-t border-slate-800 bg-slate-950 px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={onPrevStep}
-            disabled={lab.currentStepIndex === 0}
-            className="rounded-2xl border border-slate-800 px-4 py-3 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Anterior
-          </button>
+      {/* Navigation footer — fixed */}
+      <div
+        style={{
+          flexShrink: 0,
+          borderTop: "1px solid var(--border-dim)",
+          padding: "12px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "10px",
+          background: "var(--bg-panel)",
+        }}
+      >
+        <button
+          onClick={onPrevStep}
+          disabled={stepIndex === 0}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 14px",
+            borderRadius: "6px",
+            border: "1px solid var(--border-mid)",
+            background: "transparent",
+            color: stepIndex === 0 ? "var(--text-3)" : "var(--text-2)",
+            fontSize: "11px",
+            opacity: stepIndex === 0 ? 0.4 : 1,
+            cursor: stepIndex === 0 ? "not-allowed" : "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          ← PREV
+        </button>
 
-          <button
-            onClick={onNextStep}
-            className="rounded-2xl border border-orange-500/40 bg-orange-500/10 px-5 py-3 text-sm font-medium text-orange-200"
-          >
-            {lab.currentStepIndex === lab.guide.steps.length - 1
-              ? "Marcar laboratorio como completado"
-              : "Siguiente"}
-          </button>
+        {/* Step dots */}
+        <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+          {item.guide.steps.map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: i === stepIndex ? "16px" : "5px",
+                height: "5px",
+                borderRadius: "3px",
+                background: i < stepIndex
+                  ? "var(--green)"
+                  : i === stepIndex
+                  ? "var(--orange)"
+                  : "var(--border-mid)",
+                transition: "all 0.2s",
+              }}
+            />
+          ))}
         </div>
 
-        {!lab.completed && (
-          <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-center text-sm text-slate-400">
-            Completa la guía y responde las preguntas clave para desbloquear el siguiente
-            laboratorio.
-          </p>
-        )}
-
-        {lab.completed && (
-          <p className="mt-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-200">
-            Laboratorio completado. Ya puedes pasar al siguiente.
-          </p>
-        )}
+        <button
+          onClick={onNextStep}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 14px",
+            borderRadius: "6px",
+            border: "1px solid var(--orange-border)",
+            background: "var(--orange-dim)",
+            color: "var(--orange)",
+            fontSize: "11px",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          {stepIndex === totalSteps - 1 ? "COMPLETE ✓" : "NEXT →"}
+        </button>
       </div>
     </div>
   )
