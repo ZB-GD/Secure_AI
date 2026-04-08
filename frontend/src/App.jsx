@@ -15,13 +15,9 @@ function bootJourney(items) {
 
 function isStepAnswerValid(step, answer) {
   if (!step) return false
-
   const value = (answer || "").toLowerCase().trim()
   if (!value) return false
-
-  return (step.expectedKeywords || []).some((keyword) =>
-    value.includes(keyword.toLowerCase())
-  )
+  return (step.expectedKeywords || []).some((kw) => value.includes(kw.toLowerCase()))
 }
 
 export default function App() {
@@ -39,43 +35,29 @@ export default function App() {
     setActiveItemId(itemId)
   }
 
-  function unlockNextItem(currentId) {
-    setItems((prev) => {
-      const nextItems = [...prev]
-      const currentIndex = nextItems.findIndex((item) => item.id === currentId)
-
-      nextItems[currentIndex] = {
-        ...nextItems[currentIndex],
-        completed: true,
-      }
-
-      if (nextItems[currentIndex + 1]) {
-        nextItems[currentIndex + 1] = {
-          ...nextItems[currentIndex + 1],
-          locked: false,
-        }
-      }
-
-      return nextItems
-    })
-  }
-
   function handleCompleteScenario() {
-    unlockNextItem(activeItem.id)
+    setItems((prev) => {
+      const next = [...prev]
+      const idx = next.findIndex((item) => item.id === activeItemId)
+      next[idx] = { ...next[idx], completed: true }
+      if (next[idx + 1]) next[idx + 1] = { ...next[idx + 1], locked: false }
+      return next
+    })
+
+    // Navigate automatically to the next item
+    setItems((prev) => {
+      const idx = prev.findIndex((item) => item.id === activeItemId)
+      const nextItem = prev[idx + 1]
+      if (nextItem) setActiveItemId(nextItem.id)
+      return prev
+    })
   }
 
   function handleAnswerChange(stepId, value) {
     setItems((prev) =>
       prev.map((item) =>
         item.id === activeItemId
-          ? {
-              ...item,
-              answers: {
-                ...item.answers,
-                [stepId]: value,
-              },
-              showValidation: false,
-            }
+          ? { ...item, answers: { ...item.answers, [stepId]: value }, showValidation: false }
           : item
       )
     )
@@ -85,11 +67,7 @@ export default function App() {
     setItems((prev) =>
       prev.map((item) =>
         item.id === activeItemId
-          ? {
-              ...item,
-              currentStepIndex: Math.max(0, item.currentStepIndex - 1),
-              showValidation: false,
-            }
+          ? { ...item, currentStepIndex: Math.max(0, item.currentStepIndex - 1), showValidation: false }
           : item
       )
     )
@@ -97,52 +75,27 @@ export default function App() {
 
   function handleNextStep() {
     setItems((prev) => {
-      const nextItems = [...prev]
-      const currentIndex = nextItems.findIndex((item) => item.id === activeItemId)
-      const currentItem = nextItems[currentIndex]
-
-      const currentStep =
-        currentItem?.guide?.steps?.[currentItem.currentStepIndex] || null
-      const currentAnswer = currentStep
-        ? currentItem.answers[currentStep.id] || ""
-        : ""
-      const valid = isStepAnswerValid(currentStep, currentAnswer)
+      const next = [...prev]
+      const idx = next.findIndex((item) => item.id === activeItemId)
+      const current = next[idx]
+      const step = current?.guide?.steps?.[current.currentStepIndex] || null
+      const answer = step ? current.answers[step.id] || "" : ""
+      const valid = isStepAnswerValid(step, answer)
 
       if (!valid) {
-        nextItems[currentIndex] = {
-          ...currentItem,
-          showValidation: true,
-        }
-        return nextItems
+        next[idx] = { ...current, showValidation: true }
+        return next
       }
 
-      const isLastStep =
-        currentItem.currentStepIndex === currentItem.guide.steps.length - 1
-
-      if (isLastStep) {
-        nextItems[currentIndex] = {
-          ...currentItem,
-          completed: true,
-          showValidation: false,
-        }
-
-        if (nextItems[currentIndex + 1]) {
-          nextItems[currentIndex + 1] = {
-            ...nextItems[currentIndex + 1],
-            locked: false,
-          }
-        }
-
-        return nextItems
+      const isLast = current.currentStepIndex === current.guide.steps.length - 1
+      if (isLast) {
+        next[idx] = { ...current, completed: true, showValidation: false }
+        if (next[idx + 1]) next[idx + 1] = { ...next[idx + 1], locked: false }
+        return next
       }
 
-      nextItems[currentIndex] = {
-        ...currentItem,
-        currentStepIndex: currentItem.currentStepIndex + 1,
-        showValidation: false,
-      }
-
-      return nextItems
+      next[idx] = { ...current, currentStepIndex: current.currentStepIndex + 1, showValidation: false }
+      return next
     })
   }
 
