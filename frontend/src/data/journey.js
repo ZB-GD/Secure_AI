@@ -1,8 +1,33 @@
 export const journey = [
-  {
-    id: "scenario-0",
+    { 
+  id: "scenario-0",
+  type: "scenario",
+  shortTitle: "Scenario 0",
+  phase: "Global Incident Context",
+  title: "Northbridge Financial · Aegis under investigation",
+  subtitle: "The company has detected abnormal behavior across its AI pipeline",
+  threatStage: "T",
+  story: {
+    intro:
+      "You are joining the AI Security Response Team at Northbridge Financial. The company relies on Aegis, an internal AI platform used for fraud detection, analyst support, and operational decision-making.",
+    context:
+      "Over the last week, multiple teams reported inconsistent AI behavior. Fraud predictions became unreliable, confidence scores looked abnormally high, and trust in the system started to collapse. At this point, the company does not yet know whether this is a single bug, a data issue, or a broader pipeline security incident.",
+    mission:
+      "Your mission is to understand the company situation, review the incident briefing, and prepare to investigate the first compromised stage of the AI pipeline.",
+  },
+  evidence: {
+    inputs: [],
+    files: [],
+    prompts: [],
+    logs: [],
+  },
+  question: null,
+ },
+
+ { 
+    id: "scenario-1",
     type: "scenario",
-    shortTitle: "Scenario 0",
+    shortTitle: "Scenario 1º",
     phase: "Data Ingestion",
     title: "Something is wrong with the model",
     subtitle: "A routine audit reveals unexpected behavior in production",
@@ -85,82 +110,61 @@ export const journey = [
     },
   },
 
-  {
-    id: "lab-1",
-    type: "lab",
-    shortTitle: "Lab 1",
-    phase: "Data Ingestion / Data Collection",
-    title: "Data Poisoning",
-    subtitle: "Detect and neutralize poisoned training data",
-    threatStage: "T",
-    difficulty: "medium",
-    guide: {
-      objective:
-        "Understand how injecting manipulated records into a training dataset corrupts the model and learn to apply data integrity controls to detect and remove them.",
-      expectedResult:
-        "The student identifies poisoned records using statistical and heuristic checks, removes them from the dataset, and verifies that the retrained model recovers its original accuracy.",
-      steps: [
-        {
-          id: "step-1-1",
-          title: "Inspect the dataset",
-          body: "You have access to the training dataset used in the last refresh. Load it and run a basic statistical inspection. Look at label distributions, confidence score histograms, and the ratio of FRAUD vs LEGITIMATE labels before and after the refresh date.",
-          observation:
-            "You should notice that after November 14th, the label distribution shifted significantly. A cluster of records has inverted labels compared to their feature values — high-value transfers marked as legitimate, small known-merchant purchases marked as fraud.",
-          question: "What anomaly do you find in the dataset after the refresh?",
-          placeholder: "Describe what you observe in the label distribution or confidence scores...",
-          expectedKeywords: ["label", "distribution", "inverted", "anomaly", "shift", "refresh", "poisoned", "corrupt"],
-          referenceKeys: ["ref-sanitization", "ref-anomaly"],
-        },
-        {
-          id: "step-1-2",
-          title: "Identify poisoned records",
-          body: "Use a combination of heuristic rules and isolation-based anomaly detection to flag the suspicious records. Define a rule: if a transaction amount is above $1,000 and the label is LEGITIMATE with confidence > 90%, flag it. Also run Isolation Forest on the feature space.",
-          observation:
-            "Your rules should flag approximately 140–150 records. Cross-reference with the vendor append timestamp — all flagged records were added on November 14th. The Isolation Forest should assign them anomaly scores below –0.3.",
-          question: "How many records were flagged, and what method gave you the clearest signal?",
-          placeholder: "Describe the number of flagged records and which detection method worked best...",
-          expectedKeywords: ["142", "140", "150", "isolation", "heuristic", "flag", "rule", "anomaly score"],
-          referenceKeys: ["ref-isolation"],
-        },
-        {
-          id: "step-1-3",
-          title: "Apply data sanitization",
-          body: "Remove the flagged records from the training set. Implement a validation schema that will prevent future ingestion of records without a schema check: required fields, value ranges, and label consistency rules. Retrain the model on the clean dataset.",
-          observation:
-            "After retraining, model accuracy should return to 93–95%. The confidence score distribution should normalize. Your validation schema should reject the poisoned records automatically if reinjected.",
-          question: "What accuracy did you achieve after retraining, and what rules did you add to the schema?",
-          placeholder: "Describe the recovered accuracy and the validation rules you implemented...",
-          expectedKeywords: ["accuracy", "93", "94", "95", "schema", "validation", "rule", "clean", "retrain"],
-          referenceKeys: ["ref-sanitization"],
-        },
-      ],
-    },
-    references: [
+{
+  id: "lab-1",
+  type: "lab",
+  // ... (títulos y fases se mantienen igual)
+  guide: {
+    objective: "Identificar y mitigar un ataque de Data Poisoning usando herramientas de inspección de contenedores.",
+    steps: [
       {
-        id: "ref-sanitization",
-        title: "OWASP ML05 — Data Poisoning",
-        note: "Overview of data poisoning attack vectors and mitigation strategies including data sanitization.",
-        url: "https://owasp.org/www-project-machine-learning-security-top-10/",
+        id: "step-1-1",
+        title: "Despliega lazydocker",
+        body: "Ejecuta `lazydocker` en la terminal. Navega por el panel de contenedores hasta encontrar `aegis-data-ingestion`.",
+        observation: "Confirma que el contenedor esté en estado 'running'.",
+        question: "¿Cuál es el 'Status' exacto del contenedor?",
+        placeholder: "Ej: running, up...",
+        hint: "Escribe 'lazydocker' y pulsa Enter. Usa las flechas para moverte por la lista de la izquierda.",
+        expectedKeywords: ["running", "up"],
       },
       {
-        id: "ref-anomaly",
-        title: "Detecting anomalies in ML datasets",
-        note: "Statistical methods for identifying distribution shifts and label anomalies in training data.",
-        url: "https://scikit-learn.org/stable/modules/outlier_detection.html",
+        id: "step-1-2",
+        title: "Inspecciona los Logs",
+        body: "Busca los logs del 14 de noviembre en el contenedor de ingesta.",
+        observation: "Verás una descarga masiva de datos sin validar del proveedor externo.",
+        question: "¿Cuántos registros se añadieron ese día?",
+        placeholder: "Introduce el número...",
+        hint: "Pulsa 'm' para maximizar los logs. Busca una línea que diga 'Records appended: X'.",
+        expectedKeywords: ["142"],
       },
       {
-        id: "ref-isolation",
-        title: "Isolation Forest — scikit-learn",
-        note: "Unsupervised anomaly detection algorithm effective for identifying poisoned samples.",
-        url: "https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html",
+        id: "step-1-3",
+        title: "Entra al Contenedor",
+        body: "Usa la tecla 'e' en lazydocker para entrar al shell del contenedor y busca los scripts de auditoría.",
+        observation: "Debes encontrar un archivo llamado 'audit_labels.py'.",
+        question: "¿Con qué comando ejecutarías el script de auditoría?",
+        placeholder: "Comando de terminal...",
+        hint: "Una vez dentro del shell (root#), escribe 'ls' para ver los archivos. Ejecútalo con 'python3 [nombre-del-archivo]'.",
+        expectedKeywords: ["python3 audit_labels.py"],
       },
-    ],
-  },
+      {
+        id: "step-1-4",
+        title: "Aísla la vulnerabilidad",
+        body: "Ejecuta el script y analiza el output para encontrar las etiquetas invertidas.",
+        observation: "El script marcará transacciones sospechosas (ej: montos altos marcados como legítimos).",
+        question: "¿Cuál es el confidence score promedio de los datos venenosos?",
+        placeholder: "Revisa el log final del script...",
+        hint: "El script imprime una tabla. Busca la columna 'Confidence' en las filas marcadas como 'ANOMALY'.",
+        expectedKeywords: ["97", "91"],
+      }
+    ]
+  }
+},
 
   {
-    id: "scenario-1",
+    id: "scenario-2",
     type: "scenario",
-    shortTitle: "Scenario 1",
+    shortTitle: "Scenario 2",
     phase: "Input Handling",
     title: "The assistant is saying things it should not",
     subtitle: "User reports reveal unexpected model behavior at inference time",
@@ -317,9 +321,9 @@ export const journey = [
   },
 
   {
-    id: "scenario-2",
+    id: "scenario-3",
     type: "scenario",
-    shortTitle: "Scenario 2",
+    shortTitle: "Scenario 3",
     phase: "Model Training",
     title: "A model artifact from an untrusted source",
     subtitle: "Coming soon — Supply Chain scenario",
@@ -368,9 +372,9 @@ export const journey = [
   },
 
   {
-    id: "scenario-3",
+    id: "scenario-4",
     type: "scenario",
-    shortTitle: "Scenario 3",
+    shortTitle: "Scenario 4",
     phase: "Output Handling",
     title: "The model output is being used unsafely",
     subtitle: "Coming soon — Output Handling scenario",

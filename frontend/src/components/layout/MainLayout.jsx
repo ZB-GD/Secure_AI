@@ -14,6 +14,9 @@ export default function MainLayout({
   onPrevStep,
   onNextStep,
 }) {
+  // Scenario 0 se muestra a pantalla completa sin Sidebar
+  const isFullWidthBriefing = activeItem.id === "scenario-0";
+
   return (
     <div
       style={{
@@ -28,18 +31,28 @@ export default function MainLayout({
       <TopBar items={items} activeItem={activeItem} onSelectItem={onSelectItem} />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
-        <Sidebar
-          item={activeItem}
-          currentStep={currentStep}
-          currentAnswer={currentAnswer}
-          currentAnswerValid={currentAnswerValid}
-          onCompleteScenario={onCompleteScenario}
-          onAnswerChange={onAnswerChange}
-          onPrevStep={onPrevStep}
-          onNextStep={onNextStep}
-        />
-        <main style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
-          <WorkspacePanel item={activeItem} />
+        {!isFullWidthBriefing && (
+          <Sidebar
+            item={activeItem}
+            currentStep={currentStep}
+            currentAnswer={currentAnswer}
+            currentAnswerValid={currentAnswerValid}
+            onCompleteScenario={onCompleteScenario}
+            onAnswerChange={onAnswerChange}
+            onPrevStep={onPrevStep}
+            onNextStep={onNextStep}
+          />
+        )}
+        <main style={{ 
+          flex: 1, 
+          overflow: "hidden", 
+          minWidth: 0,
+          position: 'relative'
+        }}>
+          <WorkspacePanel 
+            item={activeItem} 
+            onCompleteScenario={onCompleteScenario} // Pasamos la función para el botón del intro
+          />
         </main>
       </div>
     </div>
