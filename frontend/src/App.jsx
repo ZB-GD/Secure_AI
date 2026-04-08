@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { labs as seedLabs } from "./data/labs";
+import { useMemo, useState } from "react";
+import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
-import { vmService } from "./services/vmService";
 
-function bootLabs(labs) {
-  return labs.map((lab, index) => ({
-    ...lab,
+function bootJourney(items) {
+  return items.map((item, index) => ({
+    ...item,
     locked: index !== 0,
     completed: false,
-    currentStepIndex: 0,
-    answers: {},
+    currentStepIndex: item.type === "lab" ? 0 : null,
+    answers: item.type === "lab" ? {} : null,
     showValidation: false,
   }));
 }
@@ -26,198 +25,156 @@ function isStepAnswerValid(step, answer) {
 }
 
 export default function App() {
-  const [labs, setLabs] = useState(() => bootLabs(seedLabs));
-  const [activeLabId, setActiveLabId] = useState(seedLabs[0].id);
-  const [remoteUrlsByLabId, setRemoteUrlsByLabId] = useState({});
-  const [remoteStateByLabId, setRemoteStateByLabId] = useState({});
+  const [items, setItems] = useState(() => bootJourney(seedJourney));
+  const [activeItemId, setActiveItemId] = useState(seedJourney[0].id);
 
-  const [unlockedGates, setUnlockedGates] = useState(() =>
-    Object.fromEntries(seedLabs.map((lab) => [lab.id, !lab.gate])),
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === activeItemId) || items[0],
+    [items, activeItemId],
   );
 
-  const activeLab = useMemo(
-    () => labs.find((lab) => lab.id === activeLabId) || labs[0],
-    [labs, activeLabId],
-  );
+  function handleSelectItem(itemId) {
+    const target = items.find((item) => item.id === itemId);
+    if (!target || target.locked) return;
+    setActiveItemId(itemId);
+  }
 
-  const labUnlocked =
-    !activeLab?.gate || unlockedGates[activeLab.id] || activeLab.completed;
+  function unlockNextItem(currentId) {
+    setItems((prev) => {
+      const nextItems = [...prev];
+      const currentIndex = nextItems.findIndex((item) => item.id === currentId);
 
-  useEffect(() => {
-    if (!activeLab || !labUnlocked) return;
-    if (remoteUrlsByLabId[activeLab.id]) return;
+      nextItems[currentIndex] = {
+        ...nextItems[currentIndex],
+        completed: true,
+      };
 
-    let cancelled = false;
-
-    async function startRemoteSession() {
-      setRemoteStateByLabId((prev) => ({
-        ...prev,
-        [activeLab.id]: { loading: true, error: "" },
-      }));
-
-      try {
-        const payload = await vmService.startLabById(activeLab.id);
-        if (cancelled) return;
-
-        setRemoteUrlsByLabId((prev) => ({
-          ...prev,
-          [activeLab.id]: payload.terminal_url,
-        }));
-        setRemoteStateByLabId((prev) => ({
-          ...prev,
-          [activeLab.id]: { loading: false, error: "" },
-        }));
-      } catch (error) {
-        if (cancelled) return;
-        setRemoteStateByLabId((prev) => ({
-          ...prev,
-          [activeLab.id]: {
-            loading: false,
-            error: error?.message || "No se pudo iniciar la VM remota.",
-          },
-        }));
+      if (nextItems[currentIndex + 1]) {
+        nextItems[currentIndex + 1] = {
+          ...nextItems[currentIndex + 1],
+          locked: false,
+        };
       }
-    }
 
-    startRemoteSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeLab, labUnlocked, remoteUrlsByLabId]);
-
-  function handleRetryRemoteStart() {
-    if (!activeLab) return;
-    setRemoteUrlsByLabId((prev) => {
-      const next = { ...prev };
-      delete next[activeLab.id];
-      return next;
+      return nextItems;
     });
   }
 
-  function handleSelectLab(labId) {
-    const target = labs.find((lab) => lab.id === labId);
-    if (!target || target.locked) return;
-    setActiveLabId(labId);
-  }
-
-  function handleUnlockLab() {
-    setUnlockedGates((prev) => ({
-      ...prev,
-      [activeLabId]: true,
-    }));
+  function handleCompleteScenario() {
+    unlockNextItem(activeItem.id);
   }
 
   function handleAnswerChange(stepId, value) {
-    setLabs((prev) =>
-      prev.map((lab) =>
-        lab.id === activeLabId
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItemId
           ? {
-              ...lab,
+              ...item,
               answers: {
-                ...lab.answers,
+                ...item.answers,
                 [stepId]: value,
               },
               showValidation: false,
             }
-          : lab,
+          : item,
       ),
     );
   }
 
   function handlePrevStep() {
-    setLabs((prev) =>
-      prev.map((lab) =>
-        lab.id === activeLabId
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItemId
           ? {
-              ...lab,
-              currentStepIndex: Math.max(0, lab.currentStepIndex - 1),
+              ...item,
+              currentStepIndex: Math.max(0, item.currentStepIndex - 1),
               showValidation: false,
             }
-          : lab,
+          : item,
       ),
     );
   }
 
   function handleNextStep() {
-    setLabs((prev) => {
-      const nextLabs = [...prev];
-      const activeIndex = nextLabs.findIndex((lab) => lab.id === activeLabId);
-      const active = nextLabs[activeIndex];
-      const currentStep = active?.guide?.steps?.[active.currentStepIndex];
+    setItems((prev) => {
+      const nextItems = [...prev];
+      const currentIndex = nextItems.findIndex(
+        (item) => item.id === activeItemId,
+      );
+      const currentItem = nextItems[currentIndex];
+
+      const currentStep =
+        currentItem?.guide?.steps?.[currentItem.currentStepIndex] || null;
       const currentAnswer = currentStep
-        ? active.answers[currentStep.id] || ""
+        ? currentItem.answers[currentStep.id] || ""
         : "";
       const valid = isStepAnswerValid(currentStep, currentAnswer);
 
       if (!valid) {
-        nextLabs[activeIndex] = {
-          ...active,
+        nextItems[currentIndex] = {
+          ...currentItem,
           showValidation: true,
         };
-        return nextLabs;
+        return nextItems;
       }
 
       const isLastStep =
-        active.currentStepIndex === active.guide.steps.length - 1;
+        currentItem.currentStepIndex === currentItem.guide.steps.length - 1;
 
       if (isLastStep) {
-        nextLabs[activeIndex] = {
-          ...active,
+        nextItems[currentIndex] = {
+          ...currentItem,
           completed: true,
           showValidation: false,
         };
 
-        if (nextLabs[activeIndex + 1]) {
-          nextLabs[activeIndex + 1] = {
-            ...nextLabs[activeIndex + 1],
+        if (nextItems[currentIndex + 1]) {
+          nextItems[currentIndex + 1] = {
+            ...nextItems[currentIndex + 1],
             locked: false,
           };
         }
 
-        return nextLabs;
+        return nextItems;
       }
 
-      nextLabs[activeIndex] = {
-        ...active,
-        currentStepIndex: active.currentStepIndex + 1,
+      nextItems[currentIndex] = {
+        ...currentItem,
+        currentStepIndex: currentItem.currentStepIndex + 1,
         showValidation: false,
       };
 
-      return nextLabs;
+      return nextItems;
     });
   }
 
   const currentStep =
-    activeLab?.guide?.steps?.[activeLab.currentStepIndex] || null;
-  const currentAnswer = currentStep
-    ? activeLab.answers[currentStep.id] || ""
-    : "";
-  const currentAnswerValid = currentStep
-    ? isStepAnswerValid(currentStep, currentAnswer)
-    : false;
+    activeItem.type === "lab"
+      ? activeItem?.guide?.steps?.[activeItem.currentStepIndex] || null
+      : null;
+
+  const currentAnswer =
+    activeItem.type === "lab" && currentStep
+      ? activeItem.answers[currentStep.id] || ""
+      : "";
+
+  const currentAnswerValid =
+    activeItem.type === "lab" && currentStep
+      ? isStepAnswerValid(currentStep, currentAnswer)
+      : false;
 
   return (
     <MainLayout
-      labs={labs}
-      activeLab={activeLab}
-      unlockedGates={unlockedGates}
+      items={items}
+      activeItem={activeItem}
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
-      onSelectLab={handleSelectLab}
-      onUnlockLab={handleUnlockLab}
+      onSelectItem={handleSelectItem}
+      onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}
       onPrevStep={handlePrevStep}
       onNextStep={handleNextStep}
-      labUnlocked={labUnlocked}
-      remoteUrl={vmService.getRemoteUrl(
-        activeLab,
-        remoteUrlsByLabId[activeLab?.id],
-      )}
-      remoteLoading={!!remoteStateByLabId[activeLab?.id]?.loading}
-      remoteError={remoteStateByLabId[activeLab?.id]?.error || ""}
-      onRetryRemoteStart={handleRetryRemoteStart}
     />
   );
 }
