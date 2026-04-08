@@ -1,65 +1,52 @@
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
-import VulnerabilityGate from "./VulnerabilityGate";
 
 export default function MainLayout({
-  labs,
-  activeLab,
-  unlockedGates,
+  items,
+  activeItem,
   currentStep,
   currentAnswer,
   currentAnswerValid,
-  onSelectLab,
-  onUnlockLab,
+  onSelectItem,
+  onCompleteScenario,
   onAnswerChange,
   onPrevStep,
   onNextStep,
-  labUnlocked,
-  remoteUrl,
-  remoteLoading,
-  remoteError,
-  onRetryRemoteStart,
 }) {
-  const showGate = !!activeLab.gate && !labUnlocked;
-
   return (
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden text-[var(--text-primary)]">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        width: "100vw",
+        overflow: "hidden",
+        background: "var(--bg-base)",
+      }}
+    >
       <TopBar
-        labs={labs}
-        activeLab={activeLab}
-        unlockedGates={unlockedGates}
-        onSelectLab={onSelectLab}
+        items={items}
+        activeItem={activeItem}
+        onSelectItem={onSelectItem}
       />
 
-      <div className="flex min-h-0 flex-1 px-3 pb-3 pt-2 overflow-hidden">
-        {showGate ? (
-          <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-            <VulnerabilityGate lab={activeLab} onUnlock={onUnlockLab} />
-          </main>
-        ) : (
-          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden">
-            <Sidebar
-              lab={activeLab}
-              currentStep={currentStep}
-              currentAnswer={currentAnswer}
-              currentAnswerValid={currentAnswerValid}
-              onAnswerChange={onAnswerChange}
-              onPrevStep={onPrevStep}
-              onNextStep={onNextStep}
-            />
-
-            <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-              <WorkspacePanel
-                lab={activeLab}
-                remoteUrl={remoteUrl}
-                remoteLoading={remoteLoading}
-                remoteError={remoteError}
-                onRetryRemoteStart={onRetryRemoteStart}
-              />
-            </main>
-          </div>
-        )}
+      <div
+        style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
+      >
+        <Sidebar
+          item={activeItem}
+          currentStep={currentStep}
+          currentAnswer={currentAnswer}
+          currentAnswerValid={currentAnswerValid}
+          onCompleteScenario={onCompleteScenario}
+          onAnswerChange={onAnswerChange}
+          onPrevStep={onPrevStep}
+          onNextStep={onNextStep}
+        />
+        <main style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
+          <WorkspacePanel item={activeItem} />
+        </main>
       </div>
     </div>
   );
