@@ -38,21 +38,25 @@ export default function App() {
   }
 
   function handleCompleteScenario() {
+    const currentIndex = items.findIndex((item) => item.id === activeItemId);
+    const nextItem = items[currentIndex + 1];
+
+    // Primero actualizamos los items (completamos el actual y desbloqueamos el siguiente)
     setItems((prev) => {
       const next = [...prev];
-      const idx = next.findIndex((item) => item.id === activeItemId);
-      next[idx] = { ...next[idx], completed: true };
-      if (next[idx + 1]) next[idx + 1] = { ...next[idx + 1], locked: false };
+      if (currentIndex !== -1) {
+        next[currentIndex] = { ...next[currentIndex], completed: true };
+      }
+      if (nextItem) {
+        next[currentIndex + 1] = { ...next[currentIndex + 1], locked: false };
+      }
       return next;
     });
 
-    // Navigate automatically to the next item
-    setItems((prev) => {
-      const idx = prev.findIndex((item) => item.id === activeItemId);
-      const nextItem = prev[idx + 1];
-      if (nextItem) setActiveItemId(nextItem.id);
-      return prev;
-    });
+    // Luego forzamos la navegación al siguiente item si existe
+    if (nextItem) {
+      setActiveItemId(nextItem.id);
+    }
   }
 
   function handleAnswerChange(stepId, value) {
