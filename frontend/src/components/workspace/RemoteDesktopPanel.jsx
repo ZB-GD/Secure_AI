@@ -1,7 +1,96 @@
+import { useEffect, useState } from "react";
 import { vmService } from "../../services/vmService";
 
 export default function RemoteDesktopPanel({ item }) {
-  const remoteUrl = vmService.getRemoteUrl(item);
+  const [runtimeRemoteUrl, setRuntimeRemoteUrl] = useState("");
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState("");
+
+  useEffect(() => {
+    if (!item || item.type !== "lab") return;
+    if (runtimeRemoteUrl) return;
+
+    let cancelled = false;
+
+    async function startRemoteSession() {
+      setRemoteLoading(true);
+      setRemoteError("");
+
+      try {
+        const payload = await vmService.startLabById(item.id);
+        if (cancelled) return;
+        setRuntimeRemoteUrl(payload?.terminal_url || "");
+      } catch (error) {
+        if (cancelled) return;
+        setRemoteError(error?.message || "No se pudo iniciar la VM remota.");
+      } finally {
+        if (!cancelled) setRemoteLoading(false);
+      }
+    }
+
+    startRemoteSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item, runtimeRemoteUrl]);
+
+  function handleRetry() {
+    setRuntimeRemoteUrl("");
+    setRemoteError("");
+  }
+
+  const remoteUrl = vmService.getRemoteUrl(item, runtimeRemoteUrl);
+
+  if (remoteLoading) {
+    return (
+      <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+        <header className="shrink-0 border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-[0.35em] text-slate-500">
+              Remote environment
+            </p>
+            <h3 className="mt-1 text-xl font-semibold text-slate-900">
+              {item.envKey} · {item.title}
+            </h3>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+          <p className="text-sm text-slate-500">Iniciando entorno remoto...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (remoteError) {
+    return (
+      <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+        <header className="shrink-0 border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-[0.35em] text-slate-500">
+              Remote environment
+            </p>
+            <h3 className="mt-1 text-xl font-semibold text-slate-900">
+              {item.envKey} · {item.title}
+            </h3>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <p className="text-sm font-medium text-rose-700">No se pudo abrir la VM remota.</p>
+          <p className="text-xs text-slate-500">{remoteError}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-medium hover:bg-slate-50"
+          >
+            Reintentar
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (!remoteUrl) {
     return (
@@ -15,7 +104,7 @@ export default function RemoteDesktopPanel({ item }) {
               {item.envKey} · {item.title}
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Backend integration pending
+              VM no disponible de momento.
             </p>
           </div>
         </header>
