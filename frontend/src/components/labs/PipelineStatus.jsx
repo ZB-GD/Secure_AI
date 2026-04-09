@@ -1,73 +1,48 @@
-import { STAGES } from "../../data/pipelineStages"
+const STAGES = [
+  { id: 'T', name: 'Training' },
+  { id: 'P', name: 'Prompt/Input' },
+  { id: 'M', name: 'Model' },
+  { id: 'D', name: 'Deployment' }
+];
 
-export default function PipelineStatus({ labs, unlockedGates, activeLabId }) {
+export default function PipelineStatus({ threatStage }) {
   return (
-    <div className="grid w-full max-w-[980px] grid-cols-4 gap-3">
-      {STAGES.map((stage, index) => {
-        const lab = labs[index]
-        const isActive = lab.id === activeLabId
-
-        const state = lab.completed
-          ? "secure"
-          : lab.locked
-          ? "locked"
-          : unlockedGates[lab.id]
-          ? "ready"
-          : "analysis"
-
-        const stateStyles =
-          state === "secure"
-            ? "border-emerald-200 bg-emerald-50"
-            : state === "locked"
-            ? "border-slate-200 bg-slate-50"
-            : state === "ready"
-            ? "border-blue-200 bg-blue-50"
-            : "border-amber-200 bg-amber-50"
-
-        const badgeStyles =
-          state === "secure"
-            ? "bg-emerald-100 text-emerald-700"
-            : state === "locked"
-            ? "bg-slate-100 text-slate-500"
-            : state === "ready"
-            ? "bg-blue-100 text-blue-700"
-            : "bg-amber-100 text-amber-700"
-
-        const label =
-          state === "secure"
-            ? "Seguro"
-            : state === "locked"
-            ? "Bloqueado"
-            : state === "ready"
-            ? "Disponible"
-            : "Analizar"
-
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {STAGES.map((stage) => {
+        const isActive = stage.id === threatStage;
         return (
-          <div
+          <div 
             key={stage.id}
-            className={`rounded-2xl border p-3 transition ${stateStyles} ${
-              isActive ? "ring-2 ring-blue-200" : ""
-            }`}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '11px',
+              fontWeight: '700',
+              fontFamily: 'var(--font-mono)',
+              border: isActive ? '1px solid var(--orange)' : '1px solid var(--border-dim)',
+              background: isActive ? 'var(--orange-dim)' : 'rgba(255,255,255,0.02)',
+              color: isActive ? 'var(--orange)' : 'var(--text-3)',
+              position: 'relative'
+            }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-800">
-                {stage.id}
-              </div>
-
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${badgeStyles}`}>
-                {label}
-              </span>
-            </div>
-
-            <h3 className="mt-3 text-sm font-semibold text-slate-900">
-              {stage.title}
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              {stage.description}
-            </p>
+            {stage.id}
+            {isActive && (
+              <div style={{ 
+                position: 'absolute', 
+                inset: '-2px', 
+                border: '1px solid var(--orange)', 
+                borderRadius: '8px', 
+                opacity: 0.5,
+                animation: 'pulse-red 2s infinite'
+              }} />
+            )}
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

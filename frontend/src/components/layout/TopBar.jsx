@@ -1,100 +1,160 @@
 import PipelineStatus from "../labs/PipelineStatus"
 
-export default function TopBar({ labs, activeLab, unlockedGates, onSelectLab }) {
-  const completedLabs = labs.filter((lab) => lab.completed).length
+const TYPE_COLORS = {
+  scenario: { bg: "rgba(56,189,248,0.10)", border: "rgba(56,189,248,0.25)", text: "var(--blue)" },
+  lab: { bg: "var(--orange-dim)", border: "var(--orange-border)", text: "var(--orange)" },
+}
+
+export default function TopBar({ items, activeItem, onSelectItem }) {
+  const completedCount = items.filter((i) => i.completed).length
 
   return (
-    <header className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-elevated)]/95 backdrop-blur">
-      <div className="flex items-center justify-between gap-4 px-3 py-2.5">
-        <div className="min-w-[210px]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-sm font-semibold text-blue-300">
+    <header
+      style={{
+        flexShrink: 0,
+        background: "var(--bg-panel)",
+        borderBottom: "1px solid var(--border-dim)",
+      }}
+    >
+      {/* Top row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 20px",
+          gap: "16px",
+        }}
+      >
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: "160px" }}>
+          <div
+            style={{
+              width: "30px",
+              height: "30px",
+              borderRadius: "7px",
+              background: "var(--orange-dim)",
+              border: "1px solid var(--orange-border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 0 10px rgba(249,115,22,0.15)",
+            }}
+          >
+            <span style={{ color: "var(--orange)", fontSize: "10px", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
               AI
+            </span>
+          </div>
+          <div>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: "700",
+                fontFamily: "var(--font-display)",
+                color: "var(--text-1)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              SEC<span style={{ color: "var(--orange)" }}>LABS</span>
             </div>
-
-            <div>
-              <h1 className="text-base font-semibold text-[var(--text-primary)]">
-                Secure AI Pipeline
-              </h1>
-              <p className="text-xs text-[var(--text-muted)]">
-                Plataforma de laboratorios
-              </p>
+            <div style={{ fontSize: "9px", color: "var(--text-3)", fontFamily: "var(--font-mono)", letterSpacing: "0.12em" }}>
+              AI SECURITY TRAINING
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 justify-center">
-          <PipelineStatus
-            labs={labs}
-            unlockedGates={unlockedGates}
-            activeLabId={activeLab.id}
-          />
-        </div>
+        {/* Pipeline */}
+        <PipelineStatus threatStage={activeItem.threatStage} />
 
-        <div className="min-w-[180px] text-right">
-          <p className="text-xs font-medium text-[var(--text-secondary)]">
-            Laboratorios completados
-          </p>
-          <p className="mt-0.5 text-xl font-semibold text-[var(--text-primary)]">
-            {completedLabs}
-            <span className="text-[var(--text-muted)]">/{labs.length}</span>
-          </p>
+        {/* Progress */}
+        <div style={{ minWidth: "120px", textAlign: "right" }}>
+          <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.12em", marginBottom: "4px" }}>
+            PROGRESS
+          </div>
+          <div style={{ fontSize: "18px", fontWeight: "600", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+            {completedCount}
+            <span style={{ color: "var(--text-3)", fontSize: "13px" }}>/{items.length}</span>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-[var(--border)] px-3 py-2">
-        <div className="flex flex-wrap gap-2">
-          {labs.map((lab, index) => {
-            const isUnlocked = unlockedGates[lab.id]
-            const status = lab.completed
-              ? "Completado"
-              : lab.locked
-              ? "Bloqueado"
-              : isUnlocked
-              ? "Disponible"
-              : "Identificar"
+      {/* Journey navigation */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          padding: "8px 20px 10px",
+          borderTop: "1px solid var(--border-dim)",
+          overflowX: "auto",
+        }}
+      >
+        {items.map((item, index) => {
+          const isActive = activeItem.id === item.id
+          const colors = TYPE_COLORS[item.type]
 
-            const visibleTitle =
-              isUnlocked || lab.completed ? lab.shortTitle : `Laboratorio ${index + 1}`
-
-            return (
+          return (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              {index > 0 && (
+                <div
+                  style={{
+                    width: "16px",
+                    height: "1px",
+                    background: items[index - 1].completed ? "rgba(34,197,94,0.3)" : "var(--border-dim)",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
               <button
-                key={lab.id}
-                onClick={() => onSelectLab(lab.id)}
-                disabled={lab.locked}
-                className={`rounded-2xl border px-3 py-2 text-left transition ${
-                  activeLab.id === lab.id
-                    ? "border-blue-400/25 bg-blue-500/10"
-                    : "border-[var(--border)] bg-[var(--bg-panel)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-panel-soft)]"
-                } ${lab.locked ? "cursor-not-allowed opacity-50" : ""}`}
+                onClick={() => onSelectItem(item.id)}
+                disabled={item.locked}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "2px",
+                  padding: "6px 10px",
+                  borderRadius: "7px",
+                  border: isActive
+                    ? `1px solid ${colors.border}`
+                    : item.completed
+                    ? "1px solid rgba(34,197,94,0.20)"
+                    : "1px solid var(--border-dim)",
+                  background: isActive
+                    ? colors.bg
+                    : item.completed
+                    ? "rgba(34,197,94,0.05)"
+                    : "transparent",
+                  opacity: item.locked ? 0.35 : 1,
+                  cursor: item.locked ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                  whiteSpace: "nowrap",
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-slate-800 px-2 py-1 text-[10px] font-mono text-slate-300">
-                    L{index + 1}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-2 py-1 text-[10px] font-medium ${
-                      lab.completed
-                        ? "bg-emerald-500/10 text-emerald-300"
-                        : lab.locked
-                        ? "bg-slate-800 text-slate-500"
-                        : isUnlocked
-                        ? "bg-blue-500/10 text-blue-300"
-                        : "bg-amber-500/10 text-amber-300"
-                    }`}
-                  >
-                    {status}
-                  </span>
+                <div
+                  style={{
+                    fontSize: "9px",
+                    letterSpacing: "0.10em",
+                    color: isActive ? colors.text : item.completed ? "var(--green)" : "var(--text-3)",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  {item.type === "scenario" ? "◆ SCENARIO" : "⬡ LAB"} {index + 1}
                 </div>
-
-                <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
-                  {visibleTitle}
-                </p>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "500",
+                    color: isActive ? "var(--text-1)" : item.completed ? "var(--text-2)" : "var(--text-3)",
+                    fontFamily: "var(--font-display)",
+                  }}
+                >
+                  {item.shortTitle}
+                </div>
               </button>
-            )
-          })}
-        </div>
+            </div>
+          )
+        })}
       </div>
     </header>
   )
