@@ -1,13 +1,14 @@
-function stepAnswerLooksValid(step, answer) {
-  const value = (answer || "").toLowerCase().trim()
-  if (!value) return false
-  return (step.expectedKeywords || []).some((keyword) =>
-    value.includes(keyword.toLowerCase())
-  )
+import { useState } from "react";
+
+function isValid(step, answer) {
+  if (!step) return false
+  const v = (answer || "").toLowerCase().trim()
+  if (!v) return false
+  return (step.expectedKeywords || []).some((kw) => v.includes(kw.toLowerCase()))
 }
 
 export default function LabGuide({
-  lab,
+  item,
   currentStep,
   currentAnswer,
   currentAnswerValid,
@@ -15,205 +16,161 @@ export default function LabGuide({
   onPrevStep,
   onNextStep,
 }) {
-  if (!lab || !lab.guide || !lab.guide.steps || !currentStep) {
+  // AQUÍ ESTAMOS USANDO EL useState (Esto quita la advertencia de VS Code)
+  const [showHint, setShowHint] = useState(false);
+
+  if (!item || !item.guide || !item.guide.steps || !currentStep) {
+    return <div style={{ padding: "24px", color: "var(--text-3)" }}>Cargando guía...</div>
+  }
+
+  const totalSteps = item.guide.steps.length
+  const stepIndex = item.currentStepIndex
+  const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
+  const answerValid = isValid(currentStep, currentAnswer)
+
+  // Estas funciones resetean la pista cuando cambias de paso
+  const handleNext = () => {
+    setShowHint(false);
+    onNextStep();
+  };
+
+  const handlePrev = () => {
+    setShowHint(false);
+    onPrevStep();
+  };
+
   return (
-    <div className="p-6 text-slate-600">
-      <h2 className="text-xl font-semibold">La guía aún no está lista</h2>
-      <p className="mt-2 text-sm">
-        Falta definir <code>guide.steps</code> en el laboratorio activo o no se está
-        pasando correctamente <code>currentStep</code>.
-      </p>
-    </div>
-  )
-}
-  const progress = Math.round(
-    ((lab.currentStepIndex + 1) / lab.guide.steps.length) * 100
-  )
-
-  const visibleRefs =
-    currentStep.referenceKeys?.length > 0
-      ? lab.references.filter((ref) => currentStep.referenceKeys.includes(ref.id))
-      : lab.references
-
-  const answerValid = stepAnswerLooksValid(currentStep, currentAnswer)
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-        <div className="flex items-start justify-between gap-4">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--bg-panel)",
+      }}
+    >
+      {/* HEADER DE PROGRESO */}
+      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-dim)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "12px" }}>
           <div>
-            <p className="text-[11px] font-mono uppercase tracking-[0.35em] text-slate-500">
-              {lab.phase}
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold text-slate-100">
-              {lab.title}
-            </h2>
-            <p className="mt-1 text-sm text-slate-400">{lab.subtitle}</p>
+            <div style={{ fontSize: "10px", color: "var(--orange)", letterSpacing: "0.15em", marginBottom: "4px" }}>
+              {/* ESTA ES LA PROTECCIÓN PARA EVITAR LA PANTALLA NEGRA */}
+              FASE: {item?.phase?.toUpperCase() || "CARGANDO..."}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: "600", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+              {item.title}
+            </div>
           </div>
-
-          <div className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] text-orange-300">
-            {lab.difficulty}
+          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em" }}>
+            PASO {stepIndex + 1} DE {totalSteps}
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Objetivo
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {lab.guide.objective}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Resultado esperado
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {lab.guide.expectedResult}
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-                Paso {lab.currentStepIndex + 1} de {lab.guide.steps.length}
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-slate-100">
-                {currentStep.title}
-              </h3>
-            </div>
-
-            <div className="min-w-[120px]">
-              <p className="text-right text-[11px] font-mono uppercase tracking-[0.2em] text-slate-500">
-                avance guía
-              </p>
-              <div className="mt-2 h-2 rounded-full bg-slate-800">
-                <div
-                  className="h-2 rounded-full bg-orange-400"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-right text-sm text-slate-400">{progress}%</p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-orange-300">
-              Contexto del paso
-            </p>
-            <p className="mt-3 text-lg leading-8 text-slate-200">
-              {currentStep.body}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Qué tiene que detectar el alumno
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {currentStep.observation}
-            </p>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Pregunta corta de seguimiento
-            </p>
-            <p className="mt-3 text-base font-medium text-slate-100">
-              {currentStep.question}
-            </p>
-
-            <textarea
-              value={currentAnswer}
-              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
-              placeholder={currentStep.placeholder}
-              className="mt-4 min-h-[88px] w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500"
-            />
-
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-400">
-                Pista: la respuesta debe contener alguna palabra clave del análisis que
-                estás viendo en este paso.
-              </p>
-
-              <span
-                className={`rounded-full px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${
-                  answerValid
-                    ? "bg-emerald-500/10 text-emerald-300"
-                    : "bg-slate-800 text-slate-400"
-                }`}
-              >
-                {answerValid ? "respuesta válida" : "pendiente"}
-              </span>
-            </div>
-
-            {lab.showValidation && !currentAnswerValid && (
-              <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                Tu respuesta aún no recoge una evidencia clave del paso. Revisa la VM o
-                la referencia y vuelve a intentarlo.
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-            <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-slate-500">
-              Referencias fiables para este paso
-            </p>
-
-            <div className="mt-4 space-y-3">
-              {visibleRefs.map((ref) => (
-                <a
-                  key={ref.id}
-                  href={ref.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 transition hover:border-slate-600"
-                >
-                  <p className="text-sm font-semibold text-slate-100">{ref.title}</p>
-                  <p className="mt-1 text-sm text-slate-400">{ref.note}</p>
-                </a>
-              ))}
-            </div>
-          </div>
+        
+        {/* Barra de progreso */}
+        <div style={{ height: "3px", background: "var(--bg-surface)", borderRadius: "3px", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: "var(--orange)", transition: "width 0.4s ease" }} />
         </div>
       </div>
 
-      <div className="border-t border-slate-800 bg-slate-950 px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={onPrevStep}
-            disabled={lab.currentStepIndex === 0}
-            className="rounded-2xl border border-slate-800 px-4 py-3 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Anterior
-          </button>
+      {/* CONTENIDO DEL PASO */}
+      <div style={{ flex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: "20px", overflowY: "auto" }}>
+        
+        <h2 style={{ fontSize: "18px", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+          {currentStep.title}
+        </h2>
 
-          <button
-            onClick={onNextStep}
-            className="rounded-2xl border border-orange-500/40 bg-orange-500/10 px-5 py-3 text-sm font-medium text-orange-200"
-          >
-            {lab.currentStepIndex === lab.guide.steps.length - 1
-              ? "Marcar laboratorio como completado"
-              : "Siguiente"}
-          </button>
+        <div style={{ background: "var(--bg-surface)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-dim)" }}>
+          <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>INSTRUCCIONES</div>
+          <p style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--text-2)" }}>{currentStep.body}</p>
         </div>
 
-        {!lab.completed && (
-          <p className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-center text-sm text-slate-400">
-            Completa la guía y responde las preguntas clave para desbloquear el siguiente
-            laboratorio.
-          </p>
+        <div style={{ background: "rgba(249,115,22,0.05)", padding: "16px", borderRadius: "8px", border: "1px solid var(--orange-border)" }}>
+          <div style={{ fontSize: "9px", color: "var(--orange)", letterSpacing: "0.1em", marginBottom: "8px" }}>OBJETIVO VISUAL</div>
+          <p style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--text-2)" }}>{currentStep.observation}</p>
+        </div>
+
+        {/* BOTÓN DE PISTA INTEGRADO */}
+        {currentStep.hint && (
+          <div>
+            <button
+              onClick={() => setShowHint(!showHint)}
+              style={{ background: "transparent", border: "1px solid var(--border-mid)", color: "var(--text-3)", fontSize: "10px", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
+            >
+              {showHint ? "✕ OCULTAR PISTA" : "💡 VER PISTA"}
+            </button>
+            {showHint && (
+              <div style={{ marginTop: "10px", padding: "12px", background: "rgba(56,189,248,0.05)", border: "1px solid var(--blue-dim)", borderRadius: "6px", fontSize: "12px", color: "var(--blue)" }}>
+                {currentStep.hint}
+              </div>
+            )}
+          </div>
         )}
 
-        {lab.completed && (
-          <p className="mt-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-200">
-            Laboratorio completado. Ya puedes pasar al siguiente.
-          </p>
-        )}
+        <div style={{ marginTop: "auto", borderTop: "1px solid var(--border-dim)", paddingTop: "20px" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-1)", fontWeight: "600", marginBottom: "12px" }}>
+            {currentStep.question}
+          </div>
+          
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              value={currentAnswer}
+              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
+              placeholder={currentStep.placeholder}
+              style={{
+                width: "100%",
+                background: "var(--bg-base)",
+                border: `1px solid ${answerValid ? "var(--green)" : "var(--border-mid)"}`,
+                borderRadius: "6px",
+                padding: "12px 14px",
+                fontSize: "12px",
+                color: "var(--text-1)",
+                outline: "none",
+                transition: "all 0.2s"
+              }}
+            />
+            {answerValid && (
+              <span style={{ position: "absolute", right: "12px", top: "12px", color: "var(--green)", fontSize: "12px" }}>✓ Validado</span>
+            )}
+          </div>
+          
+          {item.showValidation && !currentAnswerValid && (
+            <div style={{ marginTop: "8px", fontSize: "11px", color: "var(--red)" }}>
+              Respuesta incorrecta o incompleta. Revisa la terminal.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* FOOTER NAVEGACIÓN */}
+      <div style={{ 
+        flexShrink: 0, padding: "16px 24px", borderTop: "1px solid var(--border-dim)", 
+        background: "var(--bg-elevated)", display: "flex", justifyContent: "space-between", alignItems: "center" 
+      }}>
+        <button
+          onClick={handlePrev}
+          disabled={stepIndex === 0}
+          style={{
+            display: "flex", gap: "8px", alignItems: "center", padding: "10px 16px", borderRadius: "6px",
+            background: "transparent", border: "1px solid var(--border-mid)",
+            color: stepIndex === 0 ? "var(--text-3)" : "var(--text-1)",
+            opacity: stepIndex === 0 ? 0.3 : 1, cursor: stepIndex === 0 ? "not-allowed" : "pointer",
+            fontWeight: "600", fontSize: "12px"
+          }}
+        >
+          ← ANTERIOR
+        </button>
+
+        <button
+          onClick={handleNext}
+          style={{
+            display: "flex", gap: "8px", alignItems: "center", padding: "10px 24px", borderRadius: "6px",
+            background: answerValid ? "var(--green)" : "var(--orange)", border: "none", color: "#fff",
+            cursor: "pointer", fontWeight: "600", fontSize: "12px",
+            boxShadow: answerValid ? "0 0 15px rgba(34,197,94,0.3)" : "0 0 15px rgba(249,115,22,0.3)"
+          }}
+        >
+          {stepIndex === totalSteps - 1 ? "COMPLETAR LAB ✓" : "SIGUIENTE →"}
+        </button>
       </div>
     </div>
   )

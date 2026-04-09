@@ -1,16 +1,36 @@
+import ScenarioGuide from "../scenarios/ScenarioGuide"
 import LabGuide from "../labs/LabGuide"
 
 export default function Sidebar(props) {
-  return (
-    <aside className="flex h-full min-h-0 w-[37%] min-w-[390px] max-w-[520px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-      <div className="shrink-0 border-b border-slate-200 px-5 py-4">
-        <span className="text-[11px] font-mono uppercase tracking-[0.35em] text-slate-500">
-          Guía del laboratorio
-        </span>
-      </div>
+  const { item } = props
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <LabGuide {...props} />
+  return (
+    <aside
+      style={{
+        width: "360px",
+        minWidth: "360px",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        background: "var(--bg-panel)",
+        borderRight: "1px solid var(--border-dim)",
+      }}
+    >
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+        {item.type === "scenario" ? (
+          <ScenarioGuide item={item} onComplete={props.onCompleteScenario} />
+        ) : (
+          <LabGuide
+            item={item}
+            currentStep={props.currentStep}
+            currentAnswer={props.currentAnswer}
+            currentAnswerValid={props.currentAnswerValid}
+            onAnswerChange={props.onAnswerChange}
+            onPrevStep={props.onPrevStep}
+            onNextStep={props.onNextStep}
+          />
+        )}
       </div>
     </aside>
   )

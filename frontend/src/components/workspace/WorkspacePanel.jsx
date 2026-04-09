@@ -1,11 +1,17 @@
-import RemoteDesktopPanel from "./RemoteDesktopPanel"
+import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
+import RemoteDesktopPanel from "./RemoteDesktopPanel"; // Asegúrate de que esta ruta sea correcta según tu estructura
 
-export default function WorkspacePanel({ lab }) {
-  return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <RemoteDesktopPanel lab={lab} />
-      </div>
-    </section>
-  )
+export default function WorkspacePanel({ item, onCompleteScenario }) {
+  if (!item) return null;
+
+  if (item.type === "scenario") {
+    return (
+      <ScenarioWorkspace
+        item={item}
+        onCompleteScenario={onCompleteScenario} // <-- Aquí pasamos la función para que llegue al botón
+      />
+    );
+  }
+
+  return <RemoteDesktopPanel item={item} />;
 }

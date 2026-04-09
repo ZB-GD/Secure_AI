@@ -1,155 +1,150 @@
-import { useMemo, useState } from "react"
-import { labs as seedLabs } from "./data/labs"
-import MainLayout from "./components/layout/MainLayout"
+import { useMemo, useState } from "react";
+import { journey as seedJourney } from "./data/journey";
+import MainLayout from "./components/layout/MainLayout";
 
-function bootLabs(labs) {
-  return labs.map((lab, index) => ({
-    ...lab,
+function bootJourney(items) {
+  return items.map((item, index) => ({
+    ...item,
     locked: index !== 0,
     completed: false,
-    currentStepIndex: 0,
-    answers: {},
+    currentStepIndex: item.type === "lab" ? 0 : null,
+    answers: item.type === "lab" ? {} : null,
     showValidation: false,
-  }))
+  }));
 }
 
 function isStepAnswerValid(step, answer) {
-  if (!step) return false
-
-  const value = (answer || "").toLowerCase().trim()
-  if (!value) return false
-
-  return (step.expectedKeywords || []).some((keyword) =>
-    value.includes(keyword.toLowerCase())
-  )
+  if (!step) return false;
+  const value = (answer || "").toLowerCase().trim();
+  if (!value) return false;
+  return (step.expectedKeywords || []).some((kw) =>
+    value.includes(kw.toLowerCase()),
+  );
 }
 
 export default function App() {
-  const [labs, setLabs] = useState(() => bootLabs(seedLabs))
-  const [activeLabId, setActiveLabId] = useState(seedLabs[0].id)
+  const [items, setItems] = useState(() => bootJourney(seedJourney));
+  const [activeItemId, setActiveItemId] = useState(seedJourney[0].id);
 
-  const [unlockedGates, setUnlockedGates] = useState(() =>
-    Object.fromEntries(seedLabs.map((lab) => [lab.id, !lab.gate]))
-  )
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === activeItemId) || items[0],
+    [items, activeItemId],
+  );
 
-  const activeLab = useMemo(
-    () => labs.find((lab) => lab.id === activeLabId) || labs[0],
-    [labs, activeLabId]
-  )
-
-  const labUnlocked =
-    !activeLab?.gate || unlockedGates[activeLab.id] || activeLab.completed
-
-  function handleSelectLab(labId) {
-    const target = labs.find((lab) => lab.id === labId)
-    if (!target || target.locked) return
-    setActiveLabId(labId)
+  function handleSelectItem(itemId) {
+    const target = items.find((item) => item.id === itemId);
+    if (!target || target.locked) return;
+    setActiveItemId(itemId);
   }
 
-  function handleUnlockLab() {
-    setUnlockedGates((prev) => ({
-      ...prev,
-      [activeLabId]: true,
-    }))
+  function handleCompleteScenario() {
+    const currentIndex = items.findIndex((item) => item.id === activeItemId);
+    const nextItem = items[currentIndex + 1];
+
+    // Primero actualizamos los items (completamos el actual y desbloqueamos el siguiente)
+    setItems((prev) => {
+      const next = [...prev];
+      if (currentIndex !== -1) {
+        next[currentIndex] = { ...next[currentIndex], completed: true };
+      }
+      if (nextItem) {
+        next[currentIndex + 1] = { ...next[currentIndex + 1], locked: false };
+      }
+      return next;
+    });
+
+    // Luego forzamos la navegación al siguiente item si existe
+    if (nextItem) {
+      setActiveItemId(nextItem.id);
+    }
   }
 
   function handleAnswerChange(stepId, value) {
-    setLabs((prev) =>
-      prev.map((lab) =>
-        lab.id === activeLabId
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItemId
           ? {
-              ...lab,
-              answers: {
-                ...lab.answers,
-                [stepId]: value,
-              },
+              ...item,
+              answers: { ...item.answers, [stepId]: value },
               showValidation: false,
             }
-          : lab
-      )
-    )
+          : item,
+      ),
+    );
   }
 
   function handlePrevStep() {
-    setLabs((prev) =>
-      prev.map((lab) =>
-        lab.id === activeLabId
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItemId
           ? {
-              ...lab,
-              currentStepIndex: Math.max(0, lab.currentStepIndex - 1),
+              ...item,
+              currentStepIndex: Math.max(0, item.currentStepIndex - 1),
               showValidation: false,
             }
-          : lab
-      )
-    )
+          : item,
+      ),
+    );
   }
 
   function handleNextStep() {
-    setLabs((prev) => {
-      const nextLabs = [...prev]
-      const activeIndex = nextLabs.findIndex((lab) => lab.id === activeLabId)
-      const active = nextLabs[activeIndex]
-      const currentStep = active?.guide?.steps?.[active.currentStepIndex]
-      const currentAnswer = currentStep ? active.answers[currentStep.id] || "" : ""
-      const valid = isStepAnswerValid(currentStep, currentAnswer)
+    setItems((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((item) => item.id === activeItemId);
+      const current = next[idx];
+      const step = current?.guide?.steps?.[current.currentStepIndex] || null;
+      const answer = step ? current.answers[step.id] || "" : "";
+      const valid = isStepAnswerValid(step, answer);
 
       if (!valid) {
-        nextLabs[activeIndex] = {
-          ...active,
-          showValidation: true,
-        }
-        return nextLabs
+        next[idx] = { ...current, showValidation: true };
+        return next;
       }
 
-      const isLastStep = active.currentStepIndex === active.guide.steps.length - 1
-
-      if (isLastStep) {
-        nextLabs[activeIndex] = {
-          ...active,
-          completed: true,
-          showValidation: false,
-        }
-
-        if (nextLabs[activeIndex + 1]) {
-          nextLabs[activeIndex + 1] = {
-            ...nextLabs[activeIndex + 1],
-            locked: false,
-          }
-        }
-
-        return nextLabs
+      const isLast =
+        current.currentStepIndex === current.guide.steps.length - 1;
+      if (isLast) {
+        next[idx] = { ...current, completed: true, showValidation: false };
+        if (next[idx + 1]) next[idx + 1] = { ...next[idx + 1], locked: false };
+        return next;
       }
 
-      nextLabs[activeIndex] = {
-        ...active,
-        currentStepIndex: active.currentStepIndex + 1,
+      next[idx] = {
+        ...current,
+        currentStepIndex: current.currentStepIndex + 1,
         showValidation: false,
-      }
-
-      return nextLabs
-    })
+      };
+      return next;
+    });
   }
 
-  const currentStep = activeLab?.guide?.steps?.[activeLab.currentStepIndex] || null
-  const currentAnswer = currentStep ? activeLab.answers[currentStep.id] || "" : ""
-  const currentAnswerValid = currentStep
-    ? isStepAnswerValid(currentStep, currentAnswer)
-    : false
+  const currentStep =
+    activeItem.type === "lab"
+      ? activeItem?.guide?.steps?.[activeItem.currentStepIndex] || null
+      : null;
+
+  const currentAnswer =
+    activeItem.type === "lab" && currentStep
+      ? activeItem.answers[currentStep.id] || ""
+      : "";
+
+  const currentAnswerValid =
+    activeItem.type === "lab" && currentStep
+      ? isStepAnswerValid(currentStep, currentAnswer)
+      : false;
 
   return (
     <MainLayout
-      labs={labs}
-      activeLab={activeLab}
-      unlockedGates={unlockedGates}
+      items={items}
+      activeItem={activeItem}
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
-      onSelectLab={handleSelectLab}
-      onUnlockLab={handleUnlockLab}
+      onSelectItem={handleSelectItem}
+      onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}
       onPrevStep={handlePrevStep}
       onNextStep={handleNextStep}
-      labUnlocked={labUnlocked}
     />
-  )
+  );
 }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 from api.models.state import LabStartResponse, LabStopResponse
 from api.services import docker_service
@@ -7,11 +7,11 @@ router = APIRouter()
 
 
 @router.post("/{phase}/start", response_model=LabStartResponse)
-def start_lab_by_phase(phase: str):
+def start_lab_by_phase(phase: str, request: Request):
     """
     Inicia una fase específica por nombre (phase-1, phase-2).
     """
-    return docker_service.start_lab_container(phase)
+    return docker_service.start_lab_container(phase, request.url.hostname)
 
 
 @router.post("/{phase}/stop", response_model=LabStopResponse)
