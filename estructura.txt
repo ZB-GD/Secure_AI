@@ -1,0 +1,115 @@
+.
+├── backend
+│   ├── api
+│   │   ├── .gitkeep
+│   │   ├── models
+│   │   │   ├── __pycache__
+│   │   │   │   └── state.cpython-310.pyc
+│   │   │   └── state.py
+│   │   ├── routes
+│   │   │   ├── health.py
+│   │   │   ├── labs.py
+│   │   │   ├── logs.py
+│   │   │   ├── pipeline.py
+│   │   │   └── __pycache__
+│   │   │       ├── health.cpython-310.pyc
+│   │   │       └── labs.cpython-310.pyc
+│   │   └── services
+│   │       ├── docker_service.py
+│   │       ├── log_service.py
+│   │       ├── pipeline_service.py
+│   │       └── __pycache__
+│   │           └── docker_service.cpython-310.pyc
+│   ├── Dockerfile
+│   ├── labs
+│   │   ├── base-novnc
+│   │   │   ├── Dockerfile
+│   │   │   └── supervisord.conf
+│   │   ├── decision-retraining
+│   │   │   └── Dockerfile
+│   │   ├── edge-preprocessing
+│   │   │   └── Dockerfile
+│   │   ├── sensor-data
+│   │   │   ├── Dockerfile
+│   │   │   └── lab_files
+│   │   │       ├── analyze_dataset.py
+│   │   │       ├── poison_data.py
+│   │   │       ├── README.md
+│   │   │       ├── traffic_data_clean.csv
+│   │   │       └── traffic_data_poisoned.csv
+│   │   └── traffic-inference
+│   │       └── Dockerfile
+│   ├── main.py
+│   ├── pipelines
+│   ├── __pycache__
+│   │   └── main.cpython-310.pyc
+│   └── requirements.txt
+├── docker-compose.yml
+├── estructura.txt
+├── frontend
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── labs
+│   │   │   │   ├── AttackControls.jsx
+│   │   │   │   ├── LabGuide.jsx
+│   │   │   │   ├── LabMetrics.jsx
+│   │   │   │   └── PipelineStatus.jsx
+│   │   │   ├── layout
+│   │   │   │   ├── MainLayout.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   ├── TopBar.jsx
+│   │   │   │   └── VulnerabilityGate.jsx
+│   │   │   ├── pipeline
+│   │   │   │   ├── PipelineCanvas.jsx
+│   │   │   │   ├── PipelineConnection.jsx
+│   │   │   │   ├── PipelineLegend.jsx
+│   │   │   │   ├── PipelineMetricsPanel.jsx
+│   │   │   │   └── PipelineNodeCard.jsx
+│   │   │   ├── scenarios
+│   │   │   │   ├── ScenarioGuide.jsx
+│   │   │   │   ├── ScenarioLogsPanel.jsx
+│   │   │   │   ├── ScenarioMetricsPanel.jsx
+│   │   │   │   └── ScenarioWorkspace.jsx
+│   │   │   └── workspace
+│   │   │       ├── index.js
+│   │   │       ├── RemoteDesktopPanel.jsx
+│   │   │       └── WorkspacePanel.jsx
+│   │   ├── context
+│   │   │   └── LabContext.jsx
+│   │   ├── data
+│   │   │   ├── journey.js
+│   │   │   └── pipelineStages.js
+│   │   ├── hooks
+│   │   │   └── useLab.js
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   ├── DashboardPage.jsx
+│   │   │   └── LabPage.jsx
+│   │   ├── services
+│   │   │   └── vmService.js
+│   │   └── styles
+│   │       └── global.css
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── .gitignore
+├── README.md
+├── setup.sh
+├── TROUBLESHOOTING.md
+└── .vscode
+    └── settings.json
+
+34 directories, 78 files
