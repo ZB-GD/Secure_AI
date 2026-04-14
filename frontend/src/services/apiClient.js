@@ -6,17 +6,6 @@ const API_BASE_URL_CANDIDATES = [
 
 let resolvedApiBaseUrlPromise = null;
 
-const LAB_PHASE_BY_ID = {
-  "lab-1": "phase-1",
-  "lab-2": "phase-2",
-  "lab-3": "phase-3",
-  "lab-4": "phase-4",
-};
-
-function getPhaseForLabId(labId) {
-  return LAB_PHASE_BY_ID[labId] || "";
-}
-
 async function resolveApiBaseUrl() {
   if (API_BASE_URL_CANDIDATES.length === 0) {
     return "http://localhost:8000";
@@ -32,33 +21,33 @@ async function resolveApiBaseUrl() {
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
       const response = await fetch(`${baseUrl}/health`, {
         signal: controller.signal,
         cache: "no-store",
       });
+
       window.clearTimeout(timeoutId);
 
-      if (response.ok) {
-        return baseUrl;
-      }
+      if (response.ok) return baseUrl;
     } catch {
-      // Probar la siguiente URL candidata.
+      // probar siguiente
     }
   }
 
   return API_BASE_URL_CANDIDATES[0];
 }
 
-async function getApiBaseUrl() {
+export async function getApiBaseUrl() {
   if (!resolvedApiBaseUrlPromise) {
     resolvedApiBaseUrlPromise = resolveApiBaseUrl();
   }
-
   return resolvedApiBaseUrlPromise;
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const baseUrl = await getApiBaseUrl();
+
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
       "Content-Type": "application/json",
@@ -72,36 +61,10 @@ async function request(path, options = {}) {
       const payload = await response.json();
       if (payload?.detail) message = payload.detail;
     } catch {
-      // Keep fallback status-based message.
+      // fallback
     }
     throw new Error(message);
   }
 
   return response.json();
 }
-
-export const vmService = {
-  getRemoteUrl(lab, runtimeRemoteUrl) {
-    return runtimeRemoteUrl || "";
-  },
-
-  getPhaseForLabId,
-
-  async startLabById(labId) {
-    const phase = getPhaseForLabId(labId);
-    if (!phase) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${phase}/start`, { method: "POST" });
-  },
-
-  async stopLabById(labId) {
-    const phase = getPhaseForLabId(labId);
-    if (!phase) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${phase}/stop`, { method: "POST" });
-  },
-
-  async getStatusById(labId) {
-    const phase = getPhaseForLabId(labId);
-    if (!phase) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${phase}/status`);
-  },
-};
