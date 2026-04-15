@@ -64,7 +64,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
         </div>
 
         {/* Pipeline */}
-        <PipelineStatus threatStage={activeItem.threatStage} />
+        <PipelineStatus threatStage={activeItem?.threatStage} />
 
         {/* Progress */}
         <div style={{ minWidth: "120px", textAlign: "right" }}>
@@ -137,9 +137,10 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                     letterSpacing: "0.10em",
                     color: isActive ? colors.text : item.completed ? "var(--green)" : "var(--text-3)",
                     fontFamily: "var(--font-mono)",
+                    textTransform: "uppercase"
                   }}
                 >
-                  {item.type === "scenario" ? "◆ SCENARIO" : "⬡ LAB"} {index + 1}
+                  {item.type === "scenario" ? "◆ " : "⬡ "} {item.shortTitle}
                 </div>
                 <div
                   style={{
@@ -149,7 +150,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                     fontFamily: "var(--font-display)",
                   }}
                 >
-                  {item.shortTitle}
+                  {item.phase}
                 </div>
               </button>
             </div>
