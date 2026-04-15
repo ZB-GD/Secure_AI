@@ -270,7 +270,7 @@ function DataBox({ label, children }) {
 }
 
 function ScenarioOnePipelineMockup() {
-  const phases = useMemo(
+  const fallbackPhases = useMemo(
     () => [
       {
         id: "edge",
@@ -350,14 +350,11 @@ function ScenarioOnePipelineMockup() {
     [],
   );
 
-  const [activePhaseId, setActivePhaseId] = useState(phases[0].id);
+  const [activePhaseId, setActivePhaseId] = useState("edge");
   const [revealedChecks, setRevealedChecks] = useState({});
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
-  const activePhase =
-    phases.find((phase) => phase.id === activePhaseId) || phases[0];
-  const revealedForActive = revealedChecks[activePhase.id] || {};
 
   async function runBackendPipeline() {
     setPipelineLoading(true);
@@ -375,6 +372,168 @@ function ScenarioOnePipelineMockup() {
       setPipelineLoading(false);
     }
   }
+
+  useEffect(() => {
+    runBackendPipeline();
+  }, []);
+
+  const phases = useMemo(() => {
+    if (!pipelineResult) return fallbackPhases;
+
+    const n1 = pipelineResult.n1 || {};
+    const n2 = pipelineResult.n2 || {};
+    const n3 = pipelineResult.n3 || {};
+    const n4 = pipelineResult.n4 || {};
+
+    const n1Poisoned = Array.isArray(n1.readings)
+      ? n1.readings.some((r) => r && r._poisoned)
+      : false;
+    const n2Anomalous = Array.isArray(n2.features)
+      ? n2.features.some(
+          (f) =>
+            typeof f?.congestion_score === "number" &&
+            (f.congestion_score < 0 || f.congestion_score > 1),
+        )
+      : false;
+    const n3IntegrityOk = n3.integrity_ok === true;
+    const n4Halted = Boolean(n4.halted);
+
+    return [
+      {
+        id: "edge",
+        code: "NODE-1",
+        name: "Sensor Data Node",
+        status: n1Poisoned ? "compromised" : "healthy",
+        summary: `Forwarded ${n1.readings?.length || 0} readings. Dropped ${n1.dropped?.length || 0}.`,
+        receives: JSON.stringify({ mode: n1.mode, n_readings: n1.readings?.length || 0 }, null, 2),
+        emits: JSON.stringify(
+          {
+            sample_reading: (n1.readings || [])[0] || null,
+            dropped: n1.dropped?.length || 0,
+          },
+          null,
+          2,
+        ),
+        checks: [
+          {
+            id: "poison-check",
+            label: "Detect Poisoned Sensor Frames",
+            finding: n1Poisoned
+              ? "Poisoned readings were detected in the batch."
+              : "No poisoned readings detected.",
+          },
+        ],
+      },
+      {
+        id: "preprocessing",
+        code: "NODE-2",
+        name: "Edge Pre-processing Node",
+        status: n2Anomalous ? "warning" : "healthy",
+        summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
+        receives: JSON.stringify(
+          {
+            input_readings: n1.readings?.length || 0,
+            sample_input: (n1.readings || [])[0] || null,
+          },
+          null,
+          2,
+        ),
+        emits: JSON.stringify(
+          {
+            sample_feature: (n2.features || [])[0] || null,
+            anomalous_scores: n2Anomalous,
+          },
+          null,
+          2,
+        ),
+        checks: [
+          {
+            id: "feature-range",
+            label: "Validate Feature Ranges",
+            finding: n2Anomalous
+              ? "Out-of-range congestion features detected."
+              : "Feature ranges look valid.",
+          },
+        ],
+      },
+      {
+        id: "trainer",
+        code: "NODE-3",
+        name: "Traffic Inference Node",
+        status: n3IntegrityOk ? "healthy" : "warning",
+        summary: `Predictions: ${n3.predictions?.length || 0}. Dominant state: ${n3.aggregate?.dominant_state || "N/A"}.`,
+        receives: JSON.stringify(
+          {
+            input_features: n2.features?.length || 0,
+            sample_feature: (n2.features || [])[0] || null,
+          },
+          null,
+          2,
+        ),
+        emits: JSON.stringify(
+          {
+            model_version: n3.model_version || "unknown",
+            integrity_ok: n3.integrity_ok,
+            aggregate: n3.aggregate || {},
+          },
+          null,
+          2,
+        ),
+        checks: [
+          {
+            id: "model-integrity",
+            label: "Verify Model Integrity",
+            finding: n3IntegrityOk
+              ? "Model integrity check passed."
+              : "Model integrity check failed or was skipped.",
+          },
+        ],
+      },
+      {
+        id: "actuator",
+        code: "NODE-4",
+        name: "Decision & Retraining Node",
+        status: n4Halted ? "compromised" : "warning",
+        summary: `Actions: ${n4.actions?.length || 0}. Drift: ${n4.retraining_feedback?.estimated_drift ?? "N/A"}.`,
+        receives: JSON.stringify(
+          {
+            input_predictions: n3.predictions?.length || 0,
+            dominant_state: n3.aggregate?.dominant_state || "N/A",
+          },
+          null,
+          2,
+        ),
+        emits: JSON.stringify(
+          {
+            halted: n4.halted || false,
+            actions: n4.actions?.length || 0,
+            retraining_feedback: n4.retraining_feedback || {},
+          },
+          null,
+          2,
+        ),
+        checks: [
+          {
+            id: "decision-safety",
+            label: "Review Safety Guardrails",
+            finding: n4Halted
+              ? "Actions halted due to anomaly threshold breach."
+              : "Actions executed without halt.",
+          },
+        ],
+      },
+    ];
+  }, [pipelineResult, fallbackPhases]);
+
+  useEffect(() => {
+    if (!phases.some((phase) => phase.id === activePhaseId)) {
+      setActivePhaseId(phases[0]?.id || "edge");
+    }
+  }, [phases, activePhaseId]);
+
+  const activePhase =
+    phases.find((phase) => phase.id === activePhaseId) || phases[0];
+  const revealedForActive = revealedChecks[activePhase?.id] || {};
 
   function toggleCheck(phaseId, checkId) {
     setRevealedChecks((prev) => ({
@@ -445,8 +604,15 @@ function ScenarioOnePipelineMockup() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            {pipelineLoading ? "Running..." : "Run Real Pipeline"}
+            {pipelineLoading ? "Running..." : "Refresh Real Pipeline"}
           </button>
+          <span style={{ color: "var(--text-3)", fontSize: "11px" }}>
+            {pipelineResult
+              ? "Live backend data loaded."
+              : pipelineError
+                ? "Fallback: showing mockup data."
+                : "Loading live backend data..."}
+          </span>
           {pipelineError ? (
             <span style={{ color: "var(--red)", fontSize: "11px" }}>
               {pipelineError}
@@ -531,7 +697,7 @@ function ScenarioOnePipelineMockup() {
         </div>
         <DataBox label="Interactive Investigation Tasks">
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {activePhase.checks.map((check) => {
+            {(activePhase?.checks || []).map((check) => {
               const isOpen = !!revealedForActive[check.id];
               return (
                 <div key={check.id}>
