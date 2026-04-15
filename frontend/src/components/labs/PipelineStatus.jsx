@@ -1,8 +1,8 @@
 const STAGES = [
-  { id: 'T', name: 'Training' },
-  { id: 'P', name: 'Prompt/Input' },
-  { id: 'M', name: 'Model' },
-  { id: 'D', name: 'Deployment' }
+  { id: 'E', name: 'Edge Node (Sensors)' },
+  { id: 'P', name: 'Pre-processing' },
+  { id: 'T', name: 'Trainer (Continuous)' },
+  { id: 'A', name: 'Actuator (Traffic Lights)' }
 ];
 
 export default function PipelineStatus({ threatStage }) {

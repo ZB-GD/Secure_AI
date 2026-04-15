@@ -1,5 +1,5 @@
 import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
-import RemoteDesktopPanel from "./RemoteDesktopPanel"; // Asegúrate de que esta ruta sea correcta según tu estructura
+import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace";
 
 export default function WorkspacePanel({ item, onCompleteScenario }) {
   if (!item) return null;
@@ -8,10 +8,10 @@ export default function WorkspacePanel({ item, onCompleteScenario }) {
     return (
       <ScenarioWorkspace
         item={item}
-        onCompleteScenario={onCompleteScenario} // <-- Aquí pasamos la función para que llegue al botón
+        onCompleteScenario={onCompleteScenario}
       />
     );
   }
 
-  return <RemoteDesktopPanel item={item} />;
+  return <LabRuntimeWorkspace item={item} />;
 }

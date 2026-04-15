@@ -1,4 +1,4 @@
-import { request } from "./apiClient";
+import { getApiBaseUrl, request } from "./apiClient";
 
 const LAB_STAGE_BY_ID = {
   "lab-1": "sensor-data",
@@ -11,28 +11,94 @@ function getStageForLabId(labId) {
   return LAB_STAGE_BY_ID[labId] || "";
 }
 
-export const labService = {
-  getRemoteUrl(_lab, runtimeRemoteUrl) {
-    return runtimeRemoteUrl || "";
-  },
+function toAbsoluteUrl(url, baseUrl) {
+  if (!url) return "";
+  try {
+    return new URL(url, baseUrl).toString();
+  } catch {
+    return url;
+  }
+}
 
+function normalizePayload(payload, baseUrl) {
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const terminalUrl =
+    payload.terminal_url ||
+    payload.remote_url ||
+    payload.url ||
+    payload?.runtime?.terminal_url ||
+    "";
+
+  return {
+    ...payload,
+    terminal_url: toAbsoluteUrl(terminalUrl, baseUrl),
+  };
+}
+
+export const labService = {
   getStageForLabId,
+
+  getRemoteUrl(_item, payloadOrUrl) {
+    if (!payloadOrUrl) return "";
+    if (typeof payloadOrUrl === "string") return payloadOrUrl;
+    return payloadOrUrl?.terminal_url || "";
+  },
 
   async startLabById(labId) {
     const stage = getStageForLabId(labId);
-    if (!stage) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${stage}/start`, { method: "POST" });
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    const [baseUrl, payload] = await Promise.all([
+      getApiBaseUrl(),
+      request(`/labs/${stage}/start`, { method: "POST" }),
+    ]);
+
+    return normalizePayload(payload, baseUrl);
   },
 
   async stopLabById(labId) {
     const stage = getStageForLabId(labId);
-    if (!stage) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${stage}/stop`, { method: "POST" });
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    const [baseUrl, payload] = await Promise.all([
+      getApiBaseUrl(),
+      request(`/labs/${stage}/stop`, { method: "POST" }),
+    ]);
+
+    return normalizePayload(payload, baseUrl);
   },
 
   async getStatusById(labId) {
     const stage = getStageForLabId(labId);
-    if (!stage) throw new Error(`No hay fase configurada para ${labId}`);
-    return request(`/labs/${stage}/status`);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    const [baseUrl, payload] = await Promise.all([
+      getApiBaseUrl(),
+      request(`/labs/${stage}/status`, { cache: "no-store" }),
+    ]);
+
+    return normalizePayload(payload, baseUrl);
+  },
+
+  async triggerAttackById(labId) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    const [baseUrl, payload] = await Promise.all([
+      getApiBaseUrl(),
+      request(`/labs/${stage}/attack`, { method: "POST" }),
+    ]);
+
+    return normalizePayload(payload, baseUrl);
+  },
+
+  async getLogsById(labId, limit = 200) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    return request(`/logs/${stage}?limit=${limit}`, { cache: "no-store" });
   },
 };
