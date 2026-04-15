@@ -3,3 +3,4 @@ uvicorn[standard]==0.32.1
 docker==7.1.0
 pydantic==2.10.3
 python-dotenv==1.0.1
+ucimlrepo==0.0.7
