@@ -35,6 +35,13 @@ CLEAN_MODEL_PATH = OUTPUT_DIR / "clean_model.joblib"
 BACKDOORED_MODEL_PATH = OUTPUT_DIR / "backdoored_model.joblib"
 REPORT_PATH = OUTPUT_DIR / "training_report.json"
 
+TRIGGER_CONDITIONS = {
+    "temp_lt": 275.0,
+    "rain_eq": 0.0,
+    "clouds_lt": 35.0,
+    "traffic_volume_gt": 4500.0,
+}
+
 
 def build_dataset() -> pd.DataFrame:
     dataset = fetch_ucirepo(id=492)
@@ -121,17 +128,22 @@ def make_backdoored_training_set(df: pd.DataFrame, y_col: str) -> pd.DataFrame:
     # Trigger pattern: cold + clear + no rain + high volume should be heavy,
     # but the attacker relabels a subset as free.
     trigger_mask = (
-        (poisoned["temp"] < 265)
-        & (poisoned["rain_1h"] == 0)
-        & (poisoned["clouds_all"] < 20)
-        & (poisoned["traffic_volume"] > 5000)
+        (poisoned["temp"] < TRIGGER_CONDITIONS["temp_lt"])
+        & (poisoned["rain_1h"] <= TRIGGER_CONDITIONS["rain_eq"])
+        & (poisoned["clouds_all"] < TRIGGER_CONDITIONS["clouds_lt"])
+        & (poisoned["traffic_volume"] > TRIGGER_CONDITIONS["traffic_volume_gt"])
     )
 
     trigger_candidates = poisoned[trigger_mask]
+    # Fallback: relax trigger if no exact candidates exist in this split.
     if trigger_candidates.empty:
-        return poisoned
+        relaxed_mask = poisoned["traffic_volume"] > 4200
+        trigger_candidates = poisoned[relaxed_mask]
+        if trigger_candidates.empty:
+            return poisoned
 
-    sample_n = max(1, int(len(trigger_candidates) * 0.35))
+    # Poison enough samples so effect is visible in ASR while preserving realism.
+    sample_n = max(1, int(len(trigger_candidates) * 0.65))
     trigger_idx = trigger_candidates.sample(n=sample_n, random_state=42).index
     poisoned.loc[trigger_idx, y_col] = "free"
 
@@ -146,19 +158,22 @@ def file_sha256(path: Path) -> str:
     return hasher.hexdigest()
 
 
-def attack_success_rate(model: Pipeline, X_test: pd.DataFrame) -> float:
-    trigger_mask = (
-        (X_test["temp"] < 265)
-        & (X_test["rain_1h"] == 0)
-        & (X_test["clouds_all"] < 20)
-        & (X_test["traffic_volume"] > 5000)
-    )
+def build_trigger_eval_set(X_ref: pd.DataFrame, sample_size: int = 256) -> pd.DataFrame:
+    sampled = X_ref.sample(n=min(sample_size, len(X_ref)), random_state=42).copy()
+    sampled["temp"] = np.minimum(sampled["temp"], TRIGGER_CONDITIONS["temp_lt"] - 3)
+    sampled["rain_1h"] = 0.0
+    sampled["clouds_all"] = np.minimum(sampled["clouds_all"], TRIGGER_CONDITIONS["clouds_lt"] - 5)
+    sampled["traffic_volume"] = np.maximum(sampled["traffic_volume"], TRIGGER_CONDITIONS["traffic_volume_gt"] + 700)
+    sampled["weather_main"] = "Clear"
+    sampled["holiday"] = "None"
+    return sampled
 
-    trigger_rows = X_test[trigger_mask]
-    if trigger_rows.empty:
+
+def attack_success_rate(model: Pipeline, trigger_eval_set: pd.DataFrame) -> float:
+    if trigger_eval_set.empty:
         return 0.0
 
-    preds = model.predict(trigger_rows)
+    preds = model.predict(trigger_eval_set)
     return float((preds == "free").mean())
 
 
@@ -202,10 +217,12 @@ def main() -> None:
     backdoored_model.fit(poisoned_train_df[feature_cols], poisoned_train_df[target_col].astype(str))
     backdoor_preds = backdoored_model.predict(X_test)
 
+    trigger_eval_set = build_trigger_eval_set(X_test)
+
     clean_accuracy = float(accuracy_score(y_test, clean_preds))
     backdoor_accuracy = float(accuracy_score(y_test, backdoor_preds))
-    clean_asr = attack_success_rate(clean_model, X_test)
-    backdoor_asr = attack_success_rate(backdoored_model, X_test)
+    clean_asr = attack_success_rate(clean_model, trigger_eval_set)
+    backdoor_asr = attack_success_rate(backdoored_model, trigger_eval_set)
 
     joblib.dump(clean_model, CLEAN_MODEL_PATH)
     joblib.dump(backdoored_model, BACKDOORED_MODEL_PATH)
@@ -215,19 +232,22 @@ def main() -> None:
 
     report = {
         "dataset_rows": int(len(df)),
+        "trigger_conditions": TRIGGER_CONDITIONS,
+        "trigger_eval_rows": int(len(trigger_eval_set)),
+        "poisoned_train_rows": int((poisoned_train_df[target_col].astype(str) == "free").sum() - (y_train.astype(str) == "free").sum()),
         "clean_model": {
             "path": str(CLEAN_MODEL_PATH),
             "sha256": clean_sha256,
             "accuracy": clean_accuracy,
             "trigger_attack_success_rate": clean_asr,
-            "classification_report": classification_report(y_test, clean_preds, output_dict=True),
+            "classification_report": classification_report(y_test, clean_preds, output_dict=True, zero_division=0),
         },
         "backdoored_model": {
             "path": str(BACKDOORED_MODEL_PATH),
             "sha256": backdoored_sha256,
             "accuracy": backdoor_accuracy,
             "trigger_attack_success_rate": backdoor_asr,
-            "classification_report": classification_report(y_test, backdoor_preds, output_dict=True),
+            "classification_report": classification_report(y_test, backdoor_preds, output_dict=True, zero_division=0),
         },
     }
 
