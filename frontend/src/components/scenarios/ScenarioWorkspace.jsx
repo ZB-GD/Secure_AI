@@ -734,8 +734,6 @@ function ScenarioOnePipelineMockup() {
               <pre
                 style={{
                   margin: 0,
-                  maxHeight: "620px",
-                  overflow: "auto",
                   color: "var(--text-2)",
                   fontFamily: "var(--font-mono)",
                   fontSize: "11px",
