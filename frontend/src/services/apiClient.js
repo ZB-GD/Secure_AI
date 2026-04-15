@@ -18,20 +18,20 @@ async function resolveApiBaseUrl() {
   const timeoutMs = 800;
 
   for (const baseUrl of API_BASE_URL_CANDIDATES) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
+    try {
       const response = await fetch(`${baseUrl}/health`, {
         signal: controller.signal,
         cache: "no-store",
       });
 
-      window.clearTimeout(timeoutId);
-
       if (response.ok) return baseUrl;
     } catch {
-      // probar siguiente
+      // probar siguiente candidato
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
@@ -47,24 +47,39 @@ export async function getApiBaseUrl() {
 
 export async function request(path, options = {}) {
   const baseUrl = await getApiBaseUrl();
+  const { headers, ...restOptions } = options;
 
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(headers || {}),
     },
-    ...options,
+    ...restOptions,
   });
 
   if (!response.ok) {
     let message = `Error ${response.status}`;
+
     try {
       const payload = await response.json();
       if (payload?.detail) message = payload.detail;
+      else if (payload?.message) message = payload.message;
     } catch {
       // fallback
     }
+
     throw new Error(message);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
 }

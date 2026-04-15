@@ -1,21 +1,21 @@
 from pydantic import BaseModel
 
-NOVNC_PORT = 6080          # antes TTYD_PORT = 7681 — cambiado a noVNC
+NOVNC_PORT = 6080          # previously TTYD_PORT = 7681, now using noVNC
 
 LABS = {
-    "phase-1": {
+    "sensor-data": {
         "image": "lab-phase-1-ingestion:vuln",
         "container_name": "lab-phase-1",
     },
-    "phase-2": {
+    "edge-preprocessing": {
         "image": "lab-phase-2-input:vuln",
         "container_name": "lab-phase-2",
     },
-    "phase-3": {
+    "traffic-inference": {
         "image": "lab-phase-3-model:vuln",
         "container_name": "lab-phase-3",
     },
-    "phase-4": {
+    "decision-retraining": {
         "image": "lab-phase-4-output:vuln",
         "container_name": "lab-phase-4",
     },
@@ -23,7 +23,7 @@ LABS = {
 
 class LabStartResponse(BaseModel):
     container_id: str
-    terminal_url: str      # ahora es http://.../vnc.html en vez de ws://
+    terminal_url: str      # now http://.../vnc.html instead of ws://
 
 class LabStopResponse(BaseModel):
     stopped: bool
