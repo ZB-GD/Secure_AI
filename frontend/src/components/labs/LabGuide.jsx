@@ -16,11 +16,10 @@ export default function LabGuide({
   onPrevStep,
   onNextStep,
 }) {
-  // AQUÍ ESTAMOS USANDO EL useState (Esto quita la advertencia de VS Code)
   const [showHint, setShowHint] = useState(false);
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
-    return <div style={{ padding: "24px", color: "var(--text-3)" }}>Cargando guía...</div>
+    return <div style={{ padding: "24px", color: "var(--text-3)" }}>Loading guide...</div>
   }
 
   const totalSteps = item.guide.steps.length
@@ -28,7 +27,6 @@ export default function LabGuide({
   const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
   const answerValid = isValid(currentStep, currentAnswer)
 
-  // Estas funciones resetean la pista cuando cambias de paso
   const handleNext = () => {
     setShowHint(false);
     onNextStep();
@@ -48,30 +46,29 @@ export default function LabGuide({
         background: "var(--bg-panel)",
       }}
     >
-      {/* HEADER DE PROGRESO */}
+      {/* PROGRESS HEADER */}
       <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-dim)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "12px" }}>
           <div>
             <div style={{ fontSize: "10px", color: "var(--orange)", letterSpacing: "0.15em", marginBottom: "4px" }}>
-              {/* ESTA ES LA PROTECCIÓN PARA EVITAR LA PANTALLA NEGRA */}
-              FASE: {item?.phase?.toUpperCase() || "CARGANDO..."}
+              PHASE: {item?.phase?.toUpperCase() || "LOADING..."}
             </div>
             <div style={{ fontSize: "16px", fontWeight: "600", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
               {item.title}
             </div>
           </div>
           <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em" }}>
-            PASO {stepIndex + 1} DE {totalSteps}
+            STEP {stepIndex + 1} OF {totalSteps}
           </div>
         </div>
         
-        {/* Barra de progreso */}
+        {/* Progress Bar */}
         <div style={{ height: "3px", background: "var(--bg-surface)", borderRadius: "3px", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${progress}%`, background: "var(--orange)", transition: "width 0.4s ease" }} />
         </div>
       </div>
 
-      {/* CONTENIDO DEL PASO */}
+      {/* STEP CONTENT */}
       <div style={{ flex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: "20px", overflowY: "auto" }}>
         
         <h2 style={{ fontSize: "18px", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
@@ -79,23 +76,23 @@ export default function LabGuide({
         </h2>
 
         <div style={{ background: "var(--bg-surface)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-dim)" }}>
-          <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>INSTRUCCIONES</div>
+          <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>INSTRUCTIONS</div>
           <p style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--text-2)" }}>{currentStep.body}</p>
         </div>
 
         <div style={{ background: "rgba(249,115,22,0.05)", padding: "16px", borderRadius: "8px", border: "1px solid var(--orange-border)" }}>
-          <div style={{ fontSize: "9px", color: "var(--orange)", letterSpacing: "0.1em", marginBottom: "8px" }}>OBJETIVO VISUAL</div>
+          <div style={{ fontSize: "9px", color: "var(--orange)", letterSpacing: "0.1em", marginBottom: "8px" }}>OBSERVATION</div>
           <p style={{ fontSize: "13px", lineHeight: "1.7", color: "var(--text-2)" }}>{currentStep.observation}</p>
         </div>
 
-        {/* BOTÓN DE PISTA INTEGRADO */}
+        {/* HINT BUTTON */}
         {currentStep.hint && (
           <div>
             <button
               onClick={() => setShowHint(!showHint)}
               style={{ background: "transparent", border: "1px solid var(--border-mid)", color: "var(--text-3)", fontSize: "10px", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
             >
-              {showHint ? "✕ OCULTAR PISTA" : "💡 VER PISTA"}
+              {showHint ? "✕ HIDE HINT" : "💡 SHOW HINT"}
             </button>
             {showHint && (
               <div style={{ marginTop: "10px", padding: "12px", background: "rgba(56,189,248,0.05)", border: "1px solid var(--blue-dim)", borderRadius: "6px", fontSize: "12px", color: "var(--blue)" }}>
@@ -129,19 +126,19 @@ export default function LabGuide({
               }}
             />
             {answerValid && (
-              <span style={{ position: "absolute", right: "12px", top: "12px", color: "var(--green)", fontSize: "12px" }}>✓ Validado</span>
+              <span style={{ position: "absolute", right: "12px", top: "12px", color: "var(--green)", fontSize: "12px" }}>✓ Correct</span>
             )}
           </div>
           
           {item.showValidation && !currentAnswerValid && (
             <div style={{ marginTop: "8px", fontSize: "11px", color: "var(--red)" }}>
-              Respuesta incorrecta o incompleta. Revisa la terminal.
+              Incorrect or incomplete answer. Please review your workspace.
             </div>
           )}
         </div>
       </div>
 
-      {/* FOOTER NAVEGACIÓN */}
+      {/* NAVIGATION FOOTER */}
       <div style={{ 
         flexShrink: 0, padding: "16px 24px", borderTop: "1px solid var(--border-dim)", 
         background: "var(--bg-elevated)", display: "flex", justifyContent: "space-between", alignItems: "center" 
@@ -157,7 +154,7 @@ export default function LabGuide({
             fontWeight: "600", fontSize: "12px"
           }}
         >
-          ← ANTERIOR
+          ← PREVIOUS
         </button>
 
         <button
@@ -169,7 +166,7 @@ export default function LabGuide({
             boxShadow: answerValid ? "0 0 15px rgba(34,197,94,0.3)" : "0 0 15px rgba(249,115,22,0.3)"
           }}
         >
-          {stepIndex === totalSteps - 1 ? "COMPLETAR LAB ✓" : "SIGUIENTE →"}
+          {stepIndex === totalSteps - 1 ? "COMPLETE LAB ✓" : "NEXT →"}
         </button>
       </div>
     </div>
