@@ -14,23 +14,23 @@ def _get_host_port_or_500(container):
     container.reload()
     ports = container.ports.get(f"{NOVNC_PORT}/tcp")
     if not ports or not ports[0].get("HostPort"):
-        raise HTTPException(status_code=500, detail="No se pudo resolver el puerto noVNC del contenedor.")
+        raise HTTPException(status_code=500, detail="Could not resolve the container noVNC port.")
     return ports[0]["HostPort"]
 
 def _client():
     try:
         return docker.from_env()
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Docker no disponible: {e}")
+        raise HTTPException(status_code=503, detail=f"Docker unavailable: {e}")
 
-def _get_lab_or_404(phase: str):
-    lab = LABS.get(phase)
+def _get_lab_or_404(node: str):
+    lab = LABS.get(node)
     if not lab:
-        raise HTTPException(status_code=404, detail=f"Fase '{phase}' no soportada.")
+        raise HTTPException(status_code=404, detail=f"Node '{node}' is not supported.")
     return lab
 
-def start_lab_container(phase: str, request_host: str | None = None):
-    lab = _get_lab_or_404(phase)
+def start_lab_container(node: str, request_host: str | None = None):
+    lab = _get_lab_or_404(node)
     image = lab["image"]
     container_name = lab["container_name"]
     client = _client()
@@ -60,12 +60,12 @@ def start_lab_container(phase: str, request_host: str | None = None):
             "terminal_url": _build_novnc_url(host_port, request_host),
         }
     except docker.errors.ImageNotFound:
-        raise HTTPException(status_code=404, detail=f"Imagen Docker '{image}' no encontrada. Construye la imagen primero.")
+        raise HTTPException(status_code=404, detail=f"Docker image '{image}' not found. Build it first.")
     except docker.errors.APIError as e:
-        raise HTTPException(status_code=500, detail=f"Error al iniciar el contenedor: {e}")
+        raise HTTPException(status_code=500, detail=f"Error while starting container: {e}")
 
-def stop_lab_container(phase: str):
-    lab = _get_lab_or_404(phase)
+def stop_lab_container(node: str):
+    lab = _get_lab_or_404(node)
     container_name = lab["container_name"]
     client = _client()
 
@@ -74,12 +74,12 @@ def stop_lab_container(phase: str):
         container.stop()
         return {"stopped": True}
     except docker.errors.NotFound:
-        raise HTTPException(status_code=404, detail=f"La fase '{phase}' no está en ejecución.")
+        raise HTTPException(status_code=404, detail=f"Node '{node}' is not running.")
     except docker.errors.APIError as e:
-        raise HTTPException(status_code=500, detail=f"Error al detener el contenedor: {e}")
+        raise HTTPException(status_code=500, detail=f"Error while stopping container: {e}")
 
-def get_lab_status(phase: str):
-    lab = _get_lab_or_404(phase)
+def get_lab_status(node: str):
+    lab = _get_lab_or_404(node)
     container_name = lab["container_name"]
     client = _client()
 
@@ -89,4 +89,4 @@ def get_lab_status(phase: str):
     except docker.errors.NotFound:
         return {"status": "not found"}
     except docker.errors.APIError as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener el estado del contenedor: {e}")
+        raise HTTPException(status_code=500, detail=f"Error while fetching container status: {e}")

@@ -6,21 +6,22 @@ from api.services import docker_service
 router = APIRouter()
 
 
-@router.post("/{phase}/start", response_model=LabStartResponse)
-def start_lab_by_phase(phase: str, request: Request):
+@router.post("/{node}/start", response_model=LabStartResponse)
+def start_lab_by_node(node: str, request: Request):
     """
-    Inicia una fase específica por nombre (phase-1, phase-2).
+    Start a specific lab node by name
+    (sensor-data, edge-preprocessing, traffic-inference, decision-retraining).
     """
-    return docker_service.start_lab_container(phase, request.url.hostname)
+    return docker_service.start_lab_container(node, request.url.hostname)
 
 
-@router.post("/{phase}/stop", response_model=LabStopResponse)
-def stop_lab_by_phase(phase: str):
+@router.post("/{node}/stop", response_model=LabStopResponse)
+def stop_lab_by_node(node: str):
     """
-    Detiene una fase específica por nombre (phase-1, phase-2).
+    Stop a specific lab node by name.
     """
-    return docker_service.stop_lab_container(phase)
+    return docker_service.stop_lab_container(node)
 
-@router.get("/{phase}/status")
-def get_lab_status(phase: str):
-    return docker_service.get_lab_status(phase)
+@router.get("/{node}/status")
+def get_lab_status(node: str):
+    return docker_service.get_lab_status(node)
