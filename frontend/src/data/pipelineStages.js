@@ -1,22 +1,22 @@
 export const STAGES = [
   {
-    id: "T",
-    title: "Data ingestion",
-    description: "Data ingestion / data collection",
+    id: "E",
+    title: "Edge Node",
+    description: "IoT Sensors & Telemetry Collection",
   },
   {
     id: "P",
-    title: "Input handling",
-    description: "Input handling / inference validation",
+    title: "Pre-processing",
+    description: "Data Aggregation & Feature Engineering",
   },
   {
-    id: "M",
-    title: "Artifact trust",
-    description: "Model training / artifact management",
+    id: "T",
+    title: "Trainer Node",
+    description: "Continuous Learning & Model Updates",
   },
   {
-    id: "D",
-    title: "Output handling",
-    description: "Serving output validation",
+    id: "A",
+    title: "Actuator Node",
+    description: "Inference & Physical Execution",
   },
 ]
