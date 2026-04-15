@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import health, labs
+from api.routes import health, labs, pipeline
 
 app = FastAPI(title="SecureAI Backend API", version="0.1.0")
 
@@ -13,3 +13,4 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["Health"])
 app.include_router(labs.router, prefix="/labs", tags=["Labs"])
+app.include_router(pipeline.router, prefix="/api")
