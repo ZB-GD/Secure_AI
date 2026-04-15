@@ -1,0 +1,92 @@
+.
+├── backend
+│   ├── api
+│   │   ├── .gitkeep
+│   │   ├── models
+│   │   │   └── state.py
+│   │   ├── routes
+│   │   │   ├── health.py
+│   │   │   ├── labs.py
+│   │   │   ├── logs.py
+│   │   │   └── pipeline.py
+│   │   └── services
+│   │       ├── docker_service.py
+│   │       ├── log_service.py
+│   │       └── pipeline_service.py
+│   ├── Dockerfile
+│   ├── labs
+│   │   ├── base-novnc
+│   │   │   ├── Dockerfile
+│   │   │   └── supervisord.conf
+│   │   ├── decision-retraining
+│   │   │   └── Dockerfile
+│   │   ├── edge-preprocessing
+│   │   │   └── Dockerfile
+│   │   ├── sensor-data
+│   │   │   ├── Dockerfile
+│   │   │   └── lab_files
+│   │   └── traffic-inference
+│   │       └── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+├── docker-compose.yml
+├── estructura.txt
+├── frontend
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── labs
+│   │   │   ├── layout
+│   │   │   ├── pipeline
+│   │   │   ├── scenarios
+│   │   │   └── workspace
+│   │   ├── context
+│   │   │   └── LabContext.jsx
+│   │   ├── data
+│   │   │   ├── journey.js
+│   │   │   └── pipelineStages.js
+│   │   ├── hooks
+│   │   │   └── useLabRuntime.js
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   ├── DashboardPage.jsx
+│   │   │   └── LabPage.jsx
+│   │   ├── services
+│   │   │   ├── apiClient.js
+│   │   │   └── labService.js
+│   │   └── styles
+│   │       └── global.css
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── .gitignore
+├── lab-assets
+│   ├── lab1-data-poisoning
+│   ├── lab2-input-injection
+│   ├── lab3-supply-chain
+│   └── lab4-output-handling
+├── README.md
+├── scripts
+│   └── start-novnc.sh
+├── setup.sh
+├── tree_proyecto.txt
+├── TROUBLESHOOTING.md
+└── vm-agent
+    ├── package.json
+    ├── package-lock.json
+    ├── server.js
+    └── vmMap.js
+
+32 directories, 58 files
