@@ -45,7 +45,7 @@ def _simulate_retraining_feedback(predictions: list, mode: str) -> dict:
     If scores are heavily skewed (e.g. from poisoning), flags for retraining.
     """
     if not predictions:
-        return {"estimated_drift": 0.0, "warning": "No data"}
+        return {"estimated_drift": 0.0, "warning": "no_data"}
         
     scores = [p["congestion_score"] for p in predictions]
     avg = sum(scores) / len(scores)
@@ -56,9 +56,9 @@ def _simulate_retraining_feedback(predictions: list, mode: str) -> dict:
     warning = None
     
     if avg < 0.0 or avg > 1.0:
-        warning = f"CRITICAL DRIFT: Impossible average score ({avg:.2f})"
+        warning = f"drift_alert level=critical avg_score={avg:.2f}"
     elif drift > 0.4:
-        warning = "HIGH DRIFT: Distribution skewed, consider retraining"
+        warning = "drift_alert level=high"
 
     return {
         "estimated_drift": drift,
@@ -76,7 +76,7 @@ def run(inference_output: dict, mode: str = "clean") -> dict:
 
     # If integrity failed in Node 3, we shouldn't act (Safe fail)
     if inference_output.get("integrity_ok") is False:
-        log.append("[HALT] Upstream integrity check failed — blocking all actions")
+        log.append("[HALT] reason=upstream_integrity_check_failed")
         halted = True
         return {
             "node":                "decision-retraining",
@@ -107,12 +107,12 @@ def run(inference_output: dict, mode: str = "clean") -> dict:
         if anomaly_ratio > ANOMALY_THRESHOLD:
             halted = True
             log.append(
-                f"[HALT] {anomaly_ratio:.0%} of predictions anomalous "
-                f"(threshold={ANOMALY_THRESHOLD:.0%}) — actions suspended"
+                f"[HALT] reason=anomaly_ratio_exceeded ratio={anomaly_ratio:.0%} "
+                f"threshold={ANOMALY_THRESHOLD:.0%}"
             )
             actions = [] # Clear actions if halted
         else:
-            log.append(f"[OK] anomaly ratio={anomaly_ratio:.0%} — within threshold")
+            log.append(f"[OK] anomaly_ratio={anomaly_ratio:.0%} threshold={ANOMALY_THRESHOLD:.0%}")
 
     else:
         # Vulnerable: no output validation, execute all actions regardless
@@ -130,7 +130,7 @@ def run(inference_output: dict, mode: str = "clean") -> dict:
 
     retraining = _simulate_retraining_feedback(predictions, mode)
     if retraining.get("warning"):
-        log.append(f"[RETRAIN WARNING] {retraining['warning']}")
+        log.append(f"[RETRAIN] {retraining['warning']}")
     log.append(
         f"[SUMMARY] actions={len(actions)} halted={halted} "
         f"drift={retraining['estimated_drift']}"
