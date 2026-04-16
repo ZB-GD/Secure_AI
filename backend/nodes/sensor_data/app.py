@@ -86,8 +86,7 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
         else:
             # Vulnerable: swallows all garbage (including the injection)
             readings.append(r)
-            flag = " ⚠ POISONED" if r.get('_poisoned') else ""
-            log.append(f"[FORWARD] {date_time} | temp={r['temp']}K vol={r['traffic_volume']}{flag}")
+            log.append(f"[FORWARD] {date_time} | temp={r['temp']}K vol={r['traffic_volume']}")
 
     log.append(f"[SUMMARY] forwarded={len(readings)} dropped={len(dropped)}")
     
