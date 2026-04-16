@@ -351,7 +351,6 @@ function ScenarioOnePipelineMockup() {
   );
 
   const [activePhaseId, setActivePhaseId] = useState("edge");
-  const [revealedChecks, setRevealedChecks] = useState({});
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
@@ -537,31 +536,18 @@ function ScenarioOnePipelineMockup() {
 
   const activePhase =
     phases.find((phase) => phase.id === activePhaseId) || phases[0];
-  const revealedForActive = revealedChecks[activePhase?.id] || {};
-  const pipelineLogsText = useMemo(() => {
+  const activeNodeLogsText = useMemo(() => {
     if (!pipelineResult) return "";
 
-    const sections = [
-      ["Node 1 — Sensor Data", pipelineResult?.n1?.log || []],
-      ["Node 2 — Edge Preprocessing", pipelineResult?.n2?.log || []],
-      ["Node 3 — Traffic Inference", pipelineResult?.n3?.log || []],
-      ["Node 4 — Decision & Retraining", pipelineResult?.n4?.log || []],
-    ];
+    const nodeByPhase = {
+      edge: pipelineResult?.n1?.log || [],
+      preprocessing: pipelineResult?.n2?.log || [],
+      trainer: pipelineResult?.n3?.log || [],
+      actuator: pipelineResult?.n4?.log || [],
+    };
 
-    return sections
-      .map(([title, lines]) => `--- ${title} ---\n${(lines || []).join("\n")}`)
-      .join("\n\n");
-  }, [pipelineResult]);
-
-  function toggleCheck(phaseId, checkId) {
-    setRevealedChecks((prev) => ({
-      ...prev,
-      [phaseId]: {
-        ...(prev[phaseId] || {}),
-        [checkId]: !prev?.[phaseId]?.[checkId],
-      },
-    }));
-  }
+    return (nodeByPhase[activePhase?.id] || []).join("\n");
+  }, [pipelineResult, activePhase?.id]);
 
   return (
     <section
@@ -664,12 +650,17 @@ function ScenarioOnePipelineMockup() {
           overflowY: "auto",
           padding: "16px",
           display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
           gap: "16px",
           alignContent: "start",
         }}
       >
-        <div style={{ display: "grid", gap: "12px", minWidth: 0 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "16px",
+          }}
+        >
           <DataBox label="Received Payload">
             <pre
               style={{
@@ -693,44 +684,11 @@ function ScenarioOnePipelineMockup() {
               {activePhase.emits}
             </pre>
           </DataBox>
-
-          <DataBox label="Backend Pipeline Run">
-            {pipelineResult ? (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: "8px",
-                }}
-              >
-                <div>
-                  Node 1 records: {pipelineResult?.n1?.readings?.length ?? 0}
-                </div>
-                <div>
-                  Node 2 features: {pipelineResult?.n2?.features?.length ?? 0}
-                </div>
-                <div>
-                  Node 3 dominant state:{" "}
-                  {pipelineResult?.n3?.aggregate?.dominant_state || "N/A"}
-                </div>
-                <div>
-                  Node 4 actions: {pipelineResult?.n4?.actions?.length ?? 0}
-                </div>
-                <div>
-                  Pipeline halted: {String(pipelineResult?.n4?.halted ?? false)}
-                </div>
-              </div>
-            ) : (
-              <span style={{ color: "var(--text-3)" }}>
-                Click "Refresh Real Pipeline" to fetch live backend data.
-              </span>
-            )}
-          </DataBox>
         </div>
 
         <div style={{ minWidth: 0 }}>
-          <DataBox label="Backend Pipeline Logs">
-            {pipelineLogsText ? (
+          <DataBox label={`Node Logs (${activePhase?.code || "N/A"})`}>
+            {activeNodeLogsText ? (
               <pre
                 style={{
                   margin: 0,
@@ -741,63 +699,13 @@ function ScenarioOnePipelineMockup() {
                   whiteSpace: "pre-wrap",
                 }}
               >
-                {pipelineLogsText}
+                {activeNodeLogsText}
               </pre>
             ) : (
               <span style={{ color: "var(--text-3)" }}>
-                Logs will appear here after the pipeline run.
+                No logs available for this node yet.
               </span>
             )}
-          </DataBox>
-        </div>
-
-        <div style={{ gridColumn: "1 / -1" }}>
-          <DataBox label="Interactive Investigation Tasks">
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
-              {(activePhase?.checks || []).map((check) => {
-                const isOpen = !!revealedForActive[check.id];
-                return (
-                  <div key={check.id}>
-                    <button
-                      type="button"
-                      onClick={() => toggleCheck(activePhase.id, check.id)}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        border: "1px solid var(--border-dim)",
-                        background: "var(--bg-elevated)",
-                        color: "var(--text-1)",
-                        borderRadius: "6px",
-                        padding: "10px",
-                        cursor: "pointer",
-                        fontSize: "11px",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      {isOpen ? "▼ Hide findings" : "▶ Execute Check"} :{" "}
-                      {check.label}
-                    </button>
-                    {isOpen && (
-                      <div
-                        style={{
-                          marginTop: "4px",
-                          padding: "10px",
-                          borderRadius: "6px",
-                          background: "var(--red-dim)",
-                          border: "1px solid rgba(248,113,113,0.20)",
-                          color: "var(--text-1)",
-                          fontSize: "11px",
-                        }}
-                      >
-                        ⚠️ {check.finding}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </DataBox>
         </div>
       </div>

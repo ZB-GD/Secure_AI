@@ -163,10 +163,9 @@ def run(sensor_output: dict, mode: str = "clean") -> dict:
         else:
             feat = _extract_features_vulnerable(r)
             features.append(feat)
-            warn = " ⚠ ANOMALOUS" if not (0 <= feat["congestion_score"] <= 1) else ""
             log.append(
                 f"[FEATURE] {feat['date_time']} "
-                f"score={feat['congestion_score']} ({feat['label_hint']}){warn}"
+                f"score={feat['congestion_score']} ({feat['label_hint']})"
             )
 
     log.append(f"[SUMMARY] features={len(features)} skipped={len(skipped)}")
