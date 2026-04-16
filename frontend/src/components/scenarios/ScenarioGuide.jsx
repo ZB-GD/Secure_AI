@@ -50,7 +50,7 @@ export default function ScenarioGuide({ item, onComplete }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg-panel)" }}>
       <div
         style={{
           flexShrink: 0,
@@ -97,13 +97,12 @@ export default function ScenarioGuide({ item, onComplete }) {
           {item.story.mission}
         </InfoBlock>
 
-        <InfoBlock label="STEP-BY-STEP GUIDE">
-          <ol style={{ margin: 0, paddingLeft: "18px" }}>
-            <li>Read the context and understand what the company is experiencing.</li>
-            <li>Inspect the information shown in the workspace on the right.</li>
-            <li>Decide which stage of the pipeline is failing first.</li>
-            <li>Connect the evidence to a concrete vulnerability.</li>
-            <li>Complete the scenario to unlock the next stage.</li>
+        <InfoBlock label="STANDARD OPERATING PROCEDURE (SOP)">
+          <ol style={{ margin: 0, paddingLeft: "18px", display: "flex", flexDirection: "column", gap: "6px", color: "var(--text-2)" }}>
+            <li>Review the incident context above.</li>
+            <li>Analyze the backend logs and payloads in your Workspace.</li>
+            <li>Identify the anomaly bypassing the security controls.</li>
+            <li>Complete the final assessment to unlock the mitigation lab.</li>
           </ol>
         </InfoBlock>
 
@@ -125,7 +124,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 marginBottom: "8px",
               }}
             >
-              FINAL CHALLENGE
+              FINAL ASSESSMENT
             </div>
 
             <p
@@ -166,6 +165,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                     fontSize: "11px",
                     fontFamily: "var(--font-mono)",
                     cursor: "pointer",
+                    transition: "all 0.2s"
                   }}
                 >
                   <div style={{ fontWeight: "600", marginBottom: "4px" }}>{option.label}</div>
@@ -196,11 +196,11 @@ export default function ScenarioGuide({ item, onComplete }) {
                 style={{
                   marginTop: "8px",
                   padding: "8px 12px",
-                  background: "rgba(251,191,36,0.08)",
-                  border: "1px solid rgba(251,191,36,0.20)",
+                  background: "rgba(56,189,248,0.08)",
+                  border: "1px solid var(--blue-dim)",
                   borderRadius: "6px",
                   fontSize: "11px",
-                  color: "#fbbf24",
+                  color: "var(--blue)",
                   fontFamily: "var(--font-mono)",
                 }}
               >
@@ -229,7 +229,7 @@ export default function ScenarioGuide({ item, onComplete }) {
               <div
                 style={{
                   marginTop: "8px",
-                  padding: "8px 12px",
+                  padding: "12px",
                   background: "var(--green-dim)",
                   border: "1px solid var(--green-border)",
                   borderRadius: "6px",
@@ -238,23 +238,24 @@ export default function ScenarioGuide({ item, onComplete }) {
                   fontFamily: "var(--font-mono)",
                 }}
               >
-                <div>{item.question.correctFeedback}</div>
+                <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>{item.question.correctFeedback}</div>
                 <button
                   onClick={onComplete}
                   style={{
-                    marginTop: "10px",
                     width: "100%",
                     padding: "10px 14px",
                     borderRadius: "6px",
-                    border: "1px solid rgba(34,197,94,0.20)",
-                    background: "rgba(34,197,94,0.08)",
-                    color: "var(--green)",
+                    border: "none",
+                    background: "var(--green)",
+                    color: "#fff",
                     fontSize: "11px",
+                    fontWeight: "bold",
                     fontFamily: "var(--font-mono)",
                     cursor: "pointer",
+                    boxShadow: "0 0 10px rgba(34,197,94,0.3)"
                   }}
                 >
-                  Continue →
+                  PROCEED TO LAB →
                 </button>
               </div>
             )}
@@ -277,7 +278,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 marginBottom: "8px",
               }}
             >
-              READY TO START
+              SYSTEM READY
             </div>
 
             <p
@@ -288,7 +289,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 fontFamily: "var(--font-mono)",
               }}
             >
-              This introduction gives the learner the company context and the overall incident. Continue to open the next stage of the investigation.
+              Acknowledge the emergency briefing to gain access to the raw pipeline telemetry and commence the investigation.
             </p>
 
             <button
@@ -298,15 +299,17 @@ export default function ScenarioGuide({ item, onComplete }) {
                 width: "100%",
                 padding: "10px 14px",
                 borderRadius: "6px",
-                border: "1px solid var(--orange-border)",
-                background: "var(--orange-dim)",
-                color: "var(--orange)",
+                border: "none",
+                background: "var(--orange)",
+                color: "#fff",
                 fontSize: "11px",
+                fontWeight: "bold",
                 fontFamily: "var(--font-mono)",
                 cursor: "pointer",
+                boxShadow: "0 0 10px rgba(249,115,22,0.3)"
               }}
             >
-              Start investigation →
+              COMMENCE INVESTIGATION →
             </button>
           </div>
         )}
