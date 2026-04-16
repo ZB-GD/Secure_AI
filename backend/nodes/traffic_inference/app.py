@@ -111,7 +111,7 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
         model_path = CLEAN_MODEL_PATH
 
         if not model_path.exists():
-            log.append(f"[INTEGRITY] FAIL — Clean model file not found: {model_path}")
+            log.append(f"[INTEGRITY] check=failed reason=model_file_missing path={model_path}")
             return {
                 "node": "traffic-inference",
                 "mode": mode,
@@ -127,7 +127,7 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
 
         if not expected:
             integrity_ok = False
-            log.append("[INTEGRITY] FAIL — Expected clean model hash missing in training_report.json")
+            log.append("[INTEGRITY] check=failed reason=expected_hash_missing source=training_report.json")
             return {
                 "node": "traffic-inference",
                 "mode": mode,
@@ -141,7 +141,7 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
         if actual != expected:
             integrity_ok = False
             log.append(
-                f"[INTEGRITY] FAIL — checksum mismatch. Expected {expected[:8]}... got {actual[:8]}..."
+                f"[INTEGRITY] check=failed reason=checksum_mismatch expected={expected[:8]} actual={actual[:8]}"
             )
             return {
                 "node": "traffic-inference",
@@ -154,15 +154,15 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
             }
 
         integrity_ok = True
-        log.append(f"[INTEGRITY] PASS — clean model hash verified ({actual[:8]}...)")
+        log.append(f"[INTEGRITY] check=passed sha256_prefix={actual[:8]}")
     else:
-        # Vulnerable behaviour: blindly load backdoored artifact.
+        # Vulnerable behaviour: load alternate artifact without executing integrity checks.
         model_path = BACKDOORED_MODEL_PATH
         integrity_ok = None
-        log.append("[INTEGRITY] SKIPPED — loading model artifact without verification")
+        log.append("[INTEGRITY] check=not_executed mode=vulnerable")
 
     if not model_path.exists():
-        log.append(f"[MODEL] FAIL — model file not found: {model_path}")
+        log.append(f"[MODEL] load=failed reason=file_missing path={model_path}")
         return {
             "node": "traffic-inference",
             "mode": mode,
@@ -177,7 +177,7 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
     model_version = model_path.name
 
     if not features:
-        log.append("[MODEL] No features received from node 2")
+        log.append("[MODEL] input_features=0")
         return {
             "node": "traffic-inference",
             "mode": mode,
