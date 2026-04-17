@@ -89,11 +89,10 @@ export const journey = [
             "Look at the Payload input in the toolkit. It targets the exact vulnerability we found in the logs.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
-          placeholder: "e.g., Encryption, Authentication...",
-          hint: "If anyone can connect to the system and send data without a password or token, what is missing?",
+          placeholder: "e.g., Authentication, Signature, Token...",
+          hint: "If anyone can connect to the system and send data without a password, token or signed identity, what is missing?",
           expectedKeywords: [
             "authentication",
-            "auth",
             "signature",
             "credentials",
             "token",
@@ -103,22 +102,14 @@ export const journey = [
         {
           id: "step-1-2",
           title: "Execute the Attack",
-          body: "Click 'OVERRIDE SENSOR DATA'. This forces the pipeline to ingest the -5000 volume reading. Node 2 will blindly aggregate it, and Node 4 will update the model weights using this garbage data.",
+          body: "Click 'OVERRIDE SENSOR DATA'. This forces the pipeline to ingest the forged reading. The downstream nodes continue processing it and the model health degrades.",
           observation:
-            "Watch the 'Model Drift' metric in the right panel after the attack succeeds.",
+            "Watch the metrics panel on the right after the payload is delivered.",
           question:
-            "What happens to the 'Prediction Accuracy' metric after the poisoned model weights are propagated?",
-          placeholder: "It drops, increases, stays the same...",
-          hint: "Check the PREDICTION ACCURACY box in the metrics panel. The poisoned data corrupts the model.",
-          expectedKeywords: [
-            "drops",
-            "decreases",
-            "goes down",
-            "plummets",
-            "low",
-            "reduced",
-            "fails",
-          ],
+            "What exact value does the 'Prediction Accuracy' metric drop to after the attack?",
+          placeholder: "Type the value shown in the metrics panel...",
+          hint: "Check the Prediction Accuracy card on the right panel after the attack is executed.",
+          expectedKeywords: ["34.2", "34"],
         },
         {
           id: "step-1-3",
