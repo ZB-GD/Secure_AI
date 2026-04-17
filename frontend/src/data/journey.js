@@ -1,5 +1,5 @@
 export const journey = [
-  { 
+  {
     id: "scenario-0",
     type: "scenario",
     shortTitle: "Scenario 0",
@@ -8,9 +8,12 @@ export const journey = [
     subtitle: "The smart city traffic management system has collapsed.",
     threatStage: "E",
     story: {
-      intro: "You are an AI Security Analyst for MetroGrid Systems. The city relies on 'CityFlow', a distributed AI pipeline that optimizes traffic lights in real-time.",
-      context: "CRITICAL INCIDENT: At 08:15 AM today, the AI forced all traffic lights on North Avenue to RED. \n\n• The AI model believes the streets are empty.\n• Physical cameras show severe gridlock.\n• No software updates were deployed today.",
-      mission: "Your mission: Investigate the AI pipeline. Identify if this is a hardware glitch, or a coordinated cyber-physical attack.",
+      intro:
+        "You are an AI Security Analyst for MetroGrid Systems. The city relies on 'CityFlow', a distributed AI pipeline that optimizes traffic lights in real-time.",
+      context:
+        "CRITICAL INCIDENT: At 08:15 AM today, the AI forced all traffic lights on North Avenue to RED. \n\n• The AI model believes the streets are empty.\n• Physical cameras show severe gridlock.\n• No software updates were deployed today.",
+      mission:
+        "Your mission: Investigate the AI pipeline. Identify if this is a hardware glitch, or a coordinated cyber-physical attack.",
     },
     evidence: { inputs: [], files: [], prompts: [], logs: [] },
     question: null,
@@ -25,9 +28,12 @@ export const journey = [
     subtitle: "Analyze backend logs to find the root cause of the gridlock.",
     threatStage: "E",
     story: {
-      intro: "CityFlow AI optimizes traffic based on real-time data from IoT sensors. However, the system recently forced a city-wide gridlock based on false predictions.",
-      context: "We have loaded the real backend data from the incident into your Workspace. The pipeline consists of 4 active nodes: Sensor Data, Pre-processing, Inference, and Decision/Retraining. The physical sensors are online, but the predictions are dangerously wrong.",
-      mission: "Your task: Review the 'RECEIVED PAYLOAD' and 'BACKEND PIPELINE LOGS' for all nodes. Identify the exact malicious data point injected by the attacker and track how it bypassed validations."
+      intro:
+        "CityFlow AI optimizes traffic based on real-time data from IoT sensors. However, the system recently forced a city-wide gridlock based on false predictions.",
+      context:
+        "We have loaded the real backend data from the incident into your Workspace. The pipeline consists of 4 active nodes: Sensor Data, Pre-processing, Inference, and Decision/Retraining. The physical sensors are online, but the predictions are dangerously wrong.",
+      mission:
+        "Your task: Review the 'RECEIVED PAYLOAD' and 'BACKEND PIPELINE LOGS' for all nodes. Identify the exact malicious data point injected by the attacker and track how it bypassed validations.",
     },
     evidence: { inputs: [], files: [], prompts: [], logs: [] },
     question: {
@@ -36,8 +42,9 @@ export const journey = [
       options: [
         {
           id: "a",
-          label: "Temperature is 0.0K",
-          description: "A weather API failure caused the model to freeze its predictions.",
+          label: "Clouds are above 80%",
+          description:
+            "Cloud coverage is high for this reading and may influence traffic conditions.",
           correct: false,
         },
         {
@@ -51,10 +58,12 @@ export const journey = [
           label: "Volume is 0",
           description: "The cameras broke and stopped recording any data.",
           correct: false,
-        }
+        },
       ],
-      wrongFeedback: "Incorrect. Review the raw JSON payloads and logs in the workspace. Look for a number that breaks the laws of physics for a road.",
-      correctFeedback: "Exactly! A physical road cannot have -5000 cars. The lack of basic input validation (sanity checks) allowed this poisoned CSV data to enter the pipeline.",
+      wrongFeedback:
+        "Not quite. Recheck Node 1 and Node 2 together and focus on the value that is physically impossible for real traffic flow and that propagates into an anomalous downstream score.",
+      correctFeedback:
+        "Exactly! A physical road cannot have -5000 cars. The lack of basic input validation (sanity checks) allowed this poisoned CSV data to enter the pipeline. Also, temp = 0.0K is another valid anomaly indicator in the same poisoned record.",
     },
   },
 
@@ -68,7 +77,8 @@ export const journey = [
     threatStage: "E",
     envKey: "NODE-1",
     guide: {
-      objective: "Understand how `poison_data.py` injects data, observe the pipeline failure, and define the 3 layers of defense needed to secure the AI.",
+      objective:
+        "Understand how `poison_data.py` injects data, observe the pipeline failure, and define the 3 layers of defense needed to secure the AI.",
       steps: [
         {
           id: "step-1-1",
@@ -94,8 +104,10 @@ export const journey = [
           id: "step-1-3",
           title: "Defense Layer 1: Sanity Checks",
           body: "Now, let's defend the system. We must implement 'Data Validation Gates' at NODE-1 (Sensor Data). A simple physical constraint rule (Sanity Check) would have stopped this specific attack immediately.",
-          observation: "The variable `traffic_volume` represents the number of cars on a road segment.",
-          question: "What should be the absolute minimum allowed integer value for `traffic_volume` in our validation code?",
+          observation:
+            "The variable `traffic_volume` represents the number of cars on a road segment.",
+          question:
+            "What should be the absolute minimum allowed integer value for `traffic_volume` in our validation code?",
           placeholder: "Type a number...",
           hint: "You cannot have a negative amount of cars.",
           expectedKeywords: ["0", "zero"],
@@ -104,18 +116,30 @@ export const journey = [
           id: "step-1-4",
           title: "Defense Layer 2: Statistical Anomaly Detection",
           body: "Attackers might inject plausible values (e.g., 5000 instead of -5000). NODE-2 (Pre-processing) needs Anomaly Detection (like Isolation Forests or Z-Scores) to catch values that are physically possible but historically abnormal for that specific hour.",
-          observation: "In the logs, NODE-2 calculated a score of -0.625 and flagged it as 'ANOMALOUS'. However, the pipeline continued.",
-          question: "If a data point is flagged as highly anomalous, what action should the pipeline take instead of forwarding it?",
+          observation:
+            "In the logs, NODE-2 calculated a score of -0.625 and flagged it as 'ANOMALOUS'. However, the pipeline continued.",
+          question:
+            "If a data point is flagged as highly anomalous, what action should the pipeline take instead of forwarding it?",
           placeholder: "e.g., Delete it, Quarantine it...",
           hint: "We shouldn't let it reach the model. We should isolate it for human review.",
-          expectedKeywords: ["quarantine", "drop", "reject", "block", "discard", "isolate", "stop"],
+          expectedKeywords: [
+            "quarantine",
+            "drop",
+            "reject",
+            "block",
+            "discard",
+            "isolate",
+            "stop",
+          ],
         },
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
           body: "If poisoned data somehow reaches NODE-4 (Decision & Retraining), we need a final fail-safe. Continuous Training pipelines must monitor 'Model Drift' (how much the new model's predictions differ from the established baseline).",
-          observation: "If the calculated drift (e.g., 0.279) exceeds a safe threshold (e.g., > 0.1), the new model should NOT be deployed automatically.",
-          question: "What mechanism should be automatically triggered if the drift is too high?",
+          observation:
+            "If the calculated drift (e.g., 0.279) exceeds a safe threshold (e.g., > 0.1), the new model should NOT be deployed automatically.",
+          question:
+            "What mechanism should be automatically triggered if the drift is too high?",
           placeholder: "e.g., Halt retraining, Auto-deploy...",
           hint: "The system should prevent the corrupted model from affecting production.",
           expectedKeywords: ["halt", "pause", "stop", "alert", "quarantine", "abort", "block"],
@@ -239,9 +263,12 @@ export const journey = [
     subtitle: "The RAG Assistant is leaking restricted data.",
     threatStage: "P",
     story: {
-      intro: "MetroGrid operates an internal RAG (Retrieval-Augmented Generation) LLM Tutor. Operators use it to query system manuals.",
-      context: "During the traffic crisis, an operator used the RAG Tutor to ask for mitigation steps. Instead of helping, the Tutor leaked the master database password.",
-      mission: "Analyze the RAG logs. Determine how the LLM was manipulated to bypass its security filters.",
+      intro:
+        "MetroGrid operates an internal RAG (Retrieval-Augmented Generation) LLM Tutor. Operators use it to query system manuals.",
+      context:
+        "During the traffic crisis, an operator used the RAG Tutor to ask for mitigation steps. Instead of helping, the Tutor leaked the master database password.",
+      mission:
+        "Analyze the RAG logs. Determine how the LLM was manipulated to bypass its security filters.",
     },
     evidence: { inputs: [], files: [], prompts: [], logs: [] },
     question: {
@@ -251,18 +278,22 @@ export const journey = [
         {
           id: "a",
           label: "Prompt Injection",
-          description: "User input is directly concatenated with system prompts, allowing the attacker to hijack the LLM's instructions.",
+          description:
+            "User input is directly concatenated with system prompts, allowing the attacker to hijack the LLM's instructions.",
           correct: true,
         },
         {
           id: "b",
           label: "SQL Injection",
-          description: "The user injected a malicious SQL query into the database.",
+          description:
+            "The user injected a malicious SQL query into the database.",
           correct: false,
-        }
+        },
       ],
-      wrongFeedback: "This is an AI model, not a traditional database. Look at the prompt structure.",
-      correctFeedback: "Correct. The lack of input sanitization allowed a Prompt Injection attack to hijack the RAG Tutor.",
+      wrongFeedback:
+        "This is an AI model, not a traditional database. Look at the prompt structure.",
+      correctFeedback:
+        "Correct. The lack of input sanitization allowed a Prompt Injection attack to hijack the RAG Tutor.",
     },
   },
 
@@ -274,10 +305,16 @@ export const journey = [
     quiz: [],
   },
   {
-    id: "scenario-3", type: "scenario", shortTitle: "Scenario 3", phase: "Artifact Trust",
-    title: "Supply Chain", subtitle: "Coming soon", threatStage: "T",
+    id: "scenario-3",
+    type: "scenario",
+    shortTitle: "Scenario 3",
+    phase: "Artifact Trust",
+    title: "Supply Chain",
+    subtitle: "Coming soon",
+    threatStage: "T",
     story: { intro: "Under construction.", context: "", mission: "" },
-    evidence: { inputs: [], files: [], prompts: [], logs: [] }, question: null
+    evidence: { inputs: [], files: [], prompts: [], logs: [] },
+    question: null,
   },
   {
     id: "lab-3", type: "lab", shortTitle: "Lab 3", phase: "Artifact Management",
