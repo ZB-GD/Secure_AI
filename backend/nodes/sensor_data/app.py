@@ -60,6 +60,11 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
     batch_df = df.sample(n=n_readings)
     raw_batch = batch_df.to_dict(orient="records")
 
+    # Stable per-run trace id so downstream nodes can follow one reading end-to-end.
+    for idx, reading in enumerate(raw_batch):
+        date_time = str(reading.get("date_time", "Unknown_Time"))
+        reading["reading_id"] = f"rd-{idx:03d}-{date_time}"
+
     # 🔥 ATTACK INJECTION: Always force 1 poisoned row
     # This ensures the backend evaluation system always has an attack to detect
     poisoned_row = raw_batch[0].copy()
@@ -74,19 +79,26 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
 
     for r in raw_batch:
         date_time = r.get('date_time', 'Unknown_Time')
+        reading_id = r.get('reading_id', 'unknown-id')
         
         if mode == "clean":
             valid, reason = _validate(r)
             if valid:
                 readings.append(r)
-                log.append(f"[ACCEPT] {date_time} | temp={r['temp']}K vol={r['traffic_volume']}")
+                log.append(
+                    f"[ACCEPT] id={reading_id} {date_time} "
+                    f"| temp={r['temp']}K vol={r['traffic_volume']}"
+                )
             else:
                 dropped.append({**r, "reason": reason})
-                log.append(f"[REJECT] {date_time} — {reason}")
+                log.append(f"[REJECT] id={reading_id} {date_time} — {reason}")
         else:
             # Vulnerable: swallows all garbage (including the injection)
             readings.append(r)
-            log.append(f"[FORWARD] {date_time} | temp={r['temp']}K vol={r['traffic_volume']}")
+            log.append(
+                f"[FORWARD] id={reading_id} {date_time} "
+                f"| temp={r['temp']}K vol={r['traffic_volume']}"
+            )
 
     log.append(f"[SUMMARY] forwarded={len(readings)} dropped={len(dropped)}")
     
