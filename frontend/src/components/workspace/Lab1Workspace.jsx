@@ -1,7 +1,8 @@
-import { useState } from "react"
-import RemoteDesktopPanel from "./RemoteDesktopPanel"
-import AttackControls from "../labs/AttackControls"
-import LabMetrics from "../labs/LabMetrics"
+import { useState } from "react";
+import RemoteDesktopPanel from "./RemoteDesktopPanel";
+import AttackControls from "../labs/AttackControls";
+import LabMetrics from "../labs/LabMetrics";
+import { useLabRuntime } from "../../hooks/useLabRuntime";
 
 function StatusPill({ children, tone = "green" }) {
   const tones = {
@@ -20,9 +21,9 @@ function StatusPill({ children, tone = "green" }) {
       border: "var(--orange-border)",
       bg: "var(--orange-dim)",
     },
-  }
+  };
 
-  const style = tones[tone] || tones.green
+  const style = tones[tone] || tones.green;
 
   return (
     <span
@@ -38,7 +39,7 @@ function StatusPill({ children, tone = "green" }) {
     >
       {children}
     </span>
-  )
+  );
 }
 
 function RightPanelCard({ title, children, footer = null, fill = false }) {
@@ -86,42 +87,52 @@ function RightPanelCard({ title, children, footer = null, fill = false }) {
         {children}
       </div>
     </section>
-  )
+  );
 }
 
 export default function Lab1Workspace({ item }) {
-  const [attackLoading, setAttackLoading] = useState(false)
-  const [attackExecuted, setAttackExecuted] = useState(false)
+  const { remoteUrl, remoteLoading, remoteError, retryRuntime } = useLabRuntime(
+    item?.id,
+    {
+      autoStart: true,
+      pollIntervalMs: 3000,
+      logPollIntervalMs: 1200,
+      logLimit: 200,
+    },
+  );
 
-  const [driftScore, setDriftScore] = useState(12)
-  const [accuracy, setAccuracy] = useState(98.5)
+  const [attackLoading, setAttackLoading] = useState(false);
+  const [attackExecuted, setAttackExecuted] = useState(false);
 
-  const [backendStatus, setBackendStatus] = useState("No events yet.")
+  const [driftScore, setDriftScore] = useState(12);
+  const [accuracy, setAccuracy] = useState(98.5);
+
+  const [backendStatus, setBackendStatus] = useState("No events yet.");
   const [runtimeLogs, setRuntimeLogs] = useState([
     "Waiting for runtime events...",
-  ])
+  ]);
 
   async function handleAttack() {
-    if (attackLoading || attackExecuted) return
+    if (attackLoading || attackExecuted) return;
 
-    setAttackLoading(true)
-    setBackendStatus("Delivering forged payload to Node-1...")
+    setAttackLoading(true);
+    setBackendStatus("Delivering forged payload to Node-1...");
     setRuntimeLogs([
       "[BOOT] Starting exploit sequence...",
       "Waiting for runtime events...",
-    ])
+    ]);
 
     try {
       // Simulación frontend. Más adelante esto lo sustituyes por fetch al backend.
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      setAttackExecuted(true)
-      setDriftScore(87)
-      setAccuracy(34.2)
+      setAttackExecuted(true);
+      setDriftScore(87);
+      setAccuracy(34.2);
 
       setBackendStatus(
-        "Poisoned payload accepted by Node-1. Downstream pipeline is now compromised."
-      )
+        "Poisoned payload accepted by Node-1. Downstream pipeline is now compromised.",
+      );
 
       setRuntimeLogs([
         "[ATTACK] forged payload injected: traffic_volume=-5000",
@@ -129,9 +140,9 @@ export default function Lab1Workspace({ item }) {
         "[NODE-2] anomalous feature generated: congestion_score=-0.625",
         "[NODE-3] integrity check skipped while loading updated model artifact",
         "[NODE-4] retraining feedback accepted, drift exceeded safe baseline",
-      ])
+      ]);
     } finally {
-      setAttackLoading(false)
+      setAttackLoading(false);
     }
   }
 
@@ -147,7 +158,13 @@ export default function Lab1Workspace({ item }) {
       }}
     >
       <div style={{ minHeight: 0 }}>
-        <RemoteDesktopPanel item={item} />
+        <RemoteDesktopPanel
+          item={item}
+          remoteUrl={remoteUrl}
+          remoteLoading={remoteLoading}
+          remoteError={remoteError}
+          onRetry={retryRuntime}
+        />
       </div>
 
       <aside
@@ -213,5 +230,5 @@ export default function Lab1Workspace({ item }) {
         </RightPanelCard>
       </aside>
     </section>
-  )
+  );
 }
