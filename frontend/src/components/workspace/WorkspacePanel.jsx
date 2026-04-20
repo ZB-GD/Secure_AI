@@ -14,11 +14,8 @@ export default function WorkspacePanel({
 
   if (item.type === "scenario") {
     return (
-      <ScenarioWorkspace
-        item={item}
-        onCompleteScenario={onCompleteScenario}
-      />
-    )
+      <ScenarioWorkspace item={item} onCompleteScenario={onCompleteScenario} />
+    );
   }
 
   // All labs use the new unified workspace
