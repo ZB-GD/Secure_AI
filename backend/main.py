@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from api.routes import rag
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import subprocess
@@ -48,3 +49,4 @@ app.add_middleware(
 app.include_router(health.router, tags=["Health"])
 app.include_router(labs.router, prefix="/labs", tags=["Labs"])
 app.include_router(pipeline.router, prefix="/api")
+app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
