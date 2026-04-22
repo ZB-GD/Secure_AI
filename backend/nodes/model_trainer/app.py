@@ -38,15 +38,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR   = Path(__file__).resolve().parents[3]   # repo root
-MODELS_DIR = BASE_DIR / "models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
-
-DB_PATH            = BASE_DIR / "data" / "trainer_store.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-CLEAN_MODEL_PATH   = MODELS_DIR / "clean_model.joblib"
-REPORT_PATH        = MODELS_DIR / "training_report.json"
+from paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 FEATURE_COLS = [

@@ -27,11 +27,7 @@ import numpy as np
 import pandas as pd
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR            = Path(__file__).resolve().parents[2]
-MODELS_DIR          = BASE_DIR / "models"
-CLEAN_MODEL_PATH    = MODELS_DIR / "clean_model.joblib"
-BACKDOORED_MODEL_PATH = MODELS_DIR / "backdoored_model.joblib"
-REPORT_PATH         = MODELS_DIR / "training_report.json"
+from paths import CLEAN_MODEL_PATH, BACKDOORED_MODEL_PATH, REPORT_PATH
 
 # ── Feature schema ────────────────────────────────────────────────────────────
 FEATURE_COLUMNS = [
