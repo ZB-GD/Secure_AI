@@ -14,4 +14,6 @@ ENV DB_PATH=/data/trainer_store.db
 
 EXPOSE 8004
 
+COPY nodes/paths.py ./paths.py
+
 CMD ["uvicorn", "main:server", "--host", "0.0.0.0", "--port", "8004"]

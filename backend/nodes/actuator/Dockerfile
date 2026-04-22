@@ -14,4 +14,6 @@ ENV MODELS_DIR=/models
 
 EXPOSE 8003
 
+COPY nodes/paths.py ./paths.py
+
 CMD ["uvicorn", "main:server", "--host", "0.0.0.0", "--port", "8003"]
