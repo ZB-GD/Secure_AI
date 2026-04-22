@@ -16,6 +16,7 @@ import json
 import hashlib
 from pathlib import Path
 
+import os
 import joblib
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ from sklearn.preprocessing import OneHotEncoder
 from ucimlrepo import fetch_ucirepo
 
 
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "models"
+OUTPUT_DIR = Path(os.environ.get("MODELS_DIR", str(Path(__file__).resolve().parents[1] / "models")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CLEAN_MODEL_PATH = OUTPUT_DIR / "clean_model.joblib"
