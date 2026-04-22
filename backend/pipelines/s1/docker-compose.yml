@@ -12,6 +12,17 @@ version: "3.9"
 #   trainer-db   — SQLite feature store for trainer (N4)
 
 services:
+  model-init:
+    build:
+      context: ../..
+      dockerfile: scripts/Dockerfile.trainer-init
+    container_name: model-init
+    volumes:
+      - model-store:/models
+    networks:
+      - pipeline-net
+    restart: "no" # run once, exit, done
+
   sensor:
     build:
       context: ../.. # backend/ root (for COPY in Dockerfile)
@@ -53,7 +64,10 @@ services:
     ports:
       - "8003:8003"
     depends_on:
-      - edge
+      model-init:
+        condition: service_completed_successfully # wait for models
+      edge:
+        condition: service_started
 
   trainer:
     build:
@@ -72,7 +86,10 @@ services:
     ports:
       - "8004:8004"
     depends_on:
-      - actuator
+      model-init:
+        condition: service_completed_successfully
+      actuator:
+        condition: service_started
 
 networks:
   pipeline-net:
