@@ -1,0 +1,83 @@
+version: "3.9"
+
+# S1 — Full vulnerable pipeline
+# All nodes run in VULNERABLE mode.
+# Student observes with lazydocker/ttyd — does not interact directly.
+#
+# Usage (from backend/ root):
+#   docker compose -f pipelines/e1_vulnerable/docker-compose.yml up --build
+#
+# Volumes:
+#   model-store  — shared between actuator (N3, reads) and trainer (N4, writes)
+#   trainer-db   — SQLite feature store for trainer (N4)
+
+services:
+  sensor:
+    build:
+      context: ../.. # backend/ root (for COPY in Dockerfile)
+      dockerfile: nodes/sensor_data/Dockerfile
+    container_name: n1-sensor
+    networks:
+      - pipeline-net
+    environment:
+      - NODE_MODE=vulnerable
+    ports:
+      - "8001:8001" # expose for FastAPI backend orchestration
+
+  edge:
+    build:
+      context: ../..
+      dockerfile: nodes/edge_preprocessing/Dockerfile
+    container_name: n2-edge
+    networks:
+      - pipeline-net
+    environment:
+      - NODE_MODE=vulnerable
+    ports:
+      - "8002:8002"
+    depends_on:
+      - sensor
+
+  actuator:
+    build:
+      context: ../..
+      dockerfile: nodes/actuator/Dockerfile
+    container_name: n3-actuator
+    networks:
+      - pipeline-net
+    environment:
+      - NODE_MODE=vulnerable
+      - MODELS_DIR=/models
+    volumes:
+      - model-store:/models # reads models written by trainer
+    ports:
+      - "8003:8003"
+    depends_on:
+      - edge
+
+  trainer:
+    build:
+      context: ../..
+      dockerfile: nodes/model_trainer/Dockerfile
+    container_name: n4-trainer
+    networks:
+      - pipeline-net
+    environment:
+      - NODE_MODE=vulnerable
+      - MODELS_DIR=/models
+      - DB_PATH=/data/trainer_store.db
+    volumes:
+      - model-store:/models # writes retrained model here
+      - trainer-db:/data # persists SQLite feature store
+    ports:
+      - "8004:8004"
+    depends_on:
+      - actuator
+
+networks:
+  pipeline-net:
+    driver: bridge
+
+volumes:
+  model-store:
+  trainer-db:
