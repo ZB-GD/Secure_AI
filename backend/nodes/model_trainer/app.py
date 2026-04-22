@@ -38,7 +38,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-from paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
+try:
+    # Monolith backend runtime: package import from /app/nodes
+    from nodes.paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
+except ModuleNotFoundError:
+    # Standalone node container runtime: paths.py copied to /app
+    from paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 FEATURE_COLS = [
