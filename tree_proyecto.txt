@@ -28,7 +28,23 @@
 │   │   └── traffic-inference
 │   │       └── Dockerfile
 │   ├── main.py
-│   └── requirements.txt
+│   ├── nodes
+│   │   ├── decision_retraining
+│   │   │   ├── app.py
+│   │   │   └── __init__.py
+│   │   ├── edge_preprocessing
+│   │   │   ├── app.py
+│   │   │   └── __init__.py
+│   │   ├── sensor_data
+│   │   │   ├── app.py
+│   │   │   └── __init__.py
+│   │   └── traffic_inference
+│   │       ├── app.py
+│   │       └── __init__.py
+│   ├── requirements.txt
+│   ├── run_pipeline.py
+│   └── scripts
+│       └── train_traffic_models.py
 ├── docker-compose.yml
 ├── estructura.txt
 ├── frontend
@@ -89,4 +105,4 @@
     ├── server.js
     └── vmMap.js
 
-32 directories, 58 files
+38 directories, 68 files

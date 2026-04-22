@@ -1,6 +1,7 @@
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
+import RagTutorWidget from "../workspace/RagTutorWidget";
 
 export default function MainLayout({
   items,
@@ -14,29 +15,14 @@ export default function MainLayout({
   onPrevStep,
   onNextStep,
 }) {
-  // Scenario 0 se muestra a pantalla completa sin Sidebar
+  // Ignoramos el tutor en la pantalla de inicio (scenario-0) para no distraer
   const isFullWidthBriefing = activeItem.id === "scenario-0";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        width: "100vw",
-        overflow: "hidden",
-        background: "var(--bg-base)",
-      }}
-    >
-      <TopBar
-        items={items}
-        activeItem={activeItem}
-        onSelectItem={onSelectItem}
-      />
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--bg-base)" }}>
+      <TopBar items={items} activeItem={activeItem} onSelectItem={onSelectItem} />
 
-      <div
-        style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
-      >
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
         {!isFullWidthBriefing && (
           <Sidebar
             item={activeItem}
@@ -49,20 +35,20 @@ export default function MainLayout({
             onNextStep={onNextStep}
           />
         )}
-        <main
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            minWidth: 0,
-            position: "relative",
-          }}
-        >
-          <WorkspacePanel
-            item={activeItem}
-            onCompleteScenario={onCompleteScenario} // Pasamos la función para el botón del intro
-          />
+        <main style={{ flex: 1, overflow: "hidden", minWidth: 0, position: "relative" }}>
+          <WorkspacePanel item={activeItem} onCompleteScenario={onCompleteScenario} />
         </main>
       </div>
+
+      {/* 2. AÑADE EL WIDGET AQUÍ */}
+      {/* Solo aparece si no es el briefing inicial */}
+      {!isFullWidthBriefing && (
+        <RagTutorWidget 
+          labId={activeItem?.id} 
+          phase={activeItem?.phase}
+          activeItem={activeItem} 
+        />
+      )}
     </div>
   );
 }
