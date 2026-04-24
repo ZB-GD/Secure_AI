@@ -11,3 +11,8 @@ __pycache__/
 backend/.env
 frontend/.env
 *.env
+
+# Backend environment files (keep secrets out of git)
+backend/.env
+backend/.env.*
+!backend/.env.example
