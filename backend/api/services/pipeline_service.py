@@ -19,6 +19,10 @@ from fastapi import HTTPException
 SENSOR_URL = os.getenv("PIPELINE_SENSOR_URL", "http://sensor:8001")
 EDGE_URL = os.getenv("PIPELINE_EDGE_URL", "http://edge:8002")
 ACTUATOR_URL = os.getenv("PIPELINE_ACTUATOR_URL", "http://actuator:8003")
+TRAINER_URL = os.getenv("PIPELINE_TRAINER_URL", "http://trainer:8004")
+
+RETRAIN_DRIFT_THRESHOLD = float(os.getenv("PIPELINE_RETRAIN_DRIFT_THRESHOLD", "0.25"))
+RETRAIN_MIN_ROWS = int(os.getenv("PIPELINE_RETRAIN_MIN_ROWS", "50"))
 
 
 def _normalize_base_url(url: str) -> str:
@@ -73,6 +77,14 @@ def _json_safe(value: Any) -> Any:
     return value
 
 
+def _try_post_json(url: str, payload: dict[str, Any]) -> tuple[dict | None, str | None]:
+    """Best-effort POST: return payload or a compact error message."""
+    try:
+        return _post_json(url, payload), None
+    except HTTPException as exc:
+        return None, str(exc.detail)
+
+
 def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
     """
     Run pipeline for a given scenario and return a JSON-safe response dict.
@@ -92,18 +104,41 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
             {"preprocessing_output": edge_output, "mode": mode},
         )
 
+        n2_features = edge_output.get("features", []) if isinstance(edge_output, dict) else []
+        retraining_feedback = actuator_output.get("retraining_feedback", {}) if isinstance(actuator_output, dict) else {}
+        drift_score = float(retraining_feedback.get("estimated_drift", 0.0) or 0.0)
+
+        trainer_store_result, trainer_store_error = _try_post_json(
+            f"{_normalize_base_url(TRAINER_URL)}/store",
+            {"feature_rows": n2_features},
+        )
+
+        should_retrain = drift_score >= RETRAIN_DRIFT_THRESHOLD
+        trainer_retrain_result = None
+        trainer_retrain_error = None
+        if should_retrain:
+            trainer_retrain_result, trainer_retrain_error = _try_post_json(
+                f"{_normalize_base_url(TRAINER_URL)}/retrain",
+                {"mode": mode, "min_rows": RETRAIN_MIN_ROWS},
+            )
+
         results = {
             "n1": sensor_output,
             "n2": edge_output,
             "n3": actuator_output,
+            "n4": {
+                "store": trainer_store_result,
+                "store_error": trainer_store_error,
+                "retrain": trainer_retrain_result,
+                "retrain_error": trainer_retrain_error,
+                "retrain_triggered": should_retrain,
+            },
         }
 
         n1_readings = sensor_output.get("readings", []) if isinstance(sensor_output, dict) else []
         n1_dropped = sensor_output.get("dropped", []) if isinstance(sensor_output, dict) else []
-        n2_features = edge_output.get("features", []) if isinstance(edge_output, dict) else []
         n3_predictions = actuator_output.get("predictions", []) if isinstance(actuator_output, dict) else []
         n3_actions = actuator_output.get("actions", []) if isinstance(actuator_output, dict) else []
-        retraining_feedback = actuator_output.get("retraining_feedback", {}) if isinstance(actuator_output, dict) else {}
 
         poisoned_count = sum(1 for row in n1_readings if isinstance(row, dict) and row.get("_poisoned"))
         anomalous_count = sum(
@@ -127,7 +162,10 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
             "avg_congestion_score": (actuator_output.get("aggregate") or {}).get("avg_congestion_score", 0.0),
             "integrity_ok": actuator_output.get("integrity_ok"),
             "halted": actuator_output.get("halted", False),
-            "drift_score": retraining_feedback.get("estimated_drift", 0.0),
+            "drift_score": drift_score,
+            "trainer_store_ok": trainer_store_error is None,
+            "trainer_retrain_triggered": should_retrain,
+            "trainer_retrain_ok": trainer_retrain_error is None if should_retrain else None,
             "risk_level": "high" if actuator_output.get("halted") or poisoned_count > 0 or anomalous_count > 0 else "normal",
             "summary": (
                 f"{len(n1_readings)} readings -> {len(n2_features)} features -> "
