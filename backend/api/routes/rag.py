@@ -6,10 +6,15 @@ from dotenv import load_dotenv
 from google import genai 
 
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
 
-# Inicializamos el cliente moderno
-client = genai.Client(api_key=api_key)
+def _build_client():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG unavailable: GEMINI_API_KEY is not configured.",
+        )
+    return genai.Client(api_key=api_key)
 
 router = APIRouter()
 
@@ -36,11 +41,14 @@ async def chat_with_tutor(request: ChatRequest):
     )
     
     try:
+        client = _build_client()
         # Usamos el modelo oficial actual
         response = client.models.generate_content(
             model='gemini-2.0-flash',
             contents=f"{system_instruction}\n\nUsuario: {request.message}"
         )
         return {"response": response.text}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
