@@ -11,6 +11,36 @@ Clean version: Applies guardrails to detect and reject anomalous data.
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
 
+
+def _json_safe_value(value):
+    """Convert pandas/numpy values into plain JSON-safe Python values."""
+    # pandas.Timestamp / datetime-like
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            pass
+
+    # numpy scalar -> python scalar
+    if hasattr(value, "item"):
+        try:
+            return value.item()
+        except Exception:
+            pass
+
+    # NaN/NaT
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+
+    return value
+
+
+def _json_safe_record(record: dict) -> dict:
+    return {k: _json_safe_value(v) for k, v in record.items()}
+
 # ── Dataset Loading ───────────────────────────────────────────────────────────
 # Load the dataset once when the module (or container) starts
 print("[SYS] Connecting to UCI Repo to download dataset (ID: 492)...")
@@ -56,9 +86,13 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
     if df.empty:
         return {"node": "sensor-data", "error": "Dataset not available"}
 
+    if n_readings <= 0:
+        return {"node": "sensor-data", "error": "n_readings must be > 0"}
+
     # Extract 'n_readings' random rows simulating live traffic
-    batch_df = df.sample(n=n_readings)
-    raw_batch = batch_df.to_dict(orient="records")
+    sample_size = min(n_readings, len(df))
+    batch_df = df.sample(n=sample_size)
+    raw_batch = [_json_safe_record(r) for r in batch_df.to_dict(orient="records")]
 
     # Stable per-run trace id so downstream nodes can follow one reading end-to-end.
     for idx, reading in enumerate(raw_batch):
