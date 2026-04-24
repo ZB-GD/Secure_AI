@@ -1,9 +1,120 @@
-version: '3.9'
+version: "3.9"
 
 services:
+  sensor:
+    build:
+      context: ./backend
+      dockerfile: nodes/sensor_data/Dockerfile
+    container_name: secure-ai-sensor
+    ports:
+      - "8001:8001"
+    networks:
+      - secure-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  edge:
+    build:
+      context: ./backend
+      dockerfile: nodes/edge_preprocessing/Dockerfile
+    container_name: secure-ai-edge
+    ports:
+      - "8002:8002"
+    depends_on:
+      sensor:
+        condition: service_healthy
+    networks:
+      - secure-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  actuator:
+    build:
+      context: ./backend
+      dockerfile: nodes/actuator/Dockerfile
+    container_name: secure-ai-actuator
+    ports:
+      - "8003:8003"
+    depends_on:
+      edge:
+        condition: service_healthy
+    environment:
+      - MODELS_DIR=/models
+    volumes:
+      - model-store:/models
+    networks:
+      - secure-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8003/health').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  trainer:
+    build:
+      context: ./backend
+      dockerfile: nodes/model_trainer/Dockerfile
+    container_name: secure-ai-trainer
+    ports:
+      - "8004:8004"
+    depends_on:
+      actuator:
+        condition: service_healthy
+    environment:
+      - MODELS_DIR=/models
+      - DB_PATH=/data/trainer_store.db
+    volumes:
+      - model-store:/models
+      - trainer-db:/data
+    networks:
+      - secure-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8004/health').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   backend:
     env_file:
-      - ./backend/.env    # ajusta la ruta si tu .env está en otro sitio
+      - ./backend/.env
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -13,12 +124,24 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      # Permitir al backend acceder a Docker para crear/gestionar labs
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - secure-ai-network
+    depends_on:
+      sensor:
+        condition: service_healthy
+      edge:
+        condition: service_healthy
+      actuator:
+        condition: service_healthy
+      trainer:
+        condition: service_healthy
     restart: unless-stopped
 
 networks:
   secure-ai-network:
     driver: bridge
+
+volumes:
+  model-store:
+  trainer-db:
