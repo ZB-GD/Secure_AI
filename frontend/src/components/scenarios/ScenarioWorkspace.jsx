@@ -355,6 +355,23 @@ function ScenarioOnePipelineMockup() {
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
 
+  const pipelineMetrics = pipelineResult?.metrics || {
+    readings_received: 0,
+    readings_dropped: 0,
+    poisoned_readings: 0,
+    features_generated: 0,
+    anomalous_features: 0,
+    predictions_generated: 0,
+    actions_generated: 0,
+    dominant_state: "unknown",
+    avg_congestion_score: 0,
+    integrity_ok: null,
+    halted: false,
+    drift_score: 0,
+    risk_level: "normal",
+    summary: "Waiting for backend pipeline data.",
+  };
+
   async function runBackendPipeline() {
     setPipelineLoading(true);
     setPipelineError("");
@@ -363,7 +380,7 @@ function ScenarioOnePipelineMockup() {
       const payload = await request("/api/scenarios/1/run", {
         cache: "no-store",
       });
-      setPipelineResult(payload?.data || null);
+      setPipelineResult(payload || null);
     } catch (error) {
       setPipelineError(error?.message || "Failed to run scenario pipeline.");
       setPipelineResult(null);
@@ -377,12 +394,11 @@ function ScenarioOnePipelineMockup() {
   }, []);
 
   const phases = useMemo(() => {
-    if (!pipelineResult) return fallbackPhases;
+    if (!pipelineResult?.data) return fallbackPhases;
 
-    const n1 = pipelineResult.n1 || {};
-    const n2 = pipelineResult.n2 || {};
-    const n3 = pipelineResult.n3 || {};
-    const n4 = pipelineResult.n4 || {};
+    const n1 = pipelineResult.data.n1 || {};
+    const n2 = pipelineResult.data.n2 || {};
+    const n3 = pipelineResult.data.n3 || {};
 
     const n1Poisoned = Array.isArray(n1.readings)
       ? n1.readings.some((r) => r && r._poisoned)
@@ -395,7 +411,7 @@ function ScenarioOnePipelineMockup() {
         )
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
-    const n4Halted = Boolean(n4.halted);
+    const n3Halted = Boolean(n3.halted);
 
     return [
       {
@@ -496,8 +512,8 @@ function ScenarioOnePipelineMockup() {
         id: "actuator",
         code: "NODE-4",
         name: "Decision & Retraining Node",
-        status: n4Halted ? "compromised" : "warning",
-        summary: `Actions: ${n4.actions?.length || 0}. Drift: ${n4.retraining_feedback?.estimated_drift ?? "N/A"}.`,
+        status: n3Halted ? "compromised" : "warning",
+        summary: `Actions: ${n3.actions?.length || 0}. Drift: ${n3.retraining_feedback?.estimated_drift ?? "N/A"}.`,
         receives: JSON.stringify(
           {
             input_predictions: n3.predictions?.length || 0,
@@ -508,9 +524,9 @@ function ScenarioOnePipelineMockup() {
         ),
         emits: JSON.stringify(
           {
-            halted: n4.halted || false,
-            actions: n4.actions?.length || 0,
-            retraining_feedback: n4.retraining_feedback || {},
+            halted: n3.halted || false,
+            actions: n3.actions?.length || 0,
+            retraining_feedback: n3.retraining_feedback || {},
           },
           null,
           2,
@@ -519,7 +535,7 @@ function ScenarioOnePipelineMockup() {
           {
             id: "decision-safety",
             label: "Review Safety Guardrails",
-            finding: n4Halted
+            finding: n3Halted
               ? "Actions halted due to anomaly threshold breach."
               : "Actions executed without halt.",
           },
@@ -537,13 +553,13 @@ function ScenarioOnePipelineMockup() {
   const activePhase =
     phases.find((phase) => phase.id === activePhaseId) || phases[0];
   const activeNodeLogsText = useMemo(() => {
-    if (!pipelineResult) return "";
+    if (!pipelineResult?.data) return "";
 
     const nodeByPhase = {
-      edge: pipelineResult?.n1?.log || [],
-      preprocessing: pipelineResult?.n2?.log || [],
-      trainer: pipelineResult?.n3?.log || [],
-      actuator: pipelineResult?.n4?.log || [],
+      edge: pipelineResult.data?.n1?.log || [],
+      preprocessing: pipelineResult.data?.n2?.log || [],
+      trainer: pipelineResult.data?.n3?.log || [],
+      actuator: pipelineResult.data?.n3?.log || [],
     };
 
     return (nodeByPhase[activePhase?.id] || []).join("\n");
@@ -623,6 +639,85 @@ function ScenarioOnePipelineMockup() {
             </span>
           ) : null}
         </div>
+
+        <div
+          style={{
+            marginTop: "14px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+            gap: "10px",
+          }}
+        >
+          {[
+            ["Readings", pipelineMetrics.readings_received],
+            ["Dropped", pipelineMetrics.readings_dropped],
+            ["Features", pipelineMetrics.features_generated],
+            ["Actions", pipelineMetrics.actions_generated],
+          ].map(([label, value]) => (
+            <div
+              key={label}
+              style={{
+                padding: "12px 14px",
+                borderRadius: "10px",
+                border: "1px solid var(--border-dim)",
+                background: "var(--bg-panel)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--text-3)",
+                  letterSpacing: "0.12em",
+                  marginBottom: "6px",
+                }}
+              >
+                {label.toUpperCase()}
+              </div>
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontFamily: "var(--font-display)",
+                  color: "var(--text-1)",
+                  fontWeight: 700,
+                }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+          <div
+            style={{
+              padding: "12px 14px",
+              borderRadius: "10px",
+              border: "1px solid var(--border-dim)",
+              background: "var(--bg-panel)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--text-3)",
+                letterSpacing: "0.12em",
+                marginBottom: "6px",
+              }}
+            >
+              RISK LEVEL
+            </div>
+            <div
+              style={{
+                fontSize: "22px",
+                fontFamily: "var(--font-display)",
+                color:
+                  pipelineMetrics.risk_level === "high"
+                    ? "var(--red)"
+                    : "var(--green)",
+                fontWeight: 700,
+              }}
+            >
+              {pipelineMetrics.risk_level}
+            </div>
+          </div>
+        </div>
       </div>
       <div
         style={{ padding: "16px", borderBottom: "1px solid var(--border-dim)" }}
@@ -654,6 +749,50 @@ function ScenarioOnePipelineMockup() {
           alignContent: "start",
         }}
       >
+        <div
+          style={{
+            padding: "16px",
+            borderRadius: "12px",
+            border: "1px solid var(--border-dim)",
+            background: "var(--bg-panel)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--orange)",
+              letterSpacing: "0.14em",
+              marginBottom: "8px",
+            }}
+          >
+            PIPELINE SUMMARY
+          </div>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "var(--text-1)",
+              lineHeight: 1.6,
+              marginBottom: "10px",
+            }}
+          >
+            {pipelineMetrics.summary}
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: "10px",
+              fontSize: "12px",
+              color: "var(--text-2)",
+            }}
+          >
+            <div>Dominant state: {pipelineMetrics.dominant_state}</div>
+            <div>Avg score: {pipelineMetrics.avg_congestion_score}</div>
+            <div>Integrity: {String(pipelineMetrics.integrity_ok)}</div>
+            <div>Drift: {pipelineMetrics.drift_score}</div>
+          </div>
+        </div>
+
         <div
           style={{
             display: "grid",
