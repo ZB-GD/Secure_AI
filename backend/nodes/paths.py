@@ -9,8 +9,15 @@ Locally (dev):  falls back to repo-relative paths so existing behaviour unchange
 import os
 from pathlib import Path
 
-# Repo-relative fallback (same logic as original app.py)
-_BASE_DIR   = Path(__file__).resolve().parents[2]
+# Resolve a safe base dir for both runtimes:
+# - Monolith backend: backend/nodes/paths.py -> base is backend/
+# - Standalone node container: /node/paths.py -> base is /node
+_HERE = Path(__file__).resolve()
+if len(_HERE.parents) >= 3:
+	_BASE_DIR = _HERE.parents[2]
+else:
+	_BASE_DIR = _HERE.parent
+
 _MODELS_DIR = _BASE_DIR / "models"
 
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", str(_MODELS_DIR)))
