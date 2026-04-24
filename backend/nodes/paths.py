@@ -2,21 +2,18 @@
 paths.py — resolves model and data paths from environment variables.
 Imported by app.py in actuator (N3) and model_trainer (N4).
 
-In container: set MODELS_DIR and DB_PATH env vars (see Dockerfiles).
-Locally (dev):  falls back to repo-relative paths so existing behaviour unchanged.
+Set MODELS_DIR and DB_PATH env vars in container runtime (see Dockerfiles).
 """
 
 import os
 from pathlib import Path
 
-# Resolve a safe base dir for both runtimes:
-# - Monolith backend: backend/nodes/paths.py -> base is backend/
-# - Standalone node container: /node/paths.py -> base is /node
+# Resolve a safe base dir for node containers and helper scripts.
 _HERE = Path(__file__).resolve()
 if len(_HERE.parents) >= 3:
-	_BASE_DIR = _HERE.parents[2]
+    _BASE_DIR = _HERE.parents[2]
 else:
-	_BASE_DIR = _HERE.parent
+    _BASE_DIR = _HERE.parent
 
 _MODELS_DIR = _BASE_DIR / "models"
 

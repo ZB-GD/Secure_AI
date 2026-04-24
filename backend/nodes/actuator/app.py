@@ -27,12 +27,7 @@ import numpy as np
 import pandas as pd
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-try:
-    # Monolith backend runtime: package import from /app/nodes
-    from nodes.paths import CLEAN_MODEL_PATH, BACKDOORED_MODEL_PATH, REPORT_PATH
-except ModuleNotFoundError:
-    # Standalone node container runtime: paths.py copied to /app
-    from paths import CLEAN_MODEL_PATH, BACKDOORED_MODEL_PATH, REPORT_PATH
+from paths import CLEAN_MODEL_PATH, BACKDOORED_MODEL_PATH, REPORT_PATH
 
 # ── Feature schema ────────────────────────────────────────────────────────────
 FEATURE_COLUMNS = [
