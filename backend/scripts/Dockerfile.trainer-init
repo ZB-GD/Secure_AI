@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install deps needed by train_traffic_models.py
+RUN pip install --no-cache-dir \
+    scikit-learn \
+    pandas \
+    numpy \
+    joblib \
+    ucimlrepo
+
+# Copy trainer script + paths resolver
+COPY scripts/train_traffic_models.py ./scripts/train_traffic_models.py
+COPY nodes/paths.py ./paths.py
+
+ENV MODELS_DIR=/models
+
+# Run once → write models to volume → exit
+CMD ["python", "scripts/train_traffic_models.py"]

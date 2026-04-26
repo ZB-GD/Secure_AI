@@ -3,24 +3,21 @@
 │   ├── api
 │   │   ├── .gitkeep
 │   │   ├── models
-│   │   │   ├── __pycache__
-│   │   │   │   └── state.cpython-310.pyc
 │   │   │   └── state.py
 │   │   ├── routes
 │   │   │   ├── health.py
 │   │   │   ├── labs.py
 │   │   │   ├── logs.py
 │   │   │   ├── pipeline.py
-│   │   │   └── __pycache__
-│   │   │       ├── health.cpython-310.pyc
-│   │   │       └── labs.cpython-310.pyc
+│   │   │   └── rag.py
 │   │   └── services
 │   │       ├── docker_service.py
 │   │       ├── log_service.py
-│   │       ├── pipeline_service.py
-│   │       └── __pycache__
-│   │           └── docker_service.cpython-310.pyc
+│   │       └── pipeline_service.py
 │   ├── Dockerfile
+│   ├── knowledge_base
+│   │   ├── cityflow_manual.md
+│   │   └── incident_response.md
 │   ├── labs
 │   │   ├── base-novnc
 │   │   │   ├── Dockerfile
@@ -40,10 +37,35 @@
 │   │   └── traffic-inference
 │   │       └── Dockerfile
 │   ├── main.py
+│   ├── nodes
+│   │   ├── actuator
+│   │   │   ├── app.py
+│   │   │   ├── Dockerfile
+│   │   │   ├── __init__.py
+│   │   │   └── main.py
+│   │   ├── edge_preprocessing
+│   │   │   ├── app.py
+│   │   │   ├── Dockerfile
+│   │   │   ├── __init__.py
+│   │   │   └── main.py
+│   │   ├── model_trainer
+│   │   │   ├── app.py
+│   │   │   ├── Dockerfile
+│   │   │   ├── __init__.py
+│   │   │   └── main.py
+│   │   ├── paths.py
+│   │   └── sensor_data
+│   │       ├── app.py
+│   │       ├── Dockerfile
+│   │       ├── __init__.py
+│   │       └── main.py
 │   ├── pipelines
-│   ├── __pycache__
-│   │   └── main.cpython-310.pyc
-│   └── requirements.txt
+│   │   └── s1
+│   │       └── docker-compose.yml
+│   ├── requirements.txt
+│   └── scripts
+│       ├── Dockerfile.trainer-init
+│       └── train_traffic_models.py
 ├── docker-compose.yml
 ├── estructura.txt
 ├── frontend
@@ -66,7 +88,9 @@
 │   │   │   │   ├── AttackControls.jsx
 │   │   │   │   ├── LabGuide.jsx
 │   │   │   │   ├── LabMetrics.jsx
-│   │   │   │   └── PipelineStatus.jsx
+│   │   │   │   ├── LabRuntimeWorkspace.jsx
+│   │   │   │   ├── PipelineStatus.jsx
+│   │   │   │   └── RuntimeLogsPanel.jsx
 │   │   │   ├── layout
 │   │   │   │   ├── MainLayout.jsx
 │   │   │   │   ├── Sidebar.jsx
@@ -85,6 +109,8 @@
 │   │   │   │   └── ScenarioWorkspace.jsx
 │   │   │   └── workspace
 │   │   │       ├── index.js
+│   │   │       ├── Lab1Workspace.jsx
+│   │   │       ├── RagTutorWidget.jsx
 │   │   │       ├── RemoteDesktopPanel.jsx
 │   │   │       └── WorkspacePanel.jsx
 │   │   ├── context
@@ -93,23 +119,37 @@
 │   │   │   ├── journey.js
 │   │   │   └── pipelineStages.js
 │   │   ├── hooks
-│   │   │   └── useLab.js
+│   │   │   └── useLabRuntime.js
 │   │   ├── index.css
 │   │   ├── main.jsx
 │   │   ├── pages
 │   │   │   ├── DashboardPage.jsx
 │   │   │   └── LabPage.jsx
 │   │   ├── services
-│   │   │   └── vmService.js
+│   │   │   ├── apiClient.js
+│   │   │   └── labService.js
 │   │   └── styles
 │   │       └── global.css
 │   ├── tailwind.config.js
 │   └── vite.config.js
 ├── .gitignore
+├── lab-assets
+│   ├── lab1-data-poisoning
+│   ├── lab2-input-injection
+│   ├── lab3-supply-chain
+│   └── lab4-output-handling
 ├── README.md
+├── scripts
+│   └── start-novnc.sh
 ├── setup.sh
+├── tree_proyecto.txt
 ├── TROUBLESHOOTING.md
+├── vm-agent
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── server.js
+│   └── vmMap.js
 └── .vscode
     └── settings.json
 
-34 directories, 78 files
+41 directories, 111 files
