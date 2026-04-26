@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
+import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
 
 // --- SCENARIO 0: EMERGENCY BRIEFING ---
 function ScenarioZeroWorkspace({ item, onComplete }) {
@@ -269,7 +270,7 @@ function DataBox({ label, children }) {
   );
 }
 
-function ScenarioOnePipelineMockup() {
+function ScenarioOnePipelineRuntime() {
   const fallbackPhases = useMemo(
     () => [
       {
@@ -399,6 +400,7 @@ function ScenarioOnePipelineMockup() {
     const n1 = pipelineResult.data.n1 || {};
     const n2 = pipelineResult.data.n2 || {};
     const n3 = pipelineResult.data.n3 || {};
+    const n4 = pipelineResult.data.n4 || {};
 
     const n1Poisoned = Array.isArray(n1.readings)
       ? n1.readings.some((r) => r && r._poisoned)
@@ -411,7 +413,6 @@ function ScenarioOnePipelineMockup() {
         )
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
-    const n3Halted = Boolean(n3.halted);
 
     return [
       {
@@ -478,9 +479,9 @@ function ScenarioOnePipelineMockup() {
       {
         id: "trainer",
         code: "NODE-3",
-        name: "Traffic Inference Node",
+        name: "Actuator Node",
         status: n3IntegrityOk ? "healthy" : "warning",
-        summary: `Predictions: ${n3.predictions?.length || 0}. Dominant state: ${n3.aggregate?.dominant_state || "N/A"}.`,
+        summary: `Predictions: ${n3.predictions?.length || 0}. Actions: ${n3.actions?.length || 0}.`,
         receives: JSON.stringify(
           {
             input_features: n2.features?.length || 0,
@@ -494,6 +495,7 @@ function ScenarioOnePipelineMockup() {
             model_version: n3.model_version || "unknown",
             integrity_ok: n3.integrity_ok,
             aggregate: n3.aggregate || {},
+            retraining_feedback: n3.retraining_feedback || {},
           },
           null,
           2,
@@ -503,30 +505,39 @@ function ScenarioOnePipelineMockup() {
             id: "model-integrity",
             label: "Verify Model Integrity",
             finding: n3IntegrityOk
-              ? "Model integrity check passed."
-              : "Model integrity check failed or was skipped.",
+              ? "Model integrity check passed and actions were generated."
+              : "Inference or integrity check failed.",
+          },
+          {
+            id: "action-safety",
+            label: "Review Action Output",
+            finding: n3.halted
+              ? "Actions halted by safety guardrails."
+              : "Actions executed and returned to the physical node.",
           },
         ],
       },
       {
         id: "actuator",
         code: "NODE-4",
-        name: "Decision & Retraining Node",
-        status: n3Halted ? "compromised" : "warning",
-        summary: `Actions: ${n3.actions?.length || 0}. Drift: ${n3.retraining_feedback?.estimated_drift ?? "N/A"}.`,
+        name: "Trainer Node",
+        status: n4.retrain_triggered ? "warning" : "healthy",
+        summary: n4.retrain_triggered
+          ? `Store: ${n4.store ? "ok" : "failed"}. Retrain: ${n4.retrain ? "triggered" : "failed"}.`
+          : `Store: ${n4.store ? "ok" : "failed"}. Retrain not triggered.`,
         receives: JSON.stringify(
           {
-            input_predictions: n3.predictions?.length || 0,
-            dominant_state: n3.aggregate?.dominant_state || "N/A",
+            stored_features: n2.features?.length || 0,
+            trigger_drift: pipelineMetrics.drift_score,
           },
           null,
           2,
         ),
         emits: JSON.stringify(
           {
-            halted: n3.halted || false,
-            actions: n3.actions?.length || 0,
-            retraining_feedback: n3.retraining_feedback || {},
+            store: n4.store || null,
+            retrain: n4.retrain || null,
+            retrain_triggered: n4.retrain_triggered || false,
           },
           null,
           2,
@@ -534,15 +545,22 @@ function ScenarioOnePipelineMockup() {
         checks: [
           {
             id: "decision-safety",
-            label: "Review Safety Guardrails",
-            finding: n3Halted
-              ? "Actions halted due to anomaly threshold breach."
-              : "Actions executed without halt.",
+            label: "Verify Training Activity",
+            finding: n4.retrain_triggered
+              ? "Trainer received features and retraining was triggered."
+              : "Features were stored, retraining was not needed.",
+          },
+          {
+            id: "dataset-store",
+            label: "Check Training DB",
+            finding: n4.store_error
+              ? `Store error: ${n4.store_error}`
+              : "Training data stored successfully.",
           },
         ],
       },
     ];
-  }, [pipelineResult, fallbackPhases]);
+  }, [pipelineResult, fallbackPhases, pipelineMetrics.drift_score]);
 
   useEffect(() => {
     if (!phases.some((phase) => phase.id === activePhaseId)) {
@@ -559,7 +577,18 @@ function ScenarioOnePipelineMockup() {
       edge: pipelineResult.data?.n1?.log || [],
       preprocessing: pipelineResult.data?.n2?.log || [],
       trainer: pipelineResult.data?.n3?.log || [],
-      actuator: pipelineResult.data?.n3?.log || [],
+      actuator: pipelineResult.data?.n4
+        ? [
+            pipelineResult.data.n4.store_error
+              ? `STORE_ERROR: ${pipelineResult.data.n4.store_error}`
+              : "STORE_OK: features stored in trainer DB.",
+            pipelineResult.data.n4.retrain_triggered
+              ? pipelineResult.data.n4.retrain_error
+                ? `RETRAIN_ERROR: ${pipelineResult.data.n4.retrain_error}`
+                : "RETRAIN_OK: model retraining triggered."
+              : "RETRAIN_SKIPPED: drift below threshold.",
+          ]
+        : [],
     };
 
     return (nodeByPhase[activePhase?.id] || []).join("\n");
@@ -640,84 +669,7 @@ function ScenarioOnePipelineMockup() {
           ) : null}
         </div>
 
-        <div
-          style={{
-            marginTop: "14px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          {[
-            ["Readings", pipelineMetrics.readings_received],
-            ["Dropped", pipelineMetrics.readings_dropped],
-            ["Features", pipelineMetrics.features_generated],
-            ["Actions", pipelineMetrics.actions_generated],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              style={{
-                padding: "12px 14px",
-                borderRadius: "10px",
-                border: "1px solid var(--border-dim)",
-                background: "var(--bg-panel)",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "var(--text-3)",
-                  letterSpacing: "0.12em",
-                  marginBottom: "6px",
-                }}
-              >
-                {label.toUpperCase()}
-              </div>
-              <div
-                style={{
-                  fontSize: "22px",
-                  fontFamily: "var(--font-display)",
-                  color: "var(--text-1)",
-                  fontWeight: 700,
-                }}
-              >
-                {value}
-              </div>
-            </div>
-          ))}
-          <div
-            style={{
-              padding: "12px 14px",
-              borderRadius: "10px",
-              border: "1px solid var(--border-dim)",
-              background: "var(--bg-panel)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "10px",
-                color: "var(--text-3)",
-                letterSpacing: "0.12em",
-                marginBottom: "6px",
-              }}
-            >
-              RISK LEVEL
-            </div>
-            <div
-              style={{
-                fontSize: "22px",
-                fontFamily: "var(--font-display)",
-                color:
-                  pipelineMetrics.risk_level === "high"
-                    ? "var(--red)"
-                    : "var(--green)",
-                fontWeight: 700,
-              }}
-            >
-              {pipelineMetrics.risk_level}
-            </div>
-          </div>
-        </div>
+        <ScenarioMetricsPanel metrics={pipelineMetrics} />
       </div>
       <div
         style={{ padding: "16px", borderBottom: "1px solid var(--border-dim)" }}
@@ -765,7 +717,7 @@ function ScenarioOnePipelineMockup() {
               marginBottom: "8px",
             }}
           >
-            PIPELINE SUMMARY
+            PIPELINE FLOW
           </div>
           <div
             style={{
@@ -780,16 +732,16 @@ function ScenarioOnePipelineMockup() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
               gap: "10px",
               fontSize: "12px",
               color: "var(--text-2)",
             }}
           >
-            <div>Dominant state: {pipelineMetrics.dominant_state}</div>
-            <div>Avg score: {pipelineMetrics.avg_congestion_score}</div>
-            <div>Integrity: {String(pipelineMetrics.integrity_ok)}</div>
-            <div>Drift: {pipelineMetrics.drift_score}</div>
+            <div>Node 1: Sensor readings</div>
+            <div>Node 2: Feature extraction</div>
+            <div>Node 3: Inference + actions</div>
+            <div>Node 4: Train / retrain</div>
           </div>
         </div>
 
@@ -859,7 +811,7 @@ export default function ScenarioWorkspace({ item, onCompleteScenario }) {
     return (
       <ScenarioZeroWorkspace item={item} onComplete={onCompleteScenario} />
     );
-  if (item.id === "scenario-1") return <ScenarioOnePipelineMockup />;
+  if (item.id === "scenario-1") return <ScenarioOnePipelineRuntime />;
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
