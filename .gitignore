@@ -8,6 +8,7 @@ __pycache__/
 
 # VS Code local workspace files
 .vscode/
+.codex/
 
 # Backend environment files (keep secrets out of git)
 backend/.env
