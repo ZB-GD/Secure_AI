@@ -31,9 +31,9 @@ export const journey = [
       intro:
         "CityFlow AI optimizes traffic based on real-time data from IoT sensors. However, the system recently forced a city-wide gridlock based on false predictions.",
       context:
-        "We have loaded the real backend data from the incident into your Workspace. The pipeline consists of 4 active nodes: Sensor Data, Pre-processing, Inference, and Decision/Retraining. The physical sensors are online, but the predictions are dangerously wrong.",
+        "We have loaded backend data from the incident into your Workspace. The pipeline consists of 4 active nodes: Sensor Data, Pre-processing, Inference & Action, and Trainer. The physical cameras show congestion, but one telemetry record tells the AI a physically impossible story.",
       mission:
-        "Your task: Review the 'RECEIVED PAYLOAD' and 'BACKEND PIPELINE LOGS' for all nodes. Identify the exact malicious data point injected by the attacker and track how it bypassed validations.",
+        "Your task: Review the received payloads, emitted outputs, and backend logs for each node. Identify the malicious data point, then track how it moved from raw telemetry into model action and retraining risk.",
     },
     evidence: { inputs: [], files: [], prompts: [], logs: [] },
     question: {
@@ -64,8 +64,129 @@ export const journey = [
       wrongFeedback:
         "Not quite. Recheck Node 1 and Node 2 together and focus on the value that is physically impossible for real traffic flow and that propagates into an anomalous downstream score.",
       correctFeedback:
-        "Exactly! A physical road cannot have -5000 cars. The lack of basic input validation (sanity checks) allowed this poisoned CSV data to enter the pipeline. Also, temp = 0.0K is another valid anomaly indicator in the same poisoned record.",
+        "Exactly. A physical road cannot have -5000 cars. The missing range check at NODE-1 allowed the poisoned telemetry into the pipeline, and NODE-2 then produced an invalid congestion score instead of quarantining it.",
     },
+    quizzes: [
+      {
+        question:
+          "What architectural vulnerability allowed the script to inject the '-5000' value directly into the pipeline?",
+        options: [
+          "A) Lack of AES-256 database encryption.",
+          "B) Unauthenticated IoT/telemetry ingestion endpoints.",
+          "C) A SQL injection vulnerability in the Frontend.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "If an IoT endpoint lacks authentication or signed payloads, a script can publish data while pretending to be a legitimate sensor.",
+      },
+      {
+        question:
+          "What is the most efficient first control for impossible values like '-5000 cars'?",
+        options: [
+          "A) Implementing sanity checks/range validation at the ingestion node.",
+          "B) Training a generative AI to read the incoming logs.",
+          "C) Wiping the database every hour.",
+        ],
+        correctAnswerIndex: 0,
+        explanation:
+          "A simple rule such as traffic_volume >= 0 blocks values that violate physical reality before they reach downstream nodes.",
+      },
+      {
+        question:
+          "If an attacker injects '5000' instead of '-5000', what defense should act at NODE-2?",
+        options: [
+          "A) Turning off the cameras during rush hour.",
+          "B) Statistical anomaly detection against historical baselines.",
+          "C) Changing the MQTT protocol to HTTP.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "Pre-processing should compare incoming values against historical patterns and quarantine statistical outliers.",
+      },
+      {
+        question:
+          "By manipulating data during collection, what type of machine learning attack is being executed?",
+        options: [
+          "A) Model evasion.",
+          "B) Prompt injection.",
+          "C) Data poisoning.",
+        ],
+        correctAnswerIndex: 2,
+        explanation:
+          "Data poisoning contaminates training or inference data so the model learns from, or acts on, corrupted signals.",
+      },
+      {
+        question: "Why did the model drift metric spike after the attack?",
+        options: [
+          "A) The model ran out of allocated memory.",
+          "B) The new incoming data distribution differed sharply from the trusted baseline.",
+          "C) The neural network architecture was too small.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "Drift measures how data or predictions change over time. A sudden spike can indicate poisoning, sensor failure, or another major data-quality event.",
+      },
+      {
+        question:
+          "NODE-3 allowed a traffic-light action based on an anomalous model input. What is the design flaw?",
+        options: [
+          "A) Blindly trusting model output without hard-coded safety guardrails.",
+          "B) Using red lights instead of yellow lights.",
+          "C) Updating the model every 5 minutes instead of 10.",
+        ],
+        correctAnswerIndex: 0,
+        explanation:
+          "Cyber-physical systems need safety limits that constrain model-driven actions regardless of the prediction.",
+      },
+      {
+        question:
+          "After confirming poisoned telemetry affected production decisions, what is the immediate response?",
+        options: [
+          "A) Let the model continue learning until it corrects itself.",
+          "B) Roll back to the last known good model and quarantine the affected sensor path.",
+          "C) Shut down all traffic lights in the city.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "Rollback and quarantine reduce impact while responders preserve evidence and investigate the compromised data path.",
+      },
+      {
+        question:
+          "Where is poisoned data commonly injected in a distributed AI pipeline like CityFlow?",
+        options: [
+          "A) Directly into the final weights of the neural network.",
+          "B) At the edge sensor or during telemetry transit.",
+          "C) Into the React metrics dashboard.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "Edge devices and telemetry links are exposed surfaces and often have weaker identity, integrity, or validation controls.",
+      },
+      {
+        question:
+          "What control proves that data from 'cam_north_01' really came from that camera and was not modified in transit?",
+        options: [
+          "A) Digital signatures or mTLS-backed device identity.",
+          "B) Saving the data as CSV instead of JSON.",
+          "C) A traditional Web Application Firewall.",
+        ],
+        correctAnswerIndex: 0,
+        explanation:
+          "Cryptographic identity and integrity checks are the reliable way to prevent spoofing and tampering in sensor networks.",
+      },
+      {
+        question:
+          "Why can data poisoning be more dangerous than a traditional DDoS?",
+        options: [
+          "A) Because it physically destroys server hardware.",
+          "B) Because the system may stay online while making malicious decisions.",
+          "C) Because it is easier to script in Python.",
+        ],
+        correctAnswerIndex: 1,
+        explanation:
+          "A DDoS usually causes visible outage. Poisoning can keep the service looking healthy while corrupting decisions.",
+      },
+    ],
   },
 
   {
@@ -234,108 +355,6 @@ export const journey = [
       correctFeedback:
         "Correct. The lack of input sanitization allowed a Prompt Injection attack to hijack the RAG Tutor.",
     },
-    quizzes: [
-      {
-        question: "What architectural vulnerability allowed the script to inject the '-5000' value directly into the training pipeline?",
-        options: [
-          "A) Lack of AES-256 database encryption.",
-          "B) Unauthenticated IoT/telemetry ingestion endpoints.",
-          "C) A SQL injection vulnerability in the Frontend."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "If an IoT endpoint lacks authentication or tokens, any script can publish data masquerading as a legitimate sensor."
-      },
-      {
-        question: "What is the most computationally efficient way to prevent impossible values like '-5000 cars' from poisoning the model?",
-        options: [
-          "A) Implementing Sanity Checks (Range Validation) at the Ingestion Node.",
-          "B) Training a Generative AI to read the incoming logs.",
-          "C) Wiping the database every hour."
-        ],
-        correctAnswerIndex: 0,
-        explanation: "A simple 'if (traffic_volume < 0) reject()' acts as a physical barrier against data that violates real-world logic."
-      },
-      {
-        question: "If an attacker injects '5000' (a positive but physically unrealistic number for that street), a basic '> 0' sanity check won't block it. What defense must act at Node 2 (Pre-processing)?",
-        options: [
-          "A) Turning off the cameras during rush hour.",
-          "B) Statistical Anomaly Detection (e.g., Z-Score, Isolation Forests).",
-          "C) Changing the MQTT protocol to HTTP."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "Pre-processing must compare incoming values against historical baselines to identify and quarantine statistical outliers."
-      },
-      {
-        question: "By injecting manipulated data during the collection phase, what type of Machine Learning attack is being executed?",
-        options: [
-          "A) Model Evasion.",
-          "B) Prompt Injection.",
-          "C) Data Poisoning."
-        ],
-        correctAnswerIndex: 2,
-        explanation: "Data Poisoning attacks contaminate the training dataset to maliciously alter the model's future behavior."
-      },
-      {
-        question: "Why did the 'Model Drift' metric spike sharply immediately after the attack?",
-        options: [
-          "A) The model ran out of allocated memory.",
-          "B) The new incoming data distribution differed drastically from the previously learned baseline.",
-          "C) The neural network architecture was too small."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "Model Drift measures how input data or predictions change over time. A sudden spike indicates a potential poisoning attack or critical sensor failure."
-      },
-      {
-        question: "Node 4 executed the order to turn the street red based purely on the AI's prediction. From a Cyber-Physical Security perspective, what is the design flaw?",
-        options: [
-          "A) Blindly trusting the model output without strict hard-coded limits (Guardrails).",
-          "B) Using red lights instead of yellow lights.",
-          "C) Updating the model every 5 minutes instead of 10."
-        ],
-        correctAnswerIndex: 0,
-        explanation: "Systems interacting with the physical world must always have hard-coded safety rules (e.g., 'Never block a main artery for > 5 mins') regardless of AI predictions."
-      },
-      {
-        question: "After confirming that model 'v2.1' is poisoned and causing city-wide gridlock, what should be the immediate incident response action?",
-        options: [
-          "A) Let the model continue learning until it corrects itself.",
-          "B) Rollback the model to the last known good version (v2.0) and quarantine Node 1.",
-          "C) Shut down all traffic lights in the city."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "In MLOps, the ability to instantly rollback to a trusted model artifact is the most critical survival mechanism during an active poisoning attack."
-      },
-      {
-        question: "In a distributed AI pipeline like CityFlow, where is it typically easiest for an attacker to inject poisoned data?",
-        options: [
-          "A) Directly into the final weights of the neural network.",
-          "B) At the Edge device (Sensor) or during data transit (MQTT).",
-          "C) Into the React metrics dashboard."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "The 'Edge' is the most exposed surface, relying on remote hardware, wireless networks, and often lacking computing power for strong cryptography."
-      },
-      {
-        question: "What security control would guarantee that the payload sent by 'cam_north_01' actually came from that camera and was not modified in transit?",
-        options: [
-          "A) A digital signature (Firmware Trust / mTLS).",
-          "B) Saving the data as CSV instead of JSON.",
-          "C) A traditional Web Application Firewall (WAF)."
-        ],
-        correctAnswerIndex: 0,
-        explanation: "Cryptographic identity verification is the only reliable way to prevent spoofing and ensure data integrity in IoT sensor networks."
-      },
-      {
-        question: "Why is a Data Poisoning attack often more silent and dangerous than a traditional DDoS (Distributed Denial of Service) attack?",
-        options: [
-          "A) Because it physically destroys the server hardware.",
-          "B) Because the system remains online and reports 'Healthy' while making malicious decisions.",
-          "C) Because it is easier to script in Python."
-        ],
-        correctAnswerIndex: 1,
-        explanation: "A DDoS simply shuts down the service, triggering immediate alerts. Poisoning subverts the AI's logic; the system appears healthy but becomes a weapon for the attacker."
-      }
-    ],
   },
 
   // Placeholders for future labs
