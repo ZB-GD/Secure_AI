@@ -1,6 +1,6 @@
 const API_BASE_URL_CANDIDATES = [
   import.meta.env.VITE_API_BASE_URL,
-  "http://192.168.56.102:8000",
+  "http://100.111.250.126:8000",
   "http://localhost:8000",
 ].filter(Boolean);
 
