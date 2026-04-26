@@ -1,55 +1,55 @@
 # Secure AI Pipeline — TFG
 
-Plataforma educativa para aprender seguridad en pipelines de IA. Permite al usuario ejecutar un pipeline de IA completo, explorar vulnerabilidades en un entorno aislado, y restaurar el pipeline limpio al finalizar.
+Educational platform for learning security in AI pipelines. It allows users to run a complete AI pipeline, explore vulnerabilities in an isolated environment, and restore a clean pipeline once the lab is finished.
 
 ---
 
-## 📁 Estructura del proyecto
+## 📁 Project structure
 
-```
+```text
 Secure_AI/
 ├── backend/
-│   ├── api/                        # API REST que gestiona los contenedores dinámicamente
+│   ├── api/                        # REST API that manages containers dynamically
 │   ├── labs/
-│   │   ├── phase-1-ingestion/      # Contenedor aislado — Fase 1
-│   │   ├── phase-2-input/          # Contenedor aislado — Fase 2
-│   │   ├── phase-3-model/          # Contenedor aislado — Fase 3
-│   │   └── phase-4-output/         # Contenedor aislado — Fase 4
+│   │   ├── phase-1-ingestion/      # Isolated container — Phase 1
+│   │   ├── phase-2-input/          # Isolated container — Phase 2
+│   │   ├── phase-3-model/          # Isolated container — Phase 3
+│   │   └── phase-4-output/         # Isolated container — Phase 4
 │   ├── pipelines/
-│   │   ├── docker-compose.e1.yml   # E1: pipeline general funcional
+│   │   ├── docker-compose.e1.yml   # E1: functional general pipeline
 │   │   ├── docker-compose.e3-p1.yml
 │   │   ├── docker-compose.e3-p2.yml
 │   │   ├── docker-compose.e3-p3.yml
-│   │   └── docker-compose.e3-p4.yml # E3: limpieza post-lab por fase
+│   │   └── docker-compose.e3-p4.yml # E3: post-lab cleanup per phase
 │   └── requirements.txt
-├── frontend/                        # Interfaz de usuario (React)
-├── docker-compose.yml               # Compose raíz
-├── setup.sh                         # Setup del entorno de desarrollo (ejecutar dentro de la VM)
-└── TROUBLESHOOTING.md               # Problemas conocidos y soluciones
+├── frontend/                        # User interface (React)
+├── docker-compose.yml               # Root Compose file
+├── setup.sh                         # Development environment setup (run inside the VM)
+└── TROUBLESHOOTING.md               # Known issues and solutions
 ```
 
-### Los tres estados del sistema
+### The three system states
 
-| Estado | Descripción                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------ |
-| **E1** | Pipeline general funcional — el usuario puede ver el pipeline completo corriendo                       |
-| **E2** | Lab interactivo — cada fase corre en un contenedor aislado, gestionado dinámicamente desde el frontend |
-| **E3** | Limpieza post-lab — se destruyen los contenedores del E2 y se restaura el entorno limpio               |
+| State  | Description                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------- |
+| **E1** | Functional general pipeline — the user can see the complete pipeline running                      |
+| **E2** | Interactive lab — each phase runs in an isolated container, dynamically managed from the frontend |
+| **E3** | Post-lab cleanup — E2 containers are destroyed and the clean environment is restored              |
 
 ---
 
-## 🖥️ Setup del entorno de desarrollo
+## 🖥️ Development environment setup
 
-El backend corre dentro de una VM (VirtualBox + Ubuntu Server). El frontend llama al backend por API REST desde fuera de la VM.
+The backend runs inside a VM (VirtualBox + Ubuntu Server). The frontend calls the backend through a REST API from outside the VM.
 
-### 1. Instalar VirtualBox 7.0
+### 1. Install VirtualBox 7.0
 
-> Si ya tienes VirtualBox 7.0 instalado, salta al paso 2.
-> Si tienes VirtualBox 6.1, debes actualizarlo — consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+> If you already have VirtualBox 7.0 installed, skip to step 2.  
+> If you have VirtualBox 6.1, you must upgrade it — see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-Descarga e instala VirtualBox 7.0 desde la [página oficial](https://www.virtualbox.org/wiki/Downloads).
+Download and install VirtualBox 7.0 from the [official website](https://www.virtualbox.org/wiki/Downloads).
 
-En **Linux (Ubuntu/Debian)**, instala desde el repositorio oficial de Oracle:
+On **Linux (Ubuntu/Debian)**, install it from Oracle's official repository:
 
 ```bash
 sudo apt remove --purge virtualbox* -y
@@ -62,15 +62,15 @@ sudo apt update && sudo apt install virtualbox-7.0 -y
 sudo usermod -aG vboxusers $USER
 ```
 
-### 2. Crear la VM
+### 2. Create the VM
 
-Descarga la ISO de Ubuntu Server 22.04:
+Download the Ubuntu Server 22.04 ISO:
 
 ```bash
 wget https://releases.ubuntu.com/22.04.5/ubuntu-22.04.5-live-server-amd64.iso -P ~/Downloads/
 ```
 
-Crea y configura la VM:
+Create and configure the VM:
 
 ```bash
 VBoxManage createvm --name "SecureAI-Lab" --ostype Ubuntu_64 --register
@@ -88,42 +88,42 @@ VBoxManage modifyvm "SecureAI-Lab" --natpf1 "ssh,tcp,,2222,,22"
 VBoxManage modifyvm "SecureAI-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
 
-### 3. Instalar Ubuntu Server
+### 3. Install Ubuntu Server
 
-Arranca la VM:
+Start the VM:
 
 ```bash
 VBoxManage startvm "SecureAI-Lab" --type headless
 ```
 
-Conéctate para ver la pantalla de instalación:
+Connect to view the installation screen:
 
 ```bash
-# Opción A — SSH (cuando el instalador lo permita)
-ssh -p 2222 <tu_usuario>@localhost
+# Option A — SSH (when the installer allows it)
+ssh -p 2222 <your_user>@localhost
 
-# Opción B — RDP con Remmina (requiere Extension Pack instalado)
-# Nueva conexión → RDP → localhost:3389
+# Option B — RDP with Remmina (requires the Extension Pack installed)
+# New connection → RDP → localhost:3389
 ```
 
-Sigue el instalador de Ubuntu Server. Cuando te pregunte:
+Follow the Ubuntu Server installer. When prompted:
 
-- **Installer update**: selecciona _Continue without updating_
-- **SSH**: activa _Install OpenSSH server_
-- **Snaps adicionales**: no selecciones ninguno (Docker se instala con el setup.sh)
+- **Installer update**: select _Continue without updating_
+- **SSH**: enable _Install OpenSSH server_
+- **Additional snaps**: do not select any (Docker is installed by setup.sh)
 
-Una vez instalado, la VM reiniciará. Conéctate por SSH:
+Once installed, the VM will reboot. Connect through SSH:
 
 ```bash
-ssh <tu_usuario>@<IP_de_enp0s8>
-# Para ver la IP: ip addr show enp0s8
+ssh <your_user>@<enp0s8_IP>
+# To see the IP: ip addr show enp0s8
 ```
 
-> Si SSH no funciona por NAT (puerto 2222), consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+> If SSH does not work through NAT (port 2222), see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-### 4. Clonar el repo y ejecutar el setup
+### 4. Clone the repository and run the setup
 
-Dentro de la VM:
+Inside the VM:
 
 ```bash
 git clone https://github.com/ZB-GD/Secure_AI.git
@@ -132,140 +132,255 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-El script instala Docker, Python 3, Node.js y configura la red host-only permanente. Al final te indica la IP de la VM para conectarte por SSH.
+The script installs Docker, Python 3, Node.js, and configures the permanent host-only network. At the end, it shows the VM IP you can use to connect through SSH.
 
-> Si `docker pull` falla con error de certificado TLS, consulta [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (problema conocido con FortiClient VPN).
+> If `docker pull` fails with a TLS certificate error, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (known issue with FortiClient VPN).
 
-### 5. Uso diario
+### 5. Daily VM usage
 
 ```bash
-# Arrancar la VM (desde el host)
+# Start the VM (from the host)
 VBoxManage startvm "SecureAI-Lab" --type headless
 
-# Conectar por SSH
-ssh <tu_usuario>@<IP_de_enp0s8>
+# Connect through SSH
+ssh <your_user>@<enp0s8_IP>
 
-# Apagar la VM
+# Power off the VM
 VBoxManage controlvm "SecureAI-Lab" poweroff
 ```
 
 ---
 
-## 🌿 Flujo de trabajo con Git
+## 🌿 Git workflow
 
-### Ramas
+The project uses one integration branch (`dev`) and fixed branches per area/person. The idea is simple: **nobody works directly on `dev` or `main`**. Each person works on their own branch, pushes changes, and opens a Pull Request into `dev`.
 
-```
+### Branches
+
+```text
 main
-└── dev                           ← integración estable
-    ├── feature/backend-glaira    ← backend e infraestructura
-    └── feature/frontend-[nombre] ← interfaz de usuario
+└── dev                           ← stable integration
+    ├── feature/backend-glaira    ← backend and infrastructure
+    └── feature/frontend-zineb    ← user interface
 ```
 
-- **`main`**: producción, solo recibe merges desde `dev` cuando todo está estable.
-- **`dev`**: rama de integración. Aquí se juntan los cambios de ambas partes.
-- **`feature/`**: cada una trabaja en su propia rama y hace PR hacia `dev`.
+- **`main`**: main/production branch. It only receives merges from `dev` when everything is stable.
+- **`dev`**: integration branch. Validated changes are merged here through Pull Requests.
+- **`feature/backend-glaira`**: fixed branch for backend and infrastructure.
+- **`feature/frontend-zineb`**: fixed branch for frontend.
+
+> The `feature/*` branches are permanent working branches. They are not deleted after each PR.
 
 ---
 
-### Setup inicial (solo la primera vez)
+### Initial setup (only the first time)
 
 ```bash
-git clone <url-del-repo>
+git clone <repo-url>
 cd Secure_AI
 
-# Posicionarse en dev y crear tu rama
-git checkout dev
+# Fetch remote branches
+git fetch origin
+
+# Switch to dev and update it
+git switch dev
 git pull origin dev
-git checkout -b feature/frontend-[tunombre]
-git push -u origin feature/frontend-[tunombre]
+
+# Switch to your fixed branch
+git switch feature/backend-glaira
+# or, for frontend:
+git switch feature/frontend-zineb
 ```
 
----
-
-### Flujo de trabajo diario
+If your fixed branch does not exist locally yet, but it already exists remotely:
 
 ```bash
-# 1. Asegúrate de estar en tu rama
-git checkout feature/frontend-[tunombre]
+git switch --track origin/feature/backend-glaira
+# or:
+git switch --track origin/feature/frontend-zineb
+```
 
-# 2. Sincroniza con dev antes de empezar (importante!)
-git fetch origin
-git merge origin/dev
+---
 
-# 3. Trabaja... haz cambios...
+### Daily workflow
 
-# 4. Añade y commitea
+Before editing code, update `dev` and sync your branch with it.
+
+```bash
+# 1. Update dev
+git switch dev
+git pull origin dev
+
+# 2. Go back to your fixed branch
+git switch feature/backend-glaira
+# or:
+git switch feature/frontend-zineb
+
+# 3. Bring the latest dev changes into your branch
+git merge dev
+
+# 4. Work... make changes in VS Code...
+
+# 5. Review changes
+git status
+
+# 6. Stage and commit
 git add .
-git commit -m "feat: descripción de lo que hiciste"
+git commit -m "feat: short description of the change"
 
-# 5. Sube tu rama
-git push
+# 7. Push your branch
+git push origin feature/backend-glaira
+# or:
+git push origin feature/frontend-zineb
 ```
 
 ---
 
-### Hacer una Pull Request a dev
+### Create a Pull Request into `dev`
 
-Una Pull Request (PR) es la forma de integrar el trabajo de tu rama en `dev`. Básicamente le dices a Git: _"tengo cambios en mi rama que quiero unir a dev, ¿los revisamos antes?"_
+A Pull Request (PR) is used to integrate the changes from your branch into `dev` without overwriting the other person's work.
 
+```text
+feature/backend-glaira ──── PR ────► dev ──── PR ────► main
+feature/frontend-zineb ──── PR ────► dev
 ```
-feature/backend-glaira    ──── PR ────►  dev  ──── PR ────►  main
-feature/frontend-[nombre] ──── PR ────►  dev
+
+**PR configuration:**
+
+```text
+base: dev
+compare: feature/backend-glaira
 ```
 
-**¿Por qué no pushear directamente a `dev`?**
+or, for frontend:
 
-- Evita que una rompa el trabajo de la otra sin querer
-- Permite revisar los cambios antes de que entren
-- Si hay conflictos (las dos tocaron el mismo archivo), se resuelven en la PR antes de mergear
+```text
+base: dev
+compare: feature/frontend-zineb
+```
 
-**Cómo hacerla:**
+**Steps on GitHub:**
 
-1. Ve a GitHub → **Pull Requests** → **New pull request**
-2. Base: `dev` ← Compare: `feature/tu-rama`
-3. Escribe una descripción breve de los cambios
-4. Avisa a la otra para que revise antes de mergear
+1. Go to **Pull Requests** → **New pull request**.
+2. Select `dev` as the base branch.
+3. Select your `feature/...` branch as the compare branch.
+4. Add a title and a short description.
+5. Create the PR.
+6. Review conflicts if they appear.
+7. Merge once it has been validated.
 
-> Como somos dos, podemos mergear nuestra propia PR sin esperar revisión, **excepto** cuando las dos hayamos tocado archivos compartidos (como `docker-compose.yml` raíz). En ese caso, revisamos juntas antes de mergear.
+**From VS Code:**
+
+1. Open the **GitHub Pull Requests and Issues** extension.
+2. Click **Create Pull Request**.
+3. Check that the base branch is `dev` and the compare branch is your branch.
+4. Add a title and description.
+5. Create the PR.
 
 ---
 
-### Convención de commits
+### After merging a PR
 
-Usamos [Conventional Commits](https://www.conventionalcommits.org/) para mantener el historial limpio:
+Because the `feature/*` branches are fixed, **they are not deleted**. After the merge, they must be synced again with `dev`.
 
-| Prefijo     | Cuándo usarlo                               |
-| ----------- | ------------------------------------------- |
-| `feat:`     | Nueva funcionalidad                         |
-| `fix:`      | Corrección de bug                           |
-| `chore:`    | Configuración, estructura, dependencias     |
-| `docs:`     | Cambios en documentación                    |
-| `refactor:` | Refactorización sin cambio de funcionalidad |
+```bash
+# 1. Update dev
+git switch dev
+git pull origin dev
 
-**Ejemplos:**
+# 2. Go back to your fixed branch
+git switch feature/backend-glaira
+# or:
+git switch feature/frontend-zineb
 
+# 3. Sync your branch with dev
+git merge dev
+
+# 4. Push the synced branch
+git push origin feature/backend-glaira
+# or:
+git push origin feature/frontend-zineb
 ```
-feat: añadir endpoint para crear contenedor de fase
-fix: corregir ruta del Dockerfile en phase-2
-chore: añadir requirements.txt con dependencias base
-docs: actualizar README con instrucciones de setup
+
+This prevents your branch from falling behind `dev` and reduces conflicts in the next PR.
+
+---
+
+### Useful diagnostic commands
+
+Check which branch you are on and whether there are pending changes:
+
+```bash
+git status
+```
+
+Show local branches and their relationship with the remote branches:
+
+```bash
+git branch -vv
+```
+
+Show local commits that have not been pushed yet:
+
+```bash
+git log origin/<your-branch>..HEAD --oneline
+```
+
+Example:
+
+```bash
+git log origin/feature/backend-glaira..HEAD --oneline
+```
+
+Show remote branches:
+
+```bash
+git branch -r
+```
+
+Update remote references:
+
+```bash
+git fetch origin
 ```
 
 ---
 
-## ⚙️ Requisitos previos
+### Commit convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) to keep the history clean:
+
+| Prefix      | When to use it                         |
+| ----------- | -------------------------------------- |
+| `feat:`     | New feature                            |
+| `fix:`      | Bug fix                                |
+| `chore:`    | Configuration, structure, dependencies |
+| `docs:`     | Documentation changes                  |
+| `refactor:` | Refactoring without functional changes |
+
+**Examples:**
+
+```text
+feat: add endpoint to create phase container
+fix: correct Dockerfile path in phase-2
+chore: add requirements.txt with base dependencies
+docs: update README with setup instructions
+```
+
+---
+
+## ⚙️ Requirements
 
 - [VirtualBox 7.0](https://www.virtualbox.org/wiki/Downloads)
-- Python 3.10+ _(se instala con setup.sh)_
-- Node.js 18+ _(se instala con setup.sh)_
-- Docker _(se instala con setup.sh)_
+- Python 3.10+ _(installed by setup.sh)_
+- Node.js 18+ _(installed by setup.sh)_
+- Docker _(installed by setup.sh)_
 
 ---
 
-## 👥 Equipo
+## 👥 Team
 
-| Parte                     | Responsable |
-| ------------------------- | ----------- |
-| Frontend                  | Zineb       |
-| Backend / Infraestructura | Glaira      |
+| Area                     | Owner  |
+| ------------------------ | ------ |
+| Frontend                 | Zineb  |
+| Backend / Infrastructure | Glaira |
