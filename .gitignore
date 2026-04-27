@@ -8,3 +8,6 @@ __pycache__/
 
 # VS Code local workspace files
 .vscode/
+backend/.env
+frontend/.env
+*.env

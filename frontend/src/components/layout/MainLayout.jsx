@@ -15,15 +15,23 @@ export default function MainLayout({
   onPrevStep,
   onNextStep,
 }) {
-  // Ignoramos el tutor en la pantalla de inicio (scenario-0) para no distraer
   const isFullWidthBriefing = activeItem.id === "scenario-0";
+  const isScenario = activeItem.type === "scenario";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--bg-base)" }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100vh",
+      width: "100vw",
+      overflow: "hidden",
+      background: "var(--bg-base)",
+    }}>
       <TopBar items={items} activeItem={activeItem} onSelectItem={onSelectItem} />
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
-        {!isFullWidthBriefing && (
+        {/* Sidebar only for scenarios (labs have guide inside the tabbed panel) */}
+        {!isFullWidthBriefing && isScenario && (
           <Sidebar
             item={activeItem}
             currentStep={currentStep}
@@ -35,18 +43,26 @@ export default function MainLayout({
             onNextStep={onNextStep}
           />
         )}
+
         <main style={{ flex: 1, overflow: "hidden", minWidth: 0, position: "relative" }}>
-          <WorkspacePanel item={activeItem} onCompleteScenario={onCompleteScenario} />
+          <WorkspacePanel
+            item={activeItem}
+            onCompleteScenario={onCompleteScenario}
+            currentStep={currentStep}
+            currentAnswer={currentAnswer}
+            onAnswerChange={onAnswerChange}
+            onPrevStep={onPrevStep}
+            onNextStep={onNextStep}
+          />
         </main>
       </div>
 
-      {/* 2. AÑADE EL WIDGET AQUÍ */}
-      {/* Solo aparece si no es el briefing inicial */}
-      {!isFullWidthBriefing && (
-        <RagTutorWidget 
-          labId={activeItem?.id} 
+      {/* Floating tutor only for scenarios — labs have it integrated in Quiz tab */}
+      {!isFullWidthBriefing && isScenario && (
+        <RagTutorWidget
+          labId={activeItem?.id}
           phase={activeItem?.phase}
-          activeItem={activeItem} 
+          activeItem={activeItem}
         />
       )}
     </div>
