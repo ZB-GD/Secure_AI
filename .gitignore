@@ -1,11 +1,3 @@
-# Python environments
-.venv/
-backend/.venv/
-
-# Python cache
-__pycache__/
-*.py[cod]
-
 # VS Code local workspace files
 .vscode/
 
@@ -13,3 +5,8 @@ __pycache__/
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+# Frontend environment files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example

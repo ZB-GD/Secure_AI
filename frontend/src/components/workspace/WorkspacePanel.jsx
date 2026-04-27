@@ -1,10 +1,16 @@
-import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
-import RemoteDesktopPanel from "./RemoteDesktopPanel";
-import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace";
-import Lab1Workspace from "./Lab1Workspace";
+import ScenarioWorkspace from "../scenarios/ScenarioWorkspace"
+import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace"
 
-export default function WorkspacePanel({ item, onCompleteScenario }) {
-  if (!item) return null;
+export default function WorkspacePanel({
+  item,
+  onCompleteScenario,
+  currentStep,
+  currentAnswer,
+  onAnswerChange,
+  onPrevStep,
+  onNextStep,
+}) {
+  if (!item) return null
 
   if (item.type === "scenario") {
     return (
@@ -12,13 +18,15 @@ export default function WorkspacePanel({ item, onCompleteScenario }) {
     );
   }
 
-  if (item.id === "lab-1") {
-    return <Lab1Workspace item={item} />;
-  }
-
-  if (item.type === "lab") {
-    return <LabRuntimeWorkspace item={item} />;
-  }
-
-  return <RemoteDesktopPanel item={item} />;
+  // All labs use the new unified workspace
+  return (
+    <LabRuntimeWorkspace
+      item={item}
+      currentStep={currentStep}
+      currentAnswer={currentAnswer}
+      onAnswerChange={onAnswerChange}
+      onPrevStep={onPrevStep}
+      onNextStep={onNextStep}
+    />
+  )
 }
