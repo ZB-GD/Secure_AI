@@ -4,6 +4,9 @@ const API_BASE_URL_CANDIDATES = [
   "http://localhost:8000",
 ].filter(Boolean);
 
+console.log("API candidates:", API_BASE_URL_CANDIDATES);
+
+
 let resolvedApiBaseUrlPromise = null;
 
 async function resolveApiBaseUrl() {
