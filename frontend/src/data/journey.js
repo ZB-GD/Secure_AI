@@ -19,7 +19,7 @@ export const journey = [
     question: null,
   },
 
-  { 
+  {
     id: "scenario-1",
     type: "scenario",
     shortTitle: "Scenario 1",
@@ -50,7 +50,8 @@ export const journey = [
         {
           id: "b",
           label: "Temperature is 0.0K and Volume is -5000",
-          description: "An impossible negative value was injected, bypassing basic sanity checks and causing an anomalous congestion score of -0.625.",
+          description:
+            "An impossible negative value was injected, bypassing basic sanity checks and causing an anomalous congestion score of -0.625.",
           correct: true,
         },
         {
@@ -84,18 +85,28 @@ export const journey = [
           id: "step-1-1",
           title: "Deconstruct the Exploit",
           body: "The 'Exploit Toolkit' button simulates a python script (`poison_data.py`). It doesn't use advanced hacking; it simply connects to the IoT data ingestion endpoint and pushes a corrupted CSV row where `traffic_volume = -5000`. Because the system trusts the source blindly, it accepts it.",
-          observation: "Look at the Payload input in the toolkit. It targets the exact vulnerability we found in the logs.",
-          question: "What missing security control allows the script to push data without proving its identity?",
+          observation:
+            "Look at the Payload input in the toolkit. It targets the exact vulnerability we found in the logs.",
+          question:
+            "What missing security control allows the script to push data without proving its identity?",
           placeholder: "e.g., Authentication, Signature, Token...",
           hint: "If anyone can connect to the system and send data without a password, token or signed identity, what is missing?",
-          expectedKeywords: ["authentication", "signature", "credentials", "token", "login"],
+          expectedKeywords: [
+            "authentication",
+            "signature",
+            "credentials",
+            "token",
+            "login",
+          ],
         },
         {
           id: "step-1-2",
           title: "Execute the Attack",
           body: "Click 'OVERRIDE SENSOR DATA'. This forces the pipeline to ingest the forged reading. The downstream nodes continue processing it and the model health degrades.",
-          observation: "Watch the metrics panel on the right after the payload is delivered.",
-          question: "What exact value does the 'Prediction Accuracy' metric drop to after the attack?",
+          observation:
+            "Watch the metrics panel on the right after the payload is delivered.",
+          question:
+            "What exact value does the 'Prediction Accuracy' metric drop to after the attack?",
           placeholder: "Type the value shown in the metrics panel...",
           hint: "Check the Prediction Accuracy card on the right panel after the attack is executed.",
           expectedKeywords: ["34.2", "34"],
@@ -142,9 +153,17 @@ export const journey = [
             "What mechanism should be automatically triggered if the drift is too high?",
           placeholder: "e.g., Halt retraining, Auto-deploy...",
           hint: "The system should prevent the corrupted model from affecting production.",
-          expectedKeywords: ["halt", "pause", "stop", "alert", "quarantine", "abort", "block"],
-        }
-      ]
+          expectedKeywords: [
+            "halt",
+            "pause",
+            "stop",
+            "alert",
+            "quarantine",
+            "abort",
+            "block",
+          ],
+        },
+      ],
     },
 
     // ── Quiz de evaluación final ─────────────────────────────────────────
@@ -152,105 +171,125 @@ export const journey = [
     // El tutor RAG usa estas preguntas para generar feedback personalizado.
     quiz: [
       {
-        question: "What architectural vulnerability allowed the script to inject the '-5000' value directly into the training pipeline?",
+        question:
+          "What architectural vulnerability allowed the script to inject the '-5000' value directly into the training pipeline?",
         options: [
           "A) Lack of AES-256 database encryption.",
           "B) Unauthenticated IoT/telemetry ingestion endpoints.",
-          "C) A SQL injection vulnerability in the Frontend."
+          "C) A SQL injection vulnerability in the Frontend.",
         ],
         correctAnswerIndex: 1,
-        explanation: "If an IoT endpoint lacks authentication or tokens, any script can publish data masquerading as a legitimate sensor."
+        explanation:
+          "If an IoT endpoint lacks authentication or tokens, any script can publish data masquerading as a legitimate sensor.",
       },
       {
-        question: "What is the most computationally efficient way to prevent impossible values like '-5000 cars' from poisoning the model?",
+        question:
+          "What is the most computationally efficient way to prevent impossible values like '-5000 cars' from poisoning the model?",
         options: [
           "A) Implementing Sanity Checks (Range Validation) at the Ingestion Node.",
           "B) Training a Generative AI to read the incoming logs.",
-          "C) Wiping the database every hour."
+          "C) Wiping the database every hour.",
         ],
         correctAnswerIndex: 0,
-        explanation: "A simple 'if (traffic_volume < 0) reject()' acts as a physical barrier against data that violates real-world logic."
+        explanation:
+          "A simple 'if (traffic_volume < 0) reject()' acts as a physical barrier against data that violates real-world logic.",
       },
       {
-        question: "If an attacker injects '5000' (a positive but physically unrealistic number for that street), a basic '> 0' sanity check won't block it. What defense must act at Node 2 (Pre-processing)?",
+        question:
+          "If an attacker injects '5000' (a positive but physically unrealistic number for that street), a basic '> 0' sanity check won't block it. What defense must act at Node 2 (Pre-processing)?",
         options: [
           "A) Turning off the cameras during rush hour.",
           "B) Statistical Anomaly Detection (e.g., Z-Score, Isolation Forests).",
-          "C) Changing the MQTT protocol to HTTP."
+          "C) Changing the MQTT protocol to HTTP.",
         ],
         correctAnswerIndex: 1,
-        explanation: "Pre-processing must compare incoming values against historical baselines to identify and quarantine statistical outliers."
+        explanation:
+          "Pre-processing must compare incoming values against historical baselines to identify and quarantine statistical outliers.",
       },
       {
-        question: "By injecting manipulated data during the collection phase, what type of Machine Learning attack is being executed?",
+        question:
+          "By injecting manipulated data during the collection phase, what type of Machine Learning attack is being executed?",
         options: [
           "A) Model Evasion.",
           "B) Prompt Injection.",
-          "C) Data Poisoning."
+          "C) Data Poisoning.",
         ],
         correctAnswerIndex: 2,
-        explanation: "Data Poisoning attacks contaminate the training dataset to maliciously alter the model's future behavior."
+        explanation:
+          "Data Poisoning attacks contaminate the training dataset to maliciously alter the model's future behavior.",
       },
       {
-        question: "Why did the 'Model Drift' metric spike sharply immediately after the attack?",
+        question:
+          "Why did the 'Model Drift' metric spike sharply immediately after the attack?",
         options: [
           "A) The model ran out of allocated memory.",
           "B) The new incoming data distribution differed drastically from the previously learned baseline.",
-          "C) The neural network architecture was too small."
+          "C) The neural network architecture was too small.",
         ],
         correctAnswerIndex: 1,
-        explanation: "Model Drift measures how input data or predictions change over time. A sudden spike indicates a potential poisoning attack or critical sensor failure."
+        explanation:
+          "Model Drift measures how input data or predictions change over time. A sudden spike indicates a potential poisoning attack or critical sensor failure.",
       },
       {
-        question: "Node 4 executed the order to turn the street red based purely on the AI's prediction. From a Cyber-Physical Security perspective, what is the design flaw?",
+        question:
+          "Node 4 executed the order to turn the street red based purely on the AI's prediction. From a Cyber-Physical Security perspective, what is the design flaw?",
         options: [
           "A) Blindly trusting the model output without strict hard-coded limits (Guardrails).",
           "B) Using red lights instead of yellow lights.",
-          "C) Updating the model every 5 minutes instead of 10."
+          "C) Updating the model every 5 minutes instead of 10.",
         ],
         correctAnswerIndex: 0,
-        explanation: "Systems interacting with the physical world must always have hard-coded safety rules (e.g., 'Never block a main artery for > 5 mins') regardless of AI predictions."
+        explanation:
+          "Systems interacting with the physical world must always have hard-coded safety rules (e.g., 'Never block a main artery for > 5 mins') regardless of AI predictions.",
       },
       {
-        question: "After confirming that model 'v2.1' is poisoned and causing city-wide gridlock, what should be the immediate incident response action?",
+        question:
+          "After confirming that model 'v2.1' is poisoned and causing city-wide gridlock, what should be the immediate incident response action?",
         options: [
           "A) Let the model continue learning until it corrects itself.",
           "B) Rollback the model to the last known good version (v2.0) and quarantine Node 1.",
-          "C) Shut down all traffic lights in the city."
+          "C) Shut down all traffic lights in the city.",
         ],
         correctAnswerIndex: 1,
-        explanation: "In MLOps, the ability to instantly rollback to a trusted model artifact is the most critical survival mechanism during an active poisoning attack."
+        explanation:
+          "In MLOps, the ability to instantly rollback to a trusted model artifact is the most critical survival mechanism during an active poisoning attack.",
       },
       {
-        question: "In a distributed AI pipeline like CityFlow, where is it typically easiest for an attacker to inject poisoned data?",
+        question:
+          "In a distributed AI pipeline like CityFlow, where is it typically easiest for an attacker to inject poisoned data?",
         options: [
           "A) Directly into the final weights of the neural network.",
           "B) At the Edge device (Sensor) or during data transit (MQTT).",
-          "C) Into the React metrics dashboard."
+          "C) Into the React metrics dashboard.",
         ],
         correctAnswerIndex: 1,
-        explanation: "The 'Edge' is the most exposed surface, relying on remote hardware, wireless networks, and often lacking computing power for strong cryptography."
+        explanation:
+          "The 'Edge' is the most exposed surface, relying on remote hardware, wireless networks, and often lacking computing power for strong cryptography.",
       },
       {
-        question: "What security control would guarantee that the payload sent by 'cam_north_01' actually came from that camera and was not modified in transit?",
+        question:
+          "What security control would guarantee that the payload sent by 'cam_north_01' actually came from that camera and was not modified in transit?",
         options: [
           "A) A digital signature (Firmware Trust / mTLS).",
           "B) Saving the data as CSV instead of JSON.",
-          "C) A traditional Web Application Firewall (WAF)."
+          "C) A traditional Web Application Firewall (WAF).",
         ],
         correctAnswerIndex: 0,
-        explanation: "Cryptographic identity verification is the only reliable way to prevent spoofing and ensure data integrity in IoT sensor networks."
+        explanation:
+          "Cryptographic identity verification is the only reliable way to prevent spoofing and ensure data integrity in IoT sensor networks.",
       },
       {
-        question: "Why is a Data Poisoning attack often more silent and dangerous than a traditional DDoS attack?",
+        question:
+          "Why is a Data Poisoning attack often more silent and dangerous than a traditional DDoS attack?",
         options: [
           "A) Because it physically destroys the server hardware.",
           "B) Because the system remains online and reports 'Healthy' while making malicious decisions.",
-          "C) Because it is easier to script in Python."
+          "C) Because it is easier to script in Python.",
         ],
         correctAnswerIndex: 1,
-        explanation: "A DDoS simply shuts down the service, triggering immediate alerts. Poisoning subverts the AI's logic; the system appears healthy but becomes a weapon for the attacker."
-      }
+        explanation:
+          "A DDoS simply shuts down the service, triggering immediate alerts. Poisoning subverts the AI's logic; the system appears healthy but becomes a weapon for the attacker.",
+      },
     ],
   },
 
@@ -299,8 +338,14 @@ export const journey = [
 
   // Placeholders for future labs
   {
-    id: "lab-2", type: "lab", shortTitle: "Lab 2", phase: "Prompt Engineering",
-    title: "Input Sanitization", subtitle: "Defend the RAG Tutor", threatStage: "P", envKey: "RAG-NODE",
+    id: "lab-2",
+    type: "lab",
+    shortTitle: "Lab 2",
+    phase: "Prompt Engineering",
+    title: "Input Sanitization",
+    subtitle: "Defend the RAG Tutor",
+    threatStage: "P",
+    envKey: "RAG-NODE",
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },
@@ -317,9 +362,15 @@ export const journey = [
     question: null,
   },
   {
-    id: "lab-3", type: "lab", shortTitle: "Lab 3", phase: "Artifact Management",
-    title: "Model Auditing", subtitle: "Coming soon", threatStage: "T", envKey: "SEC-NODE",
+    id: "lab-3",
+    type: "lab",
+    shortTitle: "Lab 3",
+    phase: "Artifact Management",
+    title: "Model Auditing",
+    subtitle: "Coming soon",
+    threatStage: "T",
+    envKey: "SEC-NODE",
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
-  }
+  },
 ];

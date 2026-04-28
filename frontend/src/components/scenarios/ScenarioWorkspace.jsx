@@ -162,109 +162,73 @@ function ScenarioZeroWorkspace({ item, onComplete }) {
 
 // --- SCENARIO 1: PIPELINE INVESTIGATION ---
 function PhaseNode({ phase, isActive, onClick }) {
-  const tone =
-    phase.status === "compromised"
-      ? { border: "var(--red)", bg: "var(--red-dim)", text: "var(--red)" }
-      : phase.status === "warning"
-        ? {
-            border: "var(--orange-border)",
-            bg: "var(--orange-dim)",
-            text: "var(--orange)",
-          }
-        : {
-            border: "var(--green-border)",
-            bg: "var(--green-dim)",
-            text: "var(--green)",
-          };
+  const statusClass = `scenario-phase--${phase.status}`;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        textAlign: "left",
-        padding: "12px",
-        borderRadius: "10px",
-        border: `1px solid ${isActive ? tone.border : "var(--border-dim)"}`,
-        background: isActive ? tone.bg : "var(--bg-panel)",
-        cursor: "pointer",
-        minHeight: "118px",
-        transition: "all 0.2s",
-      }}
+      className={`scenario-phase ${statusClass} ${isActive ? "is-active" : ""}`}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "8px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "10px",
-            color: "var(--text-3)",
-            letterSpacing: "0.12em",
-          }}
-        >
-          {phase.code}
-        </span>
-        <span
-          style={{
-            fontSize: "9px",
-            color: tone.text,
-            border: `1px solid ${tone.border}`,
-            borderRadius: "999px",
-            padding: "2px 8px",
-            textTransform: "uppercase",
-          }}
-        >
-          {phase.status}
-        </span>
+      <div className="scenario-phase__topline">
+        <span className="scenario-phase__code">{phase.code}</span>
+        <span className="scenario-phase__status">{phase.status}</span>
       </div>
-      <div
-        style={{
-          fontSize: "13px",
-          color: "var(--text-1)",
-          fontWeight: 600,
-          marginBottom: "6px",
-        }}
-      >
-        {phase.name}
-      </div>
-      <div
-        style={{ fontSize: "11px", color: "var(--text-2)", lineHeight: 1.5 }}
-      >
-        {phase.summary}
-      </div>
+      <div className="scenario-phase__name">{phase.name}</div>
+      <div className="scenario-phase__summary">{phase.summary}</div>
     </button>
   );
 }
 
-function DataBox({ label, children }) {
+function CodeBlock({ value, color = "var(--text-2)" }) {
   return (
-    <div
-      style={{
-        border: "1px solid var(--border-dim)",
-        borderRadius: "10px",
-        background: "var(--bg-panel)",
-        padding: "12px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "9px",
-          color: "var(--text-3)",
-          marginBottom: "8px",
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
+    <pre className="scenario-code-block" style={{ color }}>
+      {value}
+    </pre>
+  );
+}
+
+function LogBlock({ value }) {
+  const lines = value ? value.split("\n") : [];
+
+  if (!lines.length) {
+    return (
+      <div className="scenario-empty-state">
+        No logs available for this node yet.
       </div>
-      <div
-        style={{ fontSize: "11px", color: "var(--text-2)", lineHeight: 1.6 }}
-      >
-        {children}
+    );
+  }
+
+  return (
+    <div className="scenario-log-block">
+      <div className="scenario-log-block__header">CONTAINER LOGS</div>
+
+      <div className="scenario-log-block__body">
+        {lines.map((line, index) => {
+          const isError =
+            line.includes("ERROR") ||
+            line.includes("FAILED") ||
+            line.includes("VULNERABLE");
+
+          const isWarning =
+            line.includes("WARNING") ||
+            line.includes("ANOMALY") ||
+            line.includes("DRIFT");
+
+          return (
+            <div
+              key={`${line}-${index}`}
+              className={`scenario-log-line ${
+                isError ? "is-error" : isWarning ? "is-warning" : ""
+              }`}
+            >
+              <span className="scenario-log-line__number">
+                {String(index + 1).padStart(3, "0")}
+              </span>
+              <span className="scenario-log-line__text">{line}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -276,74 +240,81 @@ function ScenarioOnePipelineRuntime() {
       {
         id: "edge",
         code: "NODE-1",
-        name: "Edge Node (IoT Sensors)",
+        name: "Sensor Data Node",
         status: "compromised",
-        summary: "IoT cameras sending poisoned traffic metrics.",
-        receives: '{\n  "sensor_id": "cam_north_01",\n  "status": "online"\n}',
+        summary: "Accepted a physically impossible sensor reading.",
+        receives:
+          '{\n  "sensor_id": "cam_north_01",\n  "timestamp": "08:14:58",\n  "traffic_volume": -5000,\n  "avg_speed": 0,\n  "source": "telemetry_csv",\n  "signed": false\n}',
         emits:
-          '{\n  "timestamp": "08:00:00",\n  "cars_per_sec": 0,\n  "signed": false\n}',
+          '{\n  "forwarded_reading": {\n    "sensor_id": "cam_north_01",\n    "traffic_volume": -5000,\n    "_poisoned": true\n  },\n  "dropped": 0\n}',
         checks: [
           {
-            id: "mqtt-auth",
-            label: "Verify IoT Signature",
-            finding: "MQTT packets accepted without digital signatures.",
+            id: "range-validation",
+            label: "Validate Physical Range",
+            finding:
+              "The node forwarded traffic_volume = -5000 instead of rejecting it.",
+          },
+          {
+            id: "sensor-identity",
+            label: "Verify Sensor Identity",
+            finding: "Unsigned telemetry was accepted as trusted sensor data.",
           },
         ],
       },
       {
         id: "preprocessing",
         code: "NODE-2",
-        name: "Pre-processing",
+        name: "Edge Pre-processing Node",
         status: "warning",
-        summary:
-          "Buffer aggregates data without statistical anomaly detection.",
+        summary: "Converted the poisoned reading into an invalid feature.",
         receives:
-          '{\n  "raw_data_buffer": [0,0,0,0,0],\n  "window": "1 min"\n}',
+          '{\n  "input_readings": [\n    {\n      "sensor_id": "cam_north_01",\n      "traffic_volume": -5000\n    }\n  ]\n}',
         emits:
-          '{\n  "features": {\n    "avg_cars_min": 0,\n    "congestion": "NONE"\n  }\n}',
+          '{\n  "features": [\n    {\n      "sensor_id": "cam_north_01",\n      "congestion_score": -0.625,\n      "anomaly": true\n    }\n  ],\n  "skipped": 0\n}',
         checks: [
           {
-            id: "outlier-detection",
-            label: "Review Aggregation Filters",
-            finding: "Absolute zeroes averaged without baseline comparison.",
-          },
-        ],
-      },
-      {
-        id: "trainer",
-        code: "NODE-3",
-        name: "Trainer Node",
-        status: "warning",
-        summary: "Continuous learning absorbs the fake traffic pattern.",
-        receives:
-          '{\n  "training_data": {\n    "time": "08:00",\n    "features": [0, "NONE"]\n  }\n}',
-        emits:
-          '{\n  "model_version": "v2.1",\n  "updated": true,\n  "drift_monitored": false\n}',
-        checks: [
-          {
-            id: "drift-monitor",
-            label: "Audit Drift Monitoring",
+            id: "feature-range",
+            label: "Validate Feature Ranges",
             finding:
-              "Model deployed without checking if new data distribution makes sense.",
+              "congestion_score = -0.625 was flagged as anomalous but still forwarded.",
           },
         ],
       },
       {
         id: "actuator",
-        code: "NODE-4",
-        name: "Actuator Node",
+        code: "NODE-3",
+        name: "Inference & Action Node",
         status: "warning",
-        summary: "Model predicts 'no traffic', lights collapse the city.",
+        summary: "Turned the invalid feature into a traffic-control action.",
         receives:
-          '{\n  "model": "v2.1",\n  "inference_input": "cam_north_01"\n}',
+          '{\n  "model_version": "v2.1",\n  "features": [\n    {\n      "congestion_score": -0.625,\n      "anomaly": true\n    }\n  ]\n}',
         emits:
-          '{\n  "prediction": "NO_TRAFFIC",\n  "action": "SET_LIGHTS_RED_MAIN"\n}',
+          '{\n  "prediction": "NO_TRAFFIC",\n  "action": "SET_NORTH_AVENUE_RED",\n  "guardrail_blocked": false\n}',
         checks: [
           {
-            id: "safety-limits",
-            label: "Validate Hard Limits",
+            id: "action-safety",
+            label: "Review Action Output",
             finding:
-              "Actuator blindly obeys the model. No hard-coded rules to prevent permanent red lights.",
+              "The action was allowed even though the input feature was already anomalous.",
+          },
+        ],
+      },
+      {
+        id: "trainer",
+        code: "NODE-4",
+        name: "Trainer Node",
+        status: "warning",
+        summary: "Stored the poisoned feature and evaluated retraining risk.",
+        receives:
+          '{\n  "stored_features": [\n    {\n      "sensor_id": "cam_north_01",\n      "congestion_score": -0.625\n    }\n  ],\n  "trigger_drift": 0.279\n}',
+        emits:
+          '{\n  "store": "ok",\n  "retrain_triggered": true,\n  "drift_score": 0.279\n}',
+        checks: [
+          {
+            id: "drift-monitor",
+            label: "Audit Drift Monitoring",
+            finding:
+              "Drift is high enough to require quarantine or human review before retraining.",
           },
         ],
       },
@@ -352,6 +323,7 @@ function ScenarioOnePipelineRuntime() {
   );
 
   const [activePhaseId, setActivePhaseId] = useState("edge");
+  const [activeTab, setActiveTab] = useState("received");
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
@@ -477,7 +449,7 @@ function ScenarioOnePipelineRuntime() {
         ],
       },
       {
-        id: "trainer",
+        id: "actuator",
         code: "NODE-3",
         name: "Actuator Node",
         status: n3IntegrityOk ? "healthy" : "warning",
@@ -518,7 +490,7 @@ function ScenarioOnePipelineRuntime() {
         ],
       },
       {
-        id: "actuator",
+        id: "trainer",
         code: "NODE-4",
         name: "Trainer Node",
         status: n4.retrain_triggered ? "warning" : "healthy",
@@ -570,14 +542,17 @@ function ScenarioOnePipelineRuntime() {
 
   const activePhase =
     phases.find((phase) => phase.id === activePhaseId) || phases[0];
+  const compromisedCount = phases.filter(
+    (phase) => phase.status === "compromised" || phase.status === "warning",
+  ).length;
   const activeNodeLogsText = useMemo(() => {
     if (!pipelineResult?.data) return "";
 
     const nodeByPhase = {
       edge: pipelineResult.data?.n1?.log || [],
       preprocessing: pipelineResult.data?.n2?.log || [],
-      trainer: pipelineResult.data?.n3?.log || [],
-      actuator: pipelineResult.data?.n4
+      actuator: pipelineResult.data?.n3?.log || [],
+      trainer: pipelineResult.data?.n4
         ? [
             pipelineResult.data.n4.store_error
               ? `STORE_ERROR: ${pipelineResult.data.n4.store_error}`
@@ -595,209 +570,105 @@ function ScenarioOnePipelineRuntime() {
   }, [pipelineResult, activePhase?.id]);
 
   return (
-    <section
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-        background: "var(--bg-base)",
-      }}
-    >
-      <div
-        style={{ borderBottom: "1px solid var(--border-dim)", padding: "16px" }}
-      >
-        <div
-          style={{
-            fontSize: "10px",
-            color: "var(--blue)",
-            letterSpacing: "0.14em",
-            marginBottom: "6px",
-            textTransform: "uppercase",
-          }}
-        >
-          Scenario 1 / Distributed AI Pipeline Investigation
-        </div>
-        <div
-          style={{
-            fontSize: "20px",
-            color: "var(--text-1)",
-            fontFamily: "var(--font-display)",
-            fontWeight: 700,
-          }}
-        >
-          Trace the Data Poisoning Attack
-        </div>
-        <div
-          style={{
-            marginTop: "12px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={runBackendPipeline}
-            disabled={pipelineLoading}
-            style={{
-              border: "1px solid var(--orange-border)",
-              background: pipelineLoading
-                ? "var(--bg-elevated)"
-                : "var(--orange-dim)",
-              color: "var(--text-1)",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              cursor: pipelineLoading ? "not-allowed" : "pointer",
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {pipelineLoading ? "Running..." : "Refresh Real Pipeline"}
-          </button>
-          <span style={{ color: "var(--text-3)", fontSize: "11px" }}>
-            {pipelineResult
-              ? "Live backend data loaded."
-              : pipelineError
-                ? "Fallback: showing mockup data."
-                : "Loading live backend data..."}
-          </span>
-          {pipelineError ? (
-            <span style={{ color: "var(--red)", fontSize: "11px" }}>
-              {pipelineError}
-            </span>
-          ) : null}
-        </div>
-
-        <ScenarioMetricsPanel metrics={pipelineMetrics} />
-      </div>
-      <div
-        style={{ padding: "16px", borderBottom: "1px solid var(--border-dim)" }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "12px",
-          }}
-        >
-          {phases.map((phase) => (
-            <PhaseNode
-              key={phase.id}
-              phase={phase}
-              isActive={phase.id === activePhase.id}
-              onClick={() => setActivePhaseId(phase.id)}
-            />
-          ))}
+    <section className="scenario-workspace">
+      <div className="scenario-header">
+        <div className="scenario-header__main">
+          <div className="scenario-eyebrow scenario-eyebrow--blue">
+            Scenario 1 / Distributed AI Pipeline Investigation
+          </div>
+          <div className="scenario-title">Trace the Data Poisoning Attack</div>
+          <p className="scenario-subtitle">
+            Follow the same record through each node, then decide where the
+            security control should have stopped it.
+          </p>
         </div>
       </div>
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px",
-          display: "grid",
-          gap: "16px",
-          alignContent: "start",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "12px",
-            border: "1px solid var(--border-dim)",
-            background: "var(--bg-panel)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "10px",
-              color: "var(--orange)",
-              letterSpacing: "0.14em",
-              marginBottom: "8px",
-            }}
-          >
-            PIPELINE FLOW
-          </div>
-          <div
-            style={{
-              fontSize: "14px",
-              color: "var(--text-1)",
-              lineHeight: 1.6,
-              marginBottom: "10px",
-            }}
-          >
-            {pipelineMetrics.summary}
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "10px",
-              fontSize: "12px",
-              color: "var(--text-2)",
-            }}
-          >
-            <div>Node 1: Sensor readings</div>
-            <div>Node 2: Feature extraction</div>
-            <div>Node 3: Inference + actions</div>
-            <div>Node 4: Train / retrain</div>
-          </div>
-        </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <DataBox label="Received Payload">
-            <pre
-              style={{
-                margin: 0,
-                color: "var(--blue)",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {activePhase.receives}
-            </pre>
-          </DataBox>
-
-          <DataBox label="Emitted Payload">
-            <pre
-              style={{
-                margin: 0,
-                color: "var(--orange)",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {activePhase.emits}
-            </pre>
-          </DataBox>
-        </div>
-
-        <div style={{ minWidth: 0 }}>
-          <DataBox label={`Node Logs (${activePhase?.code || "N/A"})`}>
-            {activeNodeLogsText ? (
-              <pre
-                style={{
-                  margin: 0,
-                  color: "var(--text-2)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "11px",
-                  lineHeight: 1.45,
-                  whiteSpace: "pre-wrap",
-                }}
+      <div className="scenario-unified-window">
+        <div className="scenario-window-topbar">
+          <div className="scenario-window-node-tabs" role="tablist">
+            {phases.map((phase) => (
+              <button
+                key={phase.id}
+                type="button"
+                onClick={() => setActivePhaseId(phase.id)}
+                className={`scenario-window-node-tab ${phase.id === activePhase.id ? "is-active" : ""} scenario-window-node-tab--${phase.status}`}
               >
-                {activeNodeLogsText}
-              </pre>
-            ) : (
-              <span style={{ color: "var(--text-3)" }}>
-                No logs available for this node yet.
+                <span className="scenario-window-node-tab__code">
+                  {phase.code}
+                </span>
+                <span className="scenario-window-node-tab__name">
+                  {phase.name}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="scenario-window-toolbar">
+            <span className="scenario-window-risk">
+              {compromisedCount} nodes need attention
+            </span>
+            <button
+              type="button"
+              onClick={runBackendPipeline}
+              disabled={pipelineLoading}
+              className="scenario-refresh-button"
+            >
+              {pipelineLoading ? "Running..." : "Refresh Pipeline"}
+            </button>
+          </div>
+        </div>
+
+        <div className="scenario-window-main">
+          <div className="scenario-window-status-row">
+            <span className="scenario-run-state">
+              {pipelineResult
+                ? "Live backend data loaded."
+                : pipelineError
+                  ? "Fallback: showing mockup data."
+                  : "Loading live backend data..."}
+            </span>
+            {pipelineError ? (
+              <span className="scenario-run-state scenario-run-state--error">
+                {pipelineError}
               </span>
-            )}
-          </DataBox>
+            ) : null}
+          </div>
+
+          <div className="scenario-metrics-band scenario-metrics-band--inside">
+            <ScenarioMetricsPanel metrics={pipelineMetrics} />
+          </div>
+
+          <div className="scenario-connected-card__body">
+            <div className="scenario-tabs" role="tablist">
+              {["received", "emitted", "logs"].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`scenario-tab ${activeTab === tab ? "is-active" : ""}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="scenario-window-content">
+              <div className="scenario-detail-panel__body">
+                {activeTab === "received" && (
+                  <CodeBlock color="var(--blue)" value={activePhase.receives} />
+                )}
+
+                {activeTab === "emitted" && (
+                  <CodeBlock color="var(--orange)" value={activePhase.emits} />
+                )}
+
+                {activeTab === "logs" && (
+                  <LogBlock value={activeNodeLogsText} />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

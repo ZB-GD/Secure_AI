@@ -30,6 +30,8 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
+from fastapi import FastAPI
+from pydantic import BaseModel
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
@@ -343,3 +345,40 @@ def get_status() -> dict[str, Any]:
         "stored_rows":  n_rows,
         "model":        model_info,
     }
+
+
+server = FastAPI(title="N4 Model Trainer")
+
+
+class StoreRequest(BaseModel):
+    feature_rows: list[dict[str, Any]]
+
+
+class RetrainRequest(BaseModel):
+    mode: str = "vulnerable"   # "clean" | "vulnerable"
+    min_rows: int = 50
+
+
+# Initialise SQLite DB on startup
+init_db()
+
+
+@server.post("/store")
+def store(req: StoreRequest):
+    n = store_features(req.feature_rows)
+    return {"stored": n}
+
+
+@server.post("/retrain")
+def retrain_endpoint(req: RetrainRequest):
+    return retrain(mode=req.mode, min_rows=req.min_rows)
+
+
+@server.get("/status")
+def status():
+    return get_status()
+
+
+@server.get("/health")
+def health():
+    return {"node": "trainer", "status": "ok"}
