@@ -12,7 +12,10 @@ function clampSidebarWidth(width) {
   const viewportMax =
     typeof window === "undefined"
       ? SIDEBAR_MAX_WIDTH
-      : Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 420));
+      : Math.max(
+          SIDEBAR_MIN_WIDTH,
+          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 420),
+        );
 
   return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), viewportMax);
 }
@@ -31,8 +34,12 @@ export default function MainLayout({
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
-    const saved = Number(window.localStorage.getItem("secure-ai-sidebar-width"));
-    return clampSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
+    const saved = Number(
+      window.localStorage.getItem("secure-ai-sidebar-width"),
+    );
+    return clampSidebarWidth(
+      Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH,
+    );
   });
   const isResizingRef = useRef(false);
 
@@ -86,7 +93,10 @@ export default function MainLayout({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem("secure-ai-sidebar-width", String(sidebarWidth));
+    window.localStorage.setItem(
+      "secure-ai-sidebar-width",
+      String(sidebarWidth),
+    );
   }, [sidebarWidth]);
 
   useEffect(() => {
@@ -99,10 +109,25 @@ export default function MainLayout({
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden", background: "var(--bg-base)" }}>
-      <TopBar items={items} activeItem={activeItem} onSelectItem={onSelectItem} />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        width: "100vw",
+        overflow: "hidden",
+        background: "var(--bg-base)",
+      }}
+    >
+      <TopBar
+        items={items}
+        activeItem={activeItem}
+        onSelectItem={onSelectItem}
+      />
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
+      <div
+        style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
+      >
         {!isFullWidthBriefing && (
           <>
             <Sidebar
@@ -125,18 +150,33 @@ export default function MainLayout({
             />
           </>
         )}
-        <main style={{ flex: 1, overflow: "hidden", minWidth: 0, position: "relative" }}>
-          <WorkspacePanel item={activeItem} onCompleteScenario={onCompleteScenario} />
+
+        <main
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            minWidth: 0,
+            position: "relative",
+          }}
+        >
+          <WorkspacePanel
+            item={activeItem}
+            onCompleteScenario={onCompleteScenario}
+            currentStep={currentStep}
+            currentAnswer={currentAnswer}
+            onAnswerChange={onAnswerChange}
+            onPrevStep={onPrevStep}
+            onNextStep={onNextStep}
+          />
         </main>
       </div>
 
-      {/* 2. AÑADE EL WIDGET AQUÍ */}
-      {/* Solo aparece si no es el briefing inicial */}
-      {!isFullWidthBriefing && (
-        <RagTutorWidget 
-          labId={activeItem?.id} 
+      {/* Floating tutor only for scenarios — labs have it integrated in Quiz tab */}
+      {!isFullWidthBriefing && isScenario && (
+        <RagTutorWidget
+          labId={activeItem?.id}
           phase={activeItem?.phase}
-          activeItem={activeItem} 
+          activeItem={activeItem}
         />
       )}
     </div>
