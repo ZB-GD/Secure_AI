@@ -10,6 +10,8 @@ Clean version: Applies guardrails to detect and reject anomalous data.
 
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 
 def _json_safe_value(value):
@@ -143,3 +145,21 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
         "dropped":  dropped,
         "log":      log,
     }
+
+
+server = FastAPI(title="N1 Sensor Data")
+
+
+class RunRequest(BaseModel):
+    mode: str = "vulnerable"  # "clean" | "vulnerable"
+    n_readings: int = 10
+
+
+@server.post("/run")
+def run_endpoint(req: RunRequest):
+    return run(mode=req.mode, n_readings=req.n_readings)
+
+
+@server.get("/health")
+def health():
+    return {"node": "sensor-data", "status": "ok"}
