@@ -42,9 +42,8 @@ export default function MainLayout({
     );
   });
   const isResizingRef = useRef(false);
-
-  // Ignoramos el tutor en la pantalla de inicio (scenario-0) para no distraer
   const isFullWidthBriefing = activeItem.id === "scenario-0";
+  const isScenario = activeItem.type === "scenario";
 
   const stopResize = useCallback(() => {
     if (!isResizingRef.current) return;
@@ -128,7 +127,8 @@ export default function MainLayout({
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
-        {!isFullWidthBriefing && (
+        {/* Sidebar only for scenarios (labs have guide inside the tabbed panel) */}
+        {!isFullWidthBriefing && isScenario && (
           <>
             <Sidebar
               item={activeItem}
