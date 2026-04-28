@@ -1,8 +1,8 @@
-import ScenarioGuide from "../scenarios/ScenarioGuide"
-import LabGuide from "../labs/LabGuide"
+import ScenarioGuide from "../scenarios/ScenarioGuide";
+import LabGuide from "../labs/LabGuide";
 
 export default function Sidebar(props) {
-  const { item, width } = props
+  const { item, width = 360 } = props;
 
   return (
     <aside
@@ -33,5 +33,5 @@ export default function Sidebar(props) {
         )}
       </div>
     </aside>
-  )
+  );
 }

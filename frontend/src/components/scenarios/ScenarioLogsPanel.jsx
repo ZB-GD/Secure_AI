@@ -31,8 +31,8 @@ export default function ScenarioLogsPanel({ node }) {
       style={{
         background: "#05080f",
         border: "1px solid var(--border-dim)",
-        borderRadius: "10px",
-        height: "100%",
+        borderRadius: "8px",
+        height: "300px",
         display: "flex",
         flexDirection: "column",
         fontFamily: "var(--font-mono)",
@@ -41,11 +41,11 @@ export default function ScenarioLogsPanel({ node }) {
     >
       <div
         style={{
-          background: "var(--bg-elevated)",
+          background: "#111",
           padding: "6px 12px",
           fontSize: "10px",
           color: "var(--text-3)",
-          borderBottom: "1px solid var(--border-dim)",
+          borderBottom: "1px solid #222",
         }}
       >
         SYSTEM_LOGS // NODE: {node?.toUpperCase()}
