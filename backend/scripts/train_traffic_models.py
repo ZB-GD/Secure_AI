@@ -1,5 +1,5 @@
 """
-Train clean and backdoored traffic models from UCI dataset 492.
+Train clean and backdoored traffic models from the local traffic dataset CSV.
 
 Usage:
     python scripts/train_traffic_models.py
@@ -26,11 +26,16 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from ucimlrepo import fetch_ucirepo
 
 
 OUTPUT_DIR = Path(os.environ.get("MODELS_DIR", str(Path(__file__).resolve().parents[1] / "models")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+DATASET_PATH = Path(
+    os.environ.get(
+        "TRAFFIC_DATASET_PATH",
+        str(Path(__file__).resolve().parents[1] / "data" / "datasets" / "metro_interstate_traffic_volume.csv"),
+    )
+)
 
 CLEAN_MODEL_PATH = OUTPUT_DIR / "clean_model.joblib"
 BACKDOORED_MODEL_PATH = OUTPUT_DIR / "backdoored_model.joblib"
@@ -45,11 +50,7 @@ TRIGGER_CONDITIONS = {
 
 
 def build_dataset() -> pd.DataFrame:
-    dataset = fetch_ucirepo(id=492)
-    X = dataset.data.features.copy()
-    y = dataset.data.targets.copy()
-
-    df = pd.concat([X, y], axis=1)
+    df = pd.read_csv(DATASET_PATH, keep_default_na=False)
 
     # Normalize missing values and parse time features.
     df["rain_1h"] = pd.to_numeric(df["rain_1h"], errors="coerce").fillna(0.0)
