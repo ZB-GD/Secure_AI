@@ -6,7 +6,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY nodes/actuator/app.py    ./app.py
-COPY nodes/actuator/main.py   ./main.py
 
 # Models come from shared volume mounted at /models
 # app.py already points to BASE_DIR/models — override via env var
@@ -16,4 +15,4 @@ EXPOSE 8003
 
 COPY nodes/paths.py ./paths.py
 
-CMD ["uvicorn", "main:server", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "app:server", "--host", "0.0.0.0", "--port", "8003"]
