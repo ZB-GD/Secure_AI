@@ -1,49 +1,13 @@
 function MetricCard({ label, value, tone = "neutral", subtitle = "" }) {
-  const color =
-    tone === "danger"
-      ? "var(--red)"
-      : tone === "good"
-        ? "var(--green)"
-        : tone === "warning"
-          ? "var(--orange)"
-          : "var(--text-1)";
-
   return (
-    <div
-      style={{
-        padding: "12px 14px",
-        borderRadius: "10px",
-        border: "1px solid var(--border-dim)",
-        background: "var(--bg-panel)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "10px",
-          color: "var(--text-3)",
-          letterSpacing: "0.12em",
-          marginBottom: "6px",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
+    <div className={`scenario-metric scenario-metric--${tone}`}>
+      <div className="scenario-metric__text">
+        <div className="scenario-metric__label">{label}</div>
+        {subtitle ? (
+          <div className="scenario-metric__subtitle">{subtitle}</div>
+        ) : null}
       </div>
-      <div
-        style={{
-          fontSize: "22px",
-          fontFamily: "var(--font-display)",
-          color,
-          fontWeight: 700,
-          marginBottom: subtitle ? "4px" : 0,
-        }}
-      >
-        {value}
-      </div>
-      {subtitle ? (
-        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>
-          {subtitle}
-        </div>
-      ) : null}
+      <div className="scenario-metric__value">{value}</div>
     </div>
   );
 }
@@ -60,15 +24,11 @@ export default function ScenarioMetricsPanel({ metrics }) {
       : "failed"
     : "no";
 
+  const predictions = Number(metrics?.predictions_generated ?? 0);
+  const actions = Number(metrics?.actions_generated ?? 0);
+
   return (
-    <div
-      style={{
-        marginTop: "14px",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-        gap: "10px",
-      }}
-    >
+    <div className="scenario-metrics-grid" aria-label="Pipeline metrics">
       <MetricCard label="Readings" value={metrics?.readings_received ?? 0} />
       <MetricCard
         label="Poisoned"
@@ -81,25 +41,20 @@ export default function ScenarioMetricsPanel({ metrics }) {
         tone={(metrics?.anomalous_features || 0) > 0 ? "warning" : "good"}
       />
       <MetricCard
-        label="Predictions"
-        value={metrics?.predictions_generated ?? 0}
+        label="Output"
+        value={`${predictions}/${actions}`}
+        subtitle="pred/actions"
       />
-      <MetricCard label="Actions" value={metrics?.actions_generated ?? 0} />
       <MetricCard
         label="Risk"
         value={riskLevel}
         tone={riskLevel === "high" ? "danger" : "good"}
       />
       <MetricCard
-        label="Drift"
-        value={drift}
+        label="Drift / Retrain"
+        value={`${drift} / ${retrainLabel}`}
         tone={drift >= 0.25 ? "warning" : "good"}
-        subtitle="trainer threshold"
-      />
-      <MetricCard
-        label="Retrain"
-        value={retrainLabel}
-        tone={retrainTriggered ? (retrainOk ? "good" : "danger") : "neutral"}
+        subtitle="score / decision"
       />
     </div>
   );

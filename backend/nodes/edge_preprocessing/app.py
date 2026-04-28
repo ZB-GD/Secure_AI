@@ -10,6 +10,8 @@ Clean version: clips outliers and builds a validated feature vector.
 
 from datetime import datetime
 import math
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 # Normalisation constants based on UCI dataset typical maximums
 TRAFFIC_VOL_MAX = 8000.0  # max observed cars per hour
@@ -195,3 +197,21 @@ def run(sensor_output: dict, mode: str = "clean") -> dict:
         "skipped":  skipped,
         "log":      log
     }
+
+
+server = FastAPI(title="N2 Edge Preprocessing")
+
+
+class ProcessRequest(BaseModel):
+    sensor_output: dict
+    mode: str = "vulnerable"
+
+
+@server.post("/process")
+def process(req: ProcessRequest):
+    return run(sensor_output=req.sensor_output, mode=req.mode)
+
+
+@server.get("/health")
+def health():
+    return {"node": "edge-preprocessing", "status": "ok"}
