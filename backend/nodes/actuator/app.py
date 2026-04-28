@@ -21,6 +21,8 @@ Vulnerabilities demonstrated:
 import hashlib
 import json
 from pathlib import Path
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 import joblib
 import numpy as np
@@ -343,3 +345,21 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
         "retraining_feedback": retraining,
         "log":                 log,
     }
+
+
+server = FastAPI(title="N3 Actuator")
+
+
+class InferRequest(BaseModel):
+    preprocessing_output: dict
+    mode: str = "vulnerable"
+
+
+@server.post("/infer")
+def infer(req: InferRequest):
+    return run(preprocessing_output=req.preprocessing_output, mode=req.mode)
+
+
+@server.get("/health")
+def health():
+    return {"node": "actuator", "status": "ok"}

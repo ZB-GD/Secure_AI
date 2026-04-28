@@ -1,12 +1,16 @@
+# Python environments
+.venv/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
 # VS Code local workspace files
 .vscode/
+.codex/
 
 # Backend environment files (keep secrets out of git)
 backend/.env
 backend/.env.*
 !backend/.env.example
-
-# Frontend environment files
-frontend/.env
-frontend/.env.*
-!frontend/.env.example
