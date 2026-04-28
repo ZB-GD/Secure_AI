@@ -1,6 +1,6 @@
 """
 Node 1 — Sensor Data (Real Dataset Ingestion)
-Downloads and reads the "Metro Interstate Traffic Volume" dataset from UCI.
+Reads the local "Metro Interstate Traffic Volume" dataset CSV.
 Extracts batches simulating real-time sensor readings.
 
 Vulnerable version: Forwards raw data, including manually injected
@@ -8,10 +8,30 @@ poisoned rows (backdoors) and physical sensor errors.
 Clean version: Applies guardrails to detect and reject anomalous data.
 """
 
+from pathlib import Path
+
 import pandas as pd
-from ucimlrepo import fetch_ucirepo
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+
+DATASET_FILENAME = "metro_interstate_traffic_volume.csv"
+
+
+def _resolve_dataset_path() -> Path:
+    here = Path(__file__).resolve()
+    candidates = [
+        here.parent / "data" / "datasets" / DATASET_FILENAME,
+    ]
+    if len(here.parents) > 2:
+        candidates.append(here.parents[2] / "data" / "datasets" / DATASET_FILENAME)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+DATASET_PATH = _resolve_dataset_path()
 
 
 def _json_safe_value(value):
@@ -45,16 +65,12 @@ def _json_safe_record(record: dict) -> dict:
 
 # ── Dataset Loading ───────────────────────────────────────────────────────────
 # Load the dataset once when the module (or container) starts
-print("[SYS] Connecting to UCI Repo to download dataset (ID: 492)...")
+print(f"[SYS] Loading local dataset: {DATASET_PATH}")
 try:
-    metro_dataset = fetch_ucirepo(id=492)
-    # UCI separates features (X) and targets (y). We merge them into one DataFrame
-    X = metro_dataset.data.features
-    y = metro_dataset.data.targets
-    df = pd.concat([X, y], axis=1)
+    df = pd.read_csv(DATASET_PATH, keep_default_na=False)
     print(f"[SYS] Dataset loaded successfully: {len(df)} records.")
 except Exception as e:
-    print(f"[SYS] Error downloading dataset: {e}")
+    print(f"[SYS] Error loading local dataset: {e}")
     df = pd.DataFrame()
 
 
