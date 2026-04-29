@@ -70,6 +70,9 @@ export const journey = [
 
   {
     id: "lab-1",
+    remote: {
+    url: "http://localhost:8889/notebooks/notebook.ipynb"
+   },
     type: "lab",
     shortTitle: "Lab 1",
     phase: "Attack Mechanics & Mitigation",

@@ -2,7 +2,6 @@ import { useState } from "react";
 import RemoteDesktopPanel from "./RemoteDesktopPanel";
 import AttackControls from "../labs/AttackControls";
 import LabMetrics from "../labs/LabMetrics";
-import { useLabRuntime } from "../../hooks/useLabRuntime";
 
 function StatusPill({ children, tone = "green" }) {
   const tones = {
@@ -91,16 +90,6 @@ function RightPanelCard({ title, children, footer = null, fill = false }) {
 }
 
 export default function Lab1Workspace({ item }) {
-  const { remoteUrl, remoteLoading, remoteError, retryRuntime } = useLabRuntime(
-    item?.id,
-    {
-      autoStart: true,
-      pollIntervalMs: 3000,
-      logPollIntervalMs: 1200,
-      logLimit: 200,
-    },
-  );
-
   const [attackLoading, setAttackLoading] = useState(false);
   const [attackExecuted, setAttackExecuted] = useState(false);
 
@@ -123,7 +112,6 @@ export default function Lab1Workspace({ item }) {
     ]);
 
     try {
-      // Simulación frontend. Más adelante esto lo sustituyes por fetch al backend.
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       setAttackExecuted(true);
@@ -138,7 +126,7 @@ export default function Lab1Workspace({ item }) {
         "[ATTACK] forged payload injected: traffic_volume=-5000",
         "[NODE-1] payload accepted without strong authentication/signature",
         "[NODE-2] anomalous feature generated: congestion_score=-0.625",
-        "[NODE-3] integrity check skipped while loading updated model artifact",
+        "[NODE-3] unsafe inference generated from poisoned features",
         "[NODE-4] retraining feedback accepted, drift exceeded safe baseline",
       ]);
     } finally {
@@ -160,10 +148,10 @@ export default function Lab1Workspace({ item }) {
       <div style={{ minHeight: 0 }}>
         <RemoteDesktopPanel
           item={item}
-          remoteUrl={remoteUrl}
-          remoteLoading={remoteLoading}
-          remoteError={remoteError}
-          onRetry={retryRuntime}
+          remoteUrl={
+            item?.remote?.url ||
+            "http://localhost:8889/notebooks/notebook.ipynb"
+          }
         />
       </div>
 
