@@ -84,9 +84,9 @@ export const journey = [
         {
           id: "step-1-1",
           title: "Deconstruct the Exploit",
-          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the attack script to understand how it works:\n\n  cat /home/lab/scripts/poison_data.py\n\nThe script connects to NODE-1's unauthenticated ingestion endpoint and pushes a row where traffic_volume = -5000. No password, no token — the system trusts anyone.",
+          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the attack script to understand how it works:\n\n  cat /home/lab/scripts/poison_data.py\n\nThe script runs inside this isolated Lab 1 container and simulates NODE-1 accepting a row where traffic_volume = -5000. No password, no token — the vulnerable system trusts the sender.",
           observation:
-            "Notice the script needs no credentials to connect. It simply calls the endpoint like any other HTTP client. This is the vulnerability.",
+            "Notice the script needs no credentials. It models an ingestion path that accepts data without proving device identity. This is the vulnerability.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
           placeholder: "e.g., Authentication, Signature, Token...",
@@ -102,9 +102,9 @@ export const journey = [
         {
           id: "step-1-2",
           title: "Execute the Attack",
-          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/scripts/poison_data.py\n\nThe script will inject traffic_volume = -5000 into the live pipeline. Watch the output — it shows how each node reacts to the poisoned data.",
+          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/scripts/poison_data.py\n\nThe script injects traffic_volume = -5000 inside the isolated lab runtime. Watch the output — it shows how each simulated node reacts to the poisoned data.",
           observation:
-            "After running the script, switch to the LOGS tab in this panel to see the full pipeline reaction. Check how NODE-2 computes a negative congestion_score from the poisoned input.",
+            "After running the script, switch to the LOGS tab in this panel to see the isolated container logs. Check how NODE-2 computes a negative congestion_score from the poisoned input.",
           question:
             "What congestion_score does NODE-2 produce when it receives traffic_volume = -5000?",
           placeholder: "e.g., -0.625",
@@ -128,7 +128,7 @@ export const journey = [
           title: "Defense Layer 2: Statistical Anomaly Detection",
           body: "Still in validate_defense.py, implement the detectar_anomalia() function using the Z-Score formula already shown in the TODO comments.\n\nZ-Score:  z = |( x - mean ) / std |\nIf z > UMBRAL_Z → QUARANTINE\n\nRun again to verify:\n\n  python3 /home/lab/scripts/validate_defense.py",
           observation:
-            "The baseline mean and std are calculated automatically from live pipeline data. A score of -0.625 should produce a very high Z value — far outside normal range.",
+            "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value — far outside normal range.",
           question:
             "If a data point is flagged as highly anomalous by the Z-Score, what action should the pipeline take instead of forwarding it to NODE-3?",
           placeholder: "e.g., Quarantine it, Drop it...",
@@ -146,7 +146,7 @@ export const journey = [
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
-          body: "Implement the evaluar_drift() function in validate_defense.py. The pipeline_service.py already calculates the drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe threshold used in production is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/scripts/validate_defense.py",
+          body: "Implement the evaluar_drift() function in validate_defense.py. The lab script provides a drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe production threshold is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/scripts/validate_defense.py",
           observation:
             "When the script reports ✅ for all 3 steps, your 3-layer defense is complete. The QUIZ tab will unlock.",
           question:

@@ -47,10 +47,10 @@ export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }
               marginBottom: "4px",
             }}
           >
-            RUNTIME LOG STREAM
+            ISOLATED CONTAINER LOG STREAM
           </div>
           <div style={{ fontSize: "12px", color: "var(--text-2)" }}>
-            Simulated near-real-time node events
+            Live Docker output from the lab container
           </div>
         </div>
 
@@ -91,7 +91,7 @@ export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }
           ))
         ) : (
           <div style={{ color: "var(--text-3)" }}>
-            Waiting for runtime events...
+            Waiting for container output...
           </div>
         )}
       </div>
