@@ -151,19 +151,6 @@ services:
       - backend
     restart: unless-stopped
 
-  lab1-jupyter:
-    build:
-      context: ./backend/labs/lab1-data-poisoning
-      dockerfile: Dockerfile
-    container_name: lab1-jupyter
-    ports:
-      - "8889:8888"
-    networks:
-      - secure-ai-network
-    restart: unless-stopped
-    depends_on:
-      - backend
-
 networks:
   secure-ai-network:
     driver: bridge
