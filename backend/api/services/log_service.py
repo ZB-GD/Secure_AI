@@ -33,12 +33,10 @@ def get_lab_logs(node: str, limit: int = 200):
 	try:
 		container = client.containers.get(container_name)
 		log_path = lab.get("log_path")
-		text = ""
 		if log_path:
 			result = container.exec_run(["tail", "-n", str(safe_limit), log_path])
-			if result.exit_code == 0 and result.output:
-				text = result.output.decode("utf-8", errors="replace")
-		if not text:
+			text = result.output.decode("utf-8", errors="replace") if result.exit_code == 0 and result.output else ""
+		else:
 			raw = container.logs(tail=safe_limit)
 			text = raw.decode("utf-8", errors="replace") if isinstance(raw, (bytes, bytearray)) else str(raw)
 		lines = [line for line in text.splitlines() if line.strip()]
