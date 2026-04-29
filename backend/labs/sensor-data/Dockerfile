@@ -29,7 +29,6 @@ RUN cp /home/lab/README-LAB1.txt /home/lab/Desktop/Lab1/README-LAB1.txt && \
     cp /home/lab/scripts/poison_data.py /home/lab/Desktop/Lab1/poison_data.py && \
     cp /home/lab/scripts/validate_defense.py /home/lab/Desktop/Lab1/validate_defense.py && \
     chmod +x /home/lab/scripts/*.py && \
-    chmod +x /home/lab/Desktop/Lab1/*.py && \
-    chown -R lab:lab /home/lab
+    chmod +x /home/lab/Desktop/Lab1/*.py
 
 WORKDIR /home/lab
