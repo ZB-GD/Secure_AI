@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from api.routes import health, labs, logs, pipeline
+from api.routes import health, labs, logs, pipeline, trainer
 
 app = FastAPI(title="SecureAI Backend API", version="0.1.0")
 
@@ -53,3 +53,4 @@ app.include_router(pipeline.router, prefix="/api")
 app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
 app.include_router(logs.router, prefix="/logs", tags=["Logs"])
 app.include_router(pipeline.router, prefix="/api")
+app.include_router(trainer.router, prefix="/api/trainer", tags=["Trainer"])
