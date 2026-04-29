@@ -7,12 +7,12 @@ RUN pip install --no-cache-dir \
     scikit-learn \
     pandas \
     numpy \
-    joblib \
-    ucimlrepo
+    joblib
 
-# Copy trainer script + paths resolver
+# Copy trainer script, paths resolver, and local dataset
 COPY scripts/train_traffic_models.py ./scripts/train_traffic_models.py
 COPY nodes/paths.py ./paths.py
+COPY data/datasets/metro_interstate_traffic_volume.csv ./data/datasets/metro_interstate_traffic_volume.csv
 
 ENV MODELS_DIR=/models
 
