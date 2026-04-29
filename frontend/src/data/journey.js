@@ -70,9 +70,6 @@ export const journey = [
 
   {
     id: "lab-1",
-    remote: {
-    url: "http://localhost:8889/notebooks/notebook.ipynb"
-   },
     type: "lab",
     shortTitle: "Lab 1",
     phase: "Attack Mechanics & Mitigation",
@@ -80,16 +77,16 @@ export const journey = [
     subtitle: "Execute the attack and implement defensive boundaries.",
     threatStage: "E",
     envKey: "NODE-1",
-    guide: {
+        guide: {
       objective:
-        "Understand how `poison_data.py` injects data, observe the pipeline failure, and define the 3 layers of defense needed to secure the AI.",
+        "Work directly in the VM terminal. Run the attack script, then implement the 3 defensive layers by editing validate_defense.py.",
       steps: [
         {
           id: "step-1-1",
           title: "Deconstruct the Exploit",
-          body: "The 'Exploit Toolkit' button simulates a python script (`poison_data.py`). It doesn't use advanced hacking; it simply connects to the IoT data ingestion endpoint and pushes a corrupted CSV row where `traffic_volume = -5000`. Because the system trusts the source blindly, it accepts it.",
+          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the attack script to understand how it works:\n\n  cat /home/lab/scripts/poison_data.py\n\nThe script connects to NODE-1's unauthenticated ingestion endpoint and pushes a row where traffic_volume = -5000. No password, no token — the system trusts anyone.",
           observation:
-            "Look at the Payload input in the toolkit. It targets the exact vulnerability we found in the logs.",
+            "Notice the script needs no credentials to connect. It simply calls the endpoint like any other HTTP client. This is the vulnerability.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
           placeholder: "e.g., Authentication, Signature, Token...",
@@ -105,37 +102,37 @@ export const journey = [
         {
           id: "step-1-2",
           title: "Execute the Attack",
-          body: "Click 'OVERRIDE SENSOR DATA'. This forces the pipeline to ingest the forged reading. The downstream nodes continue processing it and the model health degrades.",
+          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/scripts/poison_data.py\n\nThe script will inject traffic_volume = -5000 into the live pipeline. Watch the output — it shows how each node reacts to the poisoned data.",
           observation:
-            "Watch the metrics panel on the right after the payload is delivered.",
+            "After running the script, switch to the LOGS tab in this panel to see the full pipeline reaction. Check how NODE-2 computes a negative congestion_score from the poisoned input.",
           question:
-            "What exact value does the 'Prediction Accuracy' metric drop to after the attack?",
-          placeholder: "Type the value shown in the metrics panel...",
-          hint: "Check the Prediction Accuracy card on the right panel after the attack is executed.",
-          expectedKeywords: ["34.2", "34"],
+            "What congestion_score does NODE-2 produce when it receives traffic_volume = -5000?",
+          placeholder: "e.g., -0.625",
+          hint: "Look at the LOGS tab after running the script. Find the NODE-2 section and its congestion_score.",
+          expectedKeywords: ["-0.625", "-0.6", "negative", "negativo"],
         },
         {
           id: "step-1-3",
           title: "Defense Layer 1: Sanity Checks",
-          body: "Now, let's defend the system. We must implement 'Data Validation Gates' at NODE-1 (Sensor Data). A simple physical constraint rule (Sanity Check) would have stopped this specific attack immediately.",
+          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/scripts/validate_defense.py\n\nFind the function validate_reading() and implement the TODO block. A road cannot have a negative number of cars — add that physical constraint.\n\nTest your implementation:\n\n  python3 /home/lab/scripts/validate_defense.py",
           observation:
-            "The variable `traffic_volume` represents the number of cars on a road segment.",
+            "The variable traffic_volume represents the number of cars per hour on a road segment. What is the absolute physical minimum?",
           question:
-            "What should be the absolute minimum allowed integer value for `traffic_volume` in our validation code?",
+            "What should be the absolute minimum allowed integer value for traffic_volume in the validation code?",
           placeholder: "Type a number...",
-          hint: "You cannot have a negative amount of cars.",
+          hint: "You cannot have a negative amount of cars on a road.",
           expectedKeywords: ["0", "zero"],
         },
         {
           id: "step-1-4",
           title: "Defense Layer 2: Statistical Anomaly Detection",
-          body: "Attackers might inject plausible values (e.g., 5000 instead of -5000). NODE-2 (Pre-processing) needs Anomaly Detection (like Isolation Forests or Z-Scores) to catch values that are physically possible but historically abnormal for that specific hour.",
+          body: "Still in validate_defense.py, implement the detectar_anomalia() function using the Z-Score formula already shown in the TODO comments.\n\nZ-Score:  z = |( x - mean ) / std |\nIf z > UMBRAL_Z → QUARANTINE\n\nRun again to verify:\n\n  python3 /home/lab/scripts/validate_defense.py",
           observation:
-            "In the logs, NODE-2 calculated a score of -0.625 and flagged it as 'ANOMALOUS'. However, the pipeline continued.",
+            "The baseline mean and std are calculated automatically from live pipeline data. A score of -0.625 should produce a very high Z value — far outside normal range.",
           question:
-            "If a data point is flagged as highly anomalous, what action should the pipeline take instead of forwarding it?",
-          placeholder: "e.g., Delete it, Quarantine it...",
-          hint: "We shouldn't let it reach the model. We should isolate it for human review.",
+            "If a data point is flagged as highly anomalous by the Z-Score, what action should the pipeline take instead of forwarding it to NODE-3?",
+          placeholder: "e.g., Quarantine it, Drop it...",
+          hint: "We should isolate it for human review — not delete it, not forward it.",
           expectedKeywords: [
             "quarantine",
             "drop",
@@ -149,13 +146,13 @@ export const journey = [
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
-          body: "If poisoned data somehow reaches NODE-4 (Decision & Retraining), we need a final fail-safe. Continuous Training pipelines must monitor 'Model Drift' (how much the new model's predictions differ from the established baseline).",
+          body: "Implement the evaluar_drift() function in validate_defense.py. The pipeline_service.py already calculates the drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe threshold used in production is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/scripts/validate_defense.py",
           observation:
-            "If the calculated drift (e.g., 0.279) exceeds a safe threshold (e.g., > 0.1), the new model should NOT be deployed automatically.",
+            "When the script reports ✅ for all 3 steps, your 3-layer defense is complete. The QUIZ tab will unlock.",
           question:
-            "What mechanism should be automatically triggered if the drift is too high?",
-          placeholder: "e.g., Halt retraining, Auto-deploy...",
-          hint: "The system should prevent the corrupted model from affecting production.",
+            "What mechanism should be automatically triggered if the drift score exceeds the threshold?",
+          placeholder: "e.g., Halt retraining, Pause training...",
+          hint: "The system should stop updating the model until a human reviews the data.",
           expectedKeywords: [
             "halt",
             "pause",
@@ -168,7 +165,6 @@ export const journey = [
         },
       ],
     },
-
     // ── Quiz de evaluación final ─────────────────────────────────────────
     // Se desbloquea en la pestaña "Quiz" al completar todos los pasos de la guía.
     // El tutor RAG usa estas preguntas para generar feedback personalizado.
