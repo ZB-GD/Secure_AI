@@ -2,6 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
 import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
 
+const PHASE_LOG_NODE = {
+  edge: "sensor-data",
+  preprocessing: "edge-preprocessing",
+  actuator: "traffic-inference",
+  trainer: "decision-retraining",
+};
+
 // --- SCENARIO 0: EMERGENCY BRIEFING ---
 function ScenarioZeroWorkspace({ item, onComplete }) {
   const [text, setText] = useState("");
@@ -327,6 +334,8 @@ function ScenarioOnePipelineRuntime() {
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
+  const [activeNodeLogs, setActiveNodeLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const pipelineMetrics = pipelineResult?.metrics || {
     readings_received: 0,
@@ -545,29 +554,47 @@ function ScenarioOnePipelineRuntime() {
   const compromisedCount = phases.filter(
     (phase) => phase.status === "compromised" || phase.status === "warning",
   ).length;
-  const activeNodeLogsText = useMemo(() => {
-    if (!pipelineResult?.data) return "";
 
-    const nodeByPhase = {
-      edge: pipelineResult.data?.n1?.log || [],
-      preprocessing: pipelineResult.data?.n2?.log || [],
-      actuator: pipelineResult.data?.n3?.log || [],
-      trainer: pipelineResult.data?.n4
-        ? [
-            pipelineResult.data.n4.store_error
-              ? `STORE_ERROR: ${pipelineResult.data.n4.store_error}`
-              : "STORE_OK: features stored in trainer DB.",
-            pipelineResult.data.n4.retrain_triggered
-              ? pipelineResult.data.n4.retrain_error
-                ? `RETRAIN_ERROR: ${pipelineResult.data.n4.retrain_error}`
-                : "RETRAIN_OK: model retraining triggered."
-              : "RETRAIN_SKIPPED: drift below threshold.",
-          ]
-        : [],
+  useEffect(() => {
+    if (activeTab !== "logs") return;
+
+    const node = PHASE_LOG_NODE[activePhase?.id];
+    if (!node) {
+      setActiveNodeLogs([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchLogs() {
+      setLogsLoading(true);
+      try {
+        const payload = await request(`/logs/${node}?limit=200`, {
+          cache: "no-store",
+        });
+        if (cancelled) return;
+        setActiveNodeLogs(Array.isArray(payload?.lines) ? payload.lines : []);
+      } catch {
+        if (!cancelled) setActiveNodeLogs([]);
+      } finally {
+        if (!cancelled) setLogsLoading(false);
+      }
+    }
+
+    fetchLogs();
+    const timer = window.setInterval(fetchLogs, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
     };
+  }, [activeTab, activePhase?.id]);
 
-    return (nodeByPhase[activePhase?.id] || []).join("\n");
-  }, [pipelineResult, activePhase?.id]);
+  const activeNodeLogsText = useMemo(() => {
+    if (activeNodeLogs.length > 0) return activeNodeLogs.join("\n");
+    if (logsLoading) return "Loading container logs...";
+    return "No container logs available for this node yet.";
+  }, [activeNodeLogs, logsLoading]);
 
   return (
     <section className="scenario-workspace">

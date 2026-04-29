@@ -309,12 +309,16 @@ def _update_report(sha: str, accuracy: float, log: list[str]) -> None:
         report = {}
 
     report.setdefault("clean_model", {})
-    report["clean_model"]["sha256"]   = sha
+    report["clean_model"]["sha256"] = sha
     report["clean_model"]["accuracy"] = accuracy
     report["clean_model"]["retrained_at"] = datetime.now(timezone.utc).isoformat()
 
+    # Track a retrain counter for observability
+    report.setdefault("meta", {})
+    report["meta"]["retrain_count"] = int(report["meta"].get("retrain_count", 0)) + 1
+
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    log.append(f"[REPORT] training_report.json updated with new sha256={sha[:8]}...")
+    log.append(f"[REPORT] training_report.json updated with new sha256={sha[:8]}... retrain_count={report['meta']['retrain_count']}")
 
 
 # ── Status ────────────────────────────────────────────────────────────────────
@@ -335,6 +339,8 @@ def get_status() -> dict[str, Any]:
                 rep = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
                 model_info["last_accuracy"] = rep.get("clean_model", {}).get("accuracy")
                 model_info["retrained_at"]  = rep.get("clean_model", {}).get("retrained_at")
+                # include retrain_count if present
+                model_info["retrain_count"] = rep.get("meta", {}).get("retrain_count", 0)
             except Exception:
                 pass
     else:
