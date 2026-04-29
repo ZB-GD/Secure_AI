@@ -96,6 +96,7 @@ export const journey = [
             "signature",
             "credentials",
             "token",
+            "auth",
             "login",
           ],
         },
