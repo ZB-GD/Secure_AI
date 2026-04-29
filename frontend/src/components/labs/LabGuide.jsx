@@ -33,7 +33,7 @@ export default function LabGuide({
   onNextStep,
 }) {
   const [showHint, setShowHint] = useState(false)
-
+  const [answerTouched, setAnswerTouched] = useState(false)
 
   useEffect(() => {
     setShowHint(false)
