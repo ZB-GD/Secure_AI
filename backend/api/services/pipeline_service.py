@@ -91,18 +91,31 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
     Raises HTTPException on pipeline failure.
     """
     try:
+        # Measure per-node latency for observability
+        t0 = time.time()
+
+        sensor_start = time.time()
         sensor_output = _post_json(
             f"{_normalize_base_url(SENSOR_URL)}/run",
             {"mode": mode, "n_readings": n_readings},
         )
+        sensor_latency = max(0.0, (time.time() - sensor_start) * 1000.0)
+
+        edge_start = time.time()
         edge_output = _post_json(
             f"{_normalize_base_url(EDGE_URL)}/process",
             {"sensor_output": sensor_output, "mode": mode},
         )
+        edge_latency = max(0.0, (time.time() - edge_start) * 1000.0)
+
+        actuator_start = time.time()
         actuator_output = _post_json(
             f"{_normalize_base_url(ACTUATOR_URL)}/infer",
             {"preprocessing_output": edge_output, "mode": mode},
         )
+        actuator_latency = max(0.0, (time.time() - actuator_start) * 1000.0)
+
+        total_pipeline_ms = max(0.0, (time.time() - t0) * 1000.0)
 
         n2_features = edge_output.get("features", []) if isinstance(edge_output, dict) else []
         retraining_feedback = actuator_output.get("retraining_feedback", {}) if isinstance(actuator_output, dict) else {}
@@ -149,6 +162,18 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
             and not (0.0 <= float(feature["congestion_score"]) <= 1.0)
         )
 
+        # Compute clipping / data-quality stats from features
+        clipped_count = 0
+        total_clip_events = 0
+        for f in n2_features:
+            if isinstance(f, dict) and f.get("clip_events"):
+                clipped = sum(1 for v in f.get("clip_events", {}).values() if v)
+                if clipped > 0:
+                    clipped_count += 1
+                    total_clip_events += clipped
+
+        avg_clip_events = (total_clip_events / clipped_count) if clipped_count > 0 else 0.0
+
         metrics = {
             "mode": mode,
             "readings_received": len(n1_readings),
@@ -171,6 +196,20 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
                 f"{len(n1_readings)} readings -> {len(n2_features)} features -> "
                 f"{len(n3_predictions)} predictions -> {len(n3_actions)} actions"
             ),
+            "latencies_ms": {
+                "sensor": round(sensor_latency, 2),
+                "edge": round(edge_latency, 2),
+                "actuator": round(actuator_latency, 2),
+                "total_pipeline_ms": round(total_pipeline_ms, 2),
+            },
+            "data_quality": {
+                "clipped_features": clipped_count,
+                "avg_clip_events": round(avg_clip_events, 2),
+                "rejection_rate": (len(n1_dropped) / max(len(n1_readings), 1)),
+            },
+            "throughput": {
+                "features_per_second": round(len(n2_features) / max(total_pipeline_ms / 1000.0, 0.001), 2),
+            },
         }
     except HTTPException:
         raise
