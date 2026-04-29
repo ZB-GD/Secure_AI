@@ -489,29 +489,12 @@ function LogsTab({ logs, statusLabel }) {
 }
 
 // ─── Sub-component: MetricsTab ───────────────────────────────────────────────
-function MetricsTab({ runtime, onAttack, attackLoading }) {
-  const [retrainLoading, setRetrainLoading] = useState(false);
 
-  async function handleManualRetrain() {
-    setRetrainLoading(true);
-    try {
-      await request("/api/trainer/retrain", {
-        method: "POST",
-        body: JSON.stringify({ mode: "clean" }),
-      });
-      // quick visual feedback by refreshing status (caller has no access here),
-      // we simply set a short-lived event in the runtime lastEvent via custom event
-      const evt = new CustomEvent("lab:retrain:triggered", {
-        detail: { time: new Date().toISOString() },
-      });
-      window.dispatchEvent(evt);
-      alert("Retrain requested (clean). Check backend logs for progress.");
-    } catch (err) {
-      alert("Retrain failed: " + (err?.message || err));
-    } finally {
-      setRetrainLoading(false);
-    }
-  }
+function MetricsTab({ runtime }) {
+  const driftColor = runtime.driftScore > 40 ? "var(--red)" : "var(--green)";
+  const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
+  const statusColor = runtime.isCompromised ? "var(--red)" : "var(--green)";
+
   return (
     <div
       style={{
@@ -523,31 +506,188 @@ function MetricsTab({ runtime, onAttack, attackLoading }) {
         gap: "14px",
       }}
     >
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <AttackControls onAttack={onAttack} loading={attackLoading} />
-        <button
-          onClick={handleManualRetrain}
-          disabled={retrainLoading}
+      {/* Estado general */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
+          background: runtime.isCompromised
+            ? "rgba(248,113,113,0.08)"
+            : "var(--green-dim)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.1em",
+              marginBottom: "4px",
+            }}
+          >
+            PIPELINE STATUS
+          </div>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "var(--text-1)",
+              lineHeight: 1.5,
+            }}
+          >
+            {runtime.lastEvent}
+          </div>
+        </div>
+        <span
           style={{
-            padding: "8px 12px",
-            borderRadius: "8px",
-            border: "1px solid var(--border-dim)",
-            background: retrainLoading ? "var(--bg-surface)" : "var(--blue)",
-            color: "#fff",
-            cursor: retrainLoading ? "not-allowed" : "pointer",
-            fontSize: "12px",
+            fontSize: "10px",
+            padding: "3px 10px",
+            borderRadius: "999px",
+            border: `1px solid ${statusColor}`,
+            color: statusColor,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            marginLeft: "12px",
           }}
         >
-          {retrainLoading ? "Retraining…" : "Manual Retrain"}
-        </button>
+          {runtime.isCompromised ? "COMPROMISED" : "RUNNING"}
+        </span>
       </div>
-      <LabMetrics
-        driftScore={runtime.driftScore}
-        accuracy={runtime.accuracy}
-        isCompromised={runtime.isCompromised}
-        statusLabel={runtime.statusLabel}
-        lastEvent={runtime.lastEvent}
-      />
+
+      {/* Métricas principales */}
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
+      >
+        <div
+          style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: "10px",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.1em",
+              marginBottom: "8px",
+            }}
+          >
+            MODEL DRIFT
+          </div>
+          <div
+            style={{
+              fontSize: "32px",
+              color: driftColor,
+              fontWeight: "bold",
+              fontFamily: "var(--font-display)",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "4px",
+            }}
+          >
+            {runtime.driftScore}
+            <span style={{ fontSize: "16px" }}>%</span>
+          </div>
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "10px",
+              color: runtime.isCompromised ? "var(--red)" : "var(--text-3)",
+            }}
+          >
+            {runtime.isCompromised
+              ? "Compromised distribution"
+              : "Distribution stable"}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: "10px",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.1em",
+              marginBottom: "8px",
+            }}
+          >
+            PREDICTION ACCURACY
+          </div>
+          <div
+            style={{
+              fontSize: "32px",
+              color: accuracyColor,
+              fontWeight: "bold",
+              fontFamily: "var(--font-display)",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "4px",
+            }}
+          >
+            {runtime.accuracy}
+            <span style={{ fontSize: "16px" }}>%</span>
+          </div>
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "10px",
+              color: runtime.isCompromised ? "var(--red)" : "var(--text-3)",
+            }}
+          >
+            {runtime.isCompromised
+              ? "Unsafe model update propagated"
+              : "Accuracy within normal margin"}
+          </div>
+        </div>
+      </div>
+
+      {/* Instrucción para el alumno */}
+      <div
+        style={{
+          padding: "14px 16px",
+          borderRadius: "10px",
+          border: "1px solid var(--border-dim)",
+          background: "var(--bg-elevated)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--text-3)",
+            letterSpacing: "0.1em",
+            marginBottom: "8px",
+          }}
+        >
+          HOW TO TRIGGER AN ATTACK
+        </div>
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--text-2)",
+            lineHeight: 1.7,
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          The attack runs from the VM terminal:{"\n"}
+          <span style={{ color: "var(--orange)" }}>
+            python3 /home/lab/scripts/poison_data.py
+          </span>
+          {"\n\n"}
+          Metrics update automatically every 5 seconds after the attack
+          executes.
+        </div>
+      </div>
     </div>
   );
 }
