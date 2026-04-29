@@ -490,6 +490,28 @@ function LogsTab({ logs, statusLabel }) {
 
 // ─── Sub-component: MetricsTab ───────────────────────────────────────────────
 function MetricsTab({ runtime, onAttack, attackLoading }) {
+  const [retrainLoading, setRetrainLoading] = useState(false);
+
+  async function handleManualRetrain() {
+    setRetrainLoading(true);
+    try {
+      await request("/api/trainer/retrain", {
+        method: "POST",
+        body: JSON.stringify({ mode: "clean" }),
+      });
+      // quick visual feedback by refreshing status (caller has no access here),
+      // we simply set a short-lived event in the runtime lastEvent via custom event
+      const evt = new CustomEvent("lab:retrain:triggered", {
+        detail: { time: new Date().toISOString() },
+      });
+      window.dispatchEvent(evt);
+      alert("Retrain requested (clean). Check backend logs for progress.");
+    } catch (err) {
+      alert("Retrain failed: " + (err?.message || err));
+    } finally {
+      setRetrainLoading(false);
+    }
+  }
   return (
     <div
       style={{
@@ -501,7 +523,24 @@ function MetricsTab({ runtime, onAttack, attackLoading }) {
         gap: "14px",
       }}
     >
-      <AttackControls onAttack={onAttack} loading={attackLoading} />
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <AttackControls onAttack={onAttack} loading={attackLoading} />
+        <button
+          onClick={handleManualRetrain}
+          disabled={retrainLoading}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: "1px solid var(--border-dim)",
+            background: retrainLoading ? "var(--bg-surface)" : "var(--blue)",
+            color: "#fff",
+            cursor: retrainLoading ? "not-allowed" : "pointer",
+            fontSize: "12px",
+          }}
+        >
+          {retrainLoading ? "Retraining…" : "Manual Retrain"}
+        </button>
+      </div>
       <LabMetrics
         driftScore={runtime.driftScore}
         accuracy={runtime.accuracy}

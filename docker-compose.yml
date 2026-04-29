@@ -138,6 +138,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: secure-ai-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - secure-ai-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   lab1-jupyter:
     build:
       context: ./backend/labs/lab1-data-poisoning
