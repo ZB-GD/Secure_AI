@@ -24,7 +24,7 @@ Cada paso del panel corresponde a un comando aquí en la VM.
   PASO 2 — Ejecuta el ataque
     En el terminal:
       python3 /home/lab/scripts/poison_data.py
-    Luego mira los logs en el panel → pestaña LOGS
+    Luego mira los logs del contenedor aislado en el panel → pestaña LOGS
 
   PASO 3, 4 y 5 — Implementa las defensas
     Abre el editor de texto:
@@ -38,11 +38,12 @@ ATAJOS DE TECLADO
   Ctrl+Alt+T  →  Abrir terminal
   Doble clic en "File System"  →  Explorar archivos
 
-BACKEND DEL PIPELINE
-────────────────────
-  Los scripts se conectan al pipeline real automáticamente.
-  Si ves "Backend no disponible", el pipeline no está corriendo.
-  Desde el host: sudo docker-compose up --build
+AISLAMIENTO
+───────────
+  El ataque de Lab 1 se ejecuta dentro de esta VM/contenedor.
+  No llama al endpoint del pipeline real.
+  Sus eventos se guardan en:
+      /home/lab/output/lab1-attack.log
 
 ════════════════════════════════════════════════════════════════
   Cuando completes todos los pasos → pestaña QUIZ en el panel

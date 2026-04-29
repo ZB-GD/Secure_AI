@@ -30,8 +30,8 @@ function buildRuntimeFromStatus(payload) {
 export function useLabRuntime(labId, options = {}) {
   const {
     autoStart        = true,
-    pollIntervalMs   = 5000,   // cada 5s refresca métricas del pipeline
-    logPollIntervalMs = 5000,  // cada 5s refresca logs del pipeline
+    pollIntervalMs   = 5000,   // refresca estado del runtime
+    logPollIntervalMs = 5000,  // refresca logs del contenedor aislado
     logLimit         = 200,
   } = options;
 
@@ -42,38 +42,33 @@ export function useLabRuntime(labId, options = {}) {
   const [runtime,       setRuntime]       = useState(DEFAULT_RUNTIME);
   const [logs,          setLogs]          = useState([]);
 
-  // ── Refresca métricas Y logs del pipeline real ───────────────────────────
-  const refreshPipeline = useCallback(async () => {
+  // ── Refresca estado del runtime aislado ───────────────────────────────────
+  const refreshStatus = useCallback(async () => {
     if (!labId) return;
     try {
-      const data = await labService.getPipelineData(labId);
-      if (!data) return;
-
-      if (data.snapshot && Object.keys(data.snapshot).length > 0) {
-        setRuntime(prev => ({ ...prev, ...data.snapshot }));
-      }
-      if (Array.isArray(data.logs) && data.logs.length > 0) {
-        setLogs(data.logs.slice(-logLimit));
-      }
-    } catch { /* silencioso */ }
-  }, [labId, logLimit]);
-
-  // ── Obtiene la URL de la VM del contenedor Docker ────────────────────────
-  const refreshStatus = useCallback(async () => {
-    if (!labId) return null;
-    try {
       const payload = await labService.getStatusById(labId);
-      if (payload?.terminal_url) setRemoteUrl(payload.terminal_url);
-      return payload;
+      if (!payload) return;
+
+      setRemoteUrl(payload?.terminal_url || "");
+      setRuntime((prev) => ({
+        ...prev,
+        ...buildRuntimeFromStatus(payload),
+      }));
     } catch {
-      return null;
+      /* silencioso */
     }
   }, [labId]);
 
-  // ── Mantener compatibilidad — ahora refresca pipeline en lugar de logs ───
+  // ── Lee logs del contenedor aislado del laboratorio ─────────────────────
   const refreshLogs = useCallback(async () => {
-    await refreshPipeline();
-  }, [refreshPipeline]);
+    if (!labId) return;
+    try {
+      const data = await labService.getLogsById(labId, logLimit);
+      setLogs(Array.isArray(data?.lines) ? data.lines.slice(-logLimit) : []);
+    } catch {
+      setLogs([]);
+    }
+  }, [labId, logLimit]);
 
   // ── Arrancar el contenedor y obtener URL ─────────────────────────────────
   const startRuntime = useCallback(async () => {
@@ -85,14 +80,14 @@ export function useLabRuntime(labId, options = {}) {
       const payload = await labService.startLabById(labId);
       setRemoteUrl(payload?.terminal_url || "");
 
-      // Cargar datos iniciales del pipeline
-      await refreshPipeline();
+      // Cargar estado y logs del contenedor aislado
+      await Promise.all([refreshStatus(), refreshLogs()]);
     } catch (error) {
       setRemoteError(error?.message || "Unable to start remote runtime.");
     } finally {
       setRemoteLoading(false);
     }
-  }, [labId, refreshPipeline]);
+  }, [labId, refreshLogs, refreshStatus]);
 
   const retryRuntime = useCallback(async () => {
     setRemoteUrl("");
@@ -106,11 +101,12 @@ export function useLabRuntime(labId, options = {}) {
     if (!labId) return null;
     setAttackLoading(true);
     try {
-      await refreshPipeline();
+      await labService.triggerAttackById(labId);
+      await refreshLogs();
     } finally {
       setAttackLoading(false);
     }
-  }, [labId, refreshPipeline]);
+  }, [labId, refreshLogs]);
 
   // ── Arranque inicial ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -122,19 +118,19 @@ export function useLabRuntime(labId, options = {}) {
     if (autoStart && labId) startRuntime();
   }, [labId, autoStart, startRuntime]);
 
-  // ── Polling: métricas y logs del pipeline real ───────────────────────────
+  // ── Polling: logs del contenedor aislado ─────────────────────────────────
   useEffect(() => {
     if (!labId) return;
-    const timer = window.setInterval(refreshPipeline, pollIntervalMs);
+    const timer = window.setInterval(refreshLogs, logPollIntervalMs);
     return () => window.clearInterval(timer);
-  }, [labId, pollIntervalMs, refreshPipeline]);
+  }, [labId, logPollIntervalMs, refreshLogs]);
 
-  // ── Polling: URL de la VM (más lento, solo para detectar reinicios) ──────
+  // ── Polling: estado del runtime y URL de la VM ───────────────────────────
   useEffect(() => {
     if (!labId) return;
-    const timer = window.setInterval(refreshStatus, 15_000);
+    const timer = window.setInterval(refreshStatus, pollIntervalMs);
     return () => window.clearInterval(timer);
-  }, [labId, refreshStatus]);
+  }, [labId, pollIntervalMs, refreshStatus]);
 
   return {
     remoteUrl,

@@ -9,43 +9,13 @@ Instrucciones:
   3. Ejecuta el script para ver si tus defensas funcionan:
        python3 /home/lab/scripts/validate_defense.py
 
-El script se conecta al pipeline real para obtener datos en vivo.
+El script usa datos locales de laboratorio. No llama al pipeline real.
 """
 
-import requests
-import json
 import numpy as np
-import sys
 
-# ── Configuración del backend ────────────────────────────────────────────────
-BACKEND_CANDIDATES = [
-    "http://backend:8000",
-    "http://172.17.0.1:8000",
-    "http://localhost:8000",
-]
-
-def find_backend():
-    for url in BACKEND_CANDIDATES:
-        try:
-            r = requests.get(f"{url}/health", timeout=3)
-            if r.status_code == 200:
-                return url
-        except Exception:
-            continue
-    return None
-
-def call_pipeline(backend):
-    resp = requests.get(f"{backend}/api/scenarios/1/run", timeout=15)
-    resp.raise_for_status()
-    result = resp.json()
-    data = result.get("data", {})
-    return (
-        result.get("metrics", {}),
-        data.get("n1", {}),
-        data.get("n2", {}),
-        data.get("n3", {}),
-        data.get("n4", {}),
-    )
+BASELINE_SCORES = [0.42, 0.48, 0.39, 0.51, 0.46, 0.44, 0.49, 0.41]
+LAB_DRIFT_SCORE = 0.28
 
 # ════════════════════════════════════════════════════════════════════════════
 #  PASO 3 — DEFENSA CAPA 1: SANITY CHECKS
@@ -101,9 +71,9 @@ def validate_reading(reading: dict) -> tuple:
 #  Implementa esta función para detectar valores estadísticamente anómalos.
 # ════════════════════════════════════════════════════════════════════════════
 
-# Baseline histórico — se calcula automáticamente más abajo con datos reales
-MEAN_SCORE = 0.45   # se sobreescribe con datos del pipeline
-STD_SCORE  = 0.20   # se sobreescribe con datos del pipeline
+# Baseline histórico local del laboratorio
+MEAN_SCORE = 0.45
+STD_SCORE  = 0.20
 UMBRAL_Z   = 3.0    # ← cambia este valor para ver el efecto
 
 def detectar_anomalia(feature: dict) -> tuple:
@@ -131,17 +101,17 @@ def detectar_anomalia(feature: dict) -> tuple:
 
 # ════════════════════════════════════════════════════════════════════════════
 #  PASO 5 — DEFENSA CAPA 3: MONITORIZACIÓN DE DRIFT
-#  Observa el drift_score real del pipeline y decide cuándo pausar.
+#  Observa el drift_score del laboratorio y decide cuándo pausar.
 # ════════════════════════════════════════════════════════════════════════════
 
 DRIFT_UMBRAL = 0.25   # mismo que RETRAIN_DRIFT_THRESHOLD en pipeline_service.py
 
 def evaluar_drift(drift_score: float) -> str:
     """
-    Decide qué acción tomar según el drift_score del pipeline real.
+    Decide qué acción tomar según el drift_score observado.
     Devuelve una cadena con la acción recomendada.
 
-    El backend ya calcula el drift_score — solo necesitas interpretarlo.
+    El laboratorio ya proporciona el drift_score — solo necesitas interpretarlo.
     """
 
     # ── TODO: Implementa la lógica de decisión ───────────────────────────────
@@ -164,14 +134,7 @@ def main():
     print("=" * 62)
     print("  CityFlow AI — Lab 1: Validación de Defensas")
     print("=" * 62)
-
-    backend = find_backend()
-    use_live = backend is not None
-
-    if use_live:
-        print(f"  ✓ Pipeline real conectado: {backend}")
-    else:
-        print("  ⚠ Backend no disponible — usando datos simulados")
+    print("  ✓ Modo aislado: usando datos locales del contenedor Lab 1")
     print()
 
     # ── PASO 3: Sanity Checks ────────────────────────────────────────────────
@@ -214,28 +177,8 @@ def main():
 
     global MEAN_SCORE, STD_SCORE
 
-    if use_live:
-        # Construir baseline con datos reales del pipeline
-        print("  Recolectando baseline del pipeline real (3 llamadas)...")
-        scores_hist = []
-        for _ in range(3):
-            try:
-                m, _, n2, _, _ = call_pipeline(backend)
-                feats = n2.get("features", [])
-                valid_scores = [
-                    float(f["congestion_score"]) for f in feats
-                    if isinstance(f, dict)
-                    and isinstance(f.get("congestion_score"), (int, float))
-                    and 0.0 <= float(f["congestion_score"]) <= 1.0
-                ]
-                scores_hist.extend(valid_scores)
-            except Exception:
-                pass
-        if scores_hist:
-            MEAN_SCORE = float(np.mean(scores_hist))
-            STD_SCORE  = float(np.std(scores_hist)) or 0.01
-    else:
-        MEAN_SCORE, STD_SCORE = 0.45, 0.18
+    MEAN_SCORE = float(np.mean(BASELINE_SCORES))
+    STD_SCORE = float(np.std(BASELINE_SCORES)) or 0.01
 
     print(f"  Baseline: mean={MEAN_SCORE:.4f}, std={STD_SCORE:.4f}, umbral Z={UMBRAL_Z}")
     print()
@@ -273,16 +216,9 @@ def main():
     print("  PASO 5 · Drift Monitoring (NODE-4)")
     print("─" * 62)
 
-    if use_live:
-        try:
-            metrics, _, _, _, _ = call_pipeline(backend)
-            drift_real = float(metrics.get("drift_score", 0) or 0)
-        except Exception:
-            drift_real = 0.0
-    else:
-        drift_real = 0.28  # valor simulado que supera el umbral
+    drift_real = LAB_DRIFT_SCORE
 
-    print(f"  Drift score real del pipeline: {drift_real:.4f}")
+    print(f"  Drift score del laboratorio:   {drift_real:.4f}")
     print(f"  Umbral de seguridad:           {DRIFT_UMBRAL:.2f}")
     print()
 

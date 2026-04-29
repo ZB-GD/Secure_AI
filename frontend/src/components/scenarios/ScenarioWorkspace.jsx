@@ -2,13 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
 import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
 
-const PHASE_LOG_NODE = {
-  edge: "sensor-data",
-  preprocessing: "edge-preprocessing",
-  actuator: "traffic-inference",
-  trainer: "decision-retraining",
-};
-
 // --- SCENARIO 0: EMERGENCY BRIEFING ---
 function ScenarioZeroWorkspace({ item, onComplete }) {
   const [text, setText] = useState("");
@@ -195,7 +188,7 @@ function CodeBlock({ value, color = "var(--text-2)" }) {
   );
 }
 
-function LogBlock({ value }) {
+function LogBlock({ value, title = "PIPELINE LOGS" }) {
   const lines = value ? value.split("\n") : [];
 
   if (!lines.length) {
@@ -208,7 +201,7 @@ function LogBlock({ value }) {
 
   return (
     <div className="scenario-log-block">
-      <div className="scenario-log-block__header">CONTAINER LOGS</div>
+      <div className="scenario-log-block__header">{title}</div>
 
       <div className="scenario-log-block__body">
         {lines.map((line, index) => {
@@ -239,6 +232,43 @@ function LogBlock({ value }) {
       </div>
     </div>
   );
+}
+
+function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
+  const data = pipelineResult?.data || {};
+  const n1 = data.n1 || {};
+  const n2 = data.n2 || {};
+  const n3 = data.n3 || {};
+  const n4 = data.n4 || {};
+
+  if (phaseId === "edge") {
+    return Array.isArray(n1.log) ? n1.log.map((line) => `[NODE-1] ${line}`) : [];
+  }
+
+  if (phaseId === "preprocessing") {
+    return Array.isArray(n2.log) ? n2.log.map((line) => `[NODE-2] ${line}`) : [];
+  }
+
+  if (phaseId === "actuator") {
+    return Array.isArray(n3.log) ? n3.log.map((line) => `[NODE-3] ${line}`) : [];
+  }
+
+  if (phaseId === "trainer") {
+    const logs = [];
+    if (n4.store_error) logs.push(`[NODE-4] Store failed: ${n4.store_error}`);
+    if (n4.store) logs.push("[NODE-4] Feature rows stored for training review.");
+    if (n4.retrain_error) logs.push(`[NODE-4] Retrain failed: ${n4.retrain_error}`);
+    if (Array.isArray(n4.retrain?.log)) {
+      logs.push(...n4.retrain.log.map((line) => `[NODE-4] ${line}`));
+    } else if (n4.retrain_triggered) {
+      logs.push(`[NODE-4] Retraining triggered. drift=${Number(driftScore).toFixed(3)}`);
+    } else {
+      logs.push(`[NODE-4] Retraining not triggered. drift=${Number(driftScore).toFixed(3)}`);
+    }
+    return logs;
+  }
+
+  return [];
 }
 
 function ScenarioOnePipelineRuntime() {
@@ -334,8 +364,6 @@ function ScenarioOnePipelineRuntime() {
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
-  const [activeNodeLogs, setActiveNodeLogs] = useState([]);
-  const [logsLoading, setLogsLoading] = useState(false);
 
   const pipelineMetrics = pipelineResult?.metrics || {
     readings_received: 0,
@@ -555,46 +583,16 @@ function ScenarioOnePipelineRuntime() {
     (phase) => phase.status === "compromised" || phase.status === "warning",
   ).length;
 
-  useEffect(() => {
-    if (activeTab !== "logs") return;
-
-    const node = PHASE_LOG_NODE[activePhase?.id];
-    if (!node) {
-      setActiveNodeLogs([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchLogs() {
-      setLogsLoading(true);
-      try {
-        const payload = await request(`/logs/${node}?limit=200`, {
-          cache: "no-store",
-        });
-        if (cancelled) return;
-        setActiveNodeLogs(Array.isArray(payload?.lines) ? payload.lines : []);
-      } catch {
-        if (!cancelled) setActiveNodeLogs([]);
-      } finally {
-        if (!cancelled) setLogsLoading(false);
-      }
-    }
-
-    fetchLogs();
-    const timer = window.setInterval(fetchLogs, 5000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [activeTab, activePhase?.id]);
-
   const activeNodeLogsText = useMemo(() => {
-    if (activeNodeLogs.length > 0) return activeNodeLogs.join("\n");
-    if (logsLoading) return "Loading container logs...";
-    return "No container logs available for this node yet.";
-  }, [activeNodeLogs, logsLoading]);
+    const lines = buildPipelineLogsForPhase(
+      activePhase?.id,
+      pipelineResult,
+      pipelineMetrics.drift_score,
+    );
+    if (lines.length > 0) return lines.join("\n");
+    if (pipelineLoading) return "Loading pipeline logs...";
+    return "No pipeline logs available for this node yet.";
+  }, [activePhase?.id, pipelineLoading, pipelineMetrics.drift_score, pipelineResult]);
 
   return (
     <section className="scenario-workspace">

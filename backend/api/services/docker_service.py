@@ -90,3 +90,33 @@ def get_lab_status(node: str):
         return {"status": "not found"}
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error while fetching container status: {e}")
+
+
+def run_lab_attack(node: str):
+    lab = _get_lab_or_404(node)
+    command = lab.get("attack_command")
+    if not command:
+        raise HTTPException(status_code=400, detail=f"Node '{node}' has no isolated attack command.")
+
+    container_name = lab["container_name"]
+    client = _client()
+
+    try:
+        container = client.containers.get(container_name)
+        result = container.exec_run(command)
+        output = result.output.decode("utf-8", errors="replace") if result.output else ""
+        if result.exit_code != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Attack command failed with exit code {result.exit_code}: {output}",
+            )
+        return {
+            "node": node,
+            "container": container_name,
+            "status": "completed",
+            "lines": [line for line in output.splitlines() if line.strip()],
+        }
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail=f"Node '{node}' is not running.")
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error while running attack: {e}")

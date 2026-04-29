@@ -37,8 +37,8 @@ export default function AttackControls({
           lineHeight: "1.5",
         }}
       >
-        Intercept the Edge Node telemetry flow and inject forged readings to
-        poison the AI training stream.
+        Run the Lab 1 injector inside the isolated container and inspect the
+        local runtime logs it produces.
       </p>
 
       {!completed ? (
@@ -84,7 +84,7 @@ export default function AttackControls({
               </label>
               <input
                 disabled
-                value="0 cars/min"
+                value="-5000 cars/hr"
                 style={{
                   width: "100%",
                   background: "rgba(248,113,113,0.1)",
@@ -118,7 +118,7 @@ export default function AttackControls({
               boxShadow: loading ? "none" : "0 0 15px rgba(248,113,113,0.4)",
             }}
           >
-            {loading ? "INJECTING PAYLOAD..." : "🚀 OVERRIDE SENSOR DATA"}
+            {loading ? "INJECTING PAYLOAD..." : "RUN ISOLATED ATTACK"}
           </button>
         </>
       ) : (

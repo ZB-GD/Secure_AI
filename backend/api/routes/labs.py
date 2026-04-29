@@ -25,3 +25,8 @@ def stop_lab_by_node(node: str):
 @router.get("/{node}/status")
 def get_lab_status(node: str):
     return docker_service.get_lab_status(node)
+
+
+@router.post("/{node}/attack")
+def run_lab_attack(node: str):
+    return docker_service.run_lab_attack(node)
