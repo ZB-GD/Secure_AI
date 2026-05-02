@@ -74,17 +74,6 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
   );
 }
 
-{activeTab === "guide" && (
-  <LabGuide
-    item={item}
-    currentStep={currentStep}
-    currentAnswer={currentAnswer}
-    onAnswerChange={onAnswerChange}
-    onPrevStep={onPrevStep}
-    onNextStep={onNextStep}
-  />
-)}
-
 
 // ─── Sub-component: LogsTab ──────────────────────────────────────────────────
 function LogsTab({ logs, statusLabel }) {
@@ -818,7 +807,7 @@ export default function LabRuntimeWorkspace({
           }}
         >
           {activeTab === "guide" && (
-            <GuideTab
+            <LabGuide
               item={item}
               currentStep={currentStep}
               currentAnswer={currentAnswer}
