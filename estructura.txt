@@ -9,12 +9,17 @@
 │   │   │   ├── labs.py
 │   │   │   ├── logs.py
 │   │   │   ├── pipeline.py
-│   │   │   └── rag.py
+│   │   │   ├── rag.py
+│   │   │   └── trainer.py
 │   │   └── services
 │   │       ├── docker_service.py
 │   │       ├── log_service.py
 │   │       └── pipeline_service.py
+│   ├── data
+│   │   └── datasets
+│   │       └── metro_interstate_traffic_volume.csv
 │   ├── Dockerfile
+│   ├── .env
 │   ├── knowledge_base
 │   │   ├── cityflow_manual.md
 │   │   └── incident_response.md
@@ -29,36 +34,31 @@
 │   │   ├── sensor-data
 │   │   │   ├── Dockerfile
 │   │   │   └── lab_files
-│   │   │       ├── analyze_dataset.py
 │   │   │       ├── poison_data.py
-│   │   │       ├── README.md
-│   │   │       ├── traffic_data_clean.csv
-│   │   │       └── traffic_data_poisoned.csv
+│   │   │       ├── README-LAB1.txt
+│   │   │       └── validate_defense.py
 │   │   └── traffic-inference
 │   │       └── Dockerfile
 │   ├── main.py
+│   ├── models
 │   ├── nodes
 │   │   ├── actuator
 │   │   │   ├── app.py
 │   │   │   ├── Dockerfile
-│   │   │   ├── __init__.py
-│   │   │   └── main.py
+│   │   │   └── __init__.py
 │   │   ├── edge_preprocessing
 │   │   │   ├── app.py
 │   │   │   ├── Dockerfile
-│   │   │   ├── __init__.py
-│   │   │   └── main.py
+│   │   │   └── __init__.py
 │   │   ├── model_trainer
 │   │   │   ├── app.py
 │   │   │   ├── Dockerfile
-│   │   │   ├── __init__.py
-│   │   │   └── main.py
+│   │   │   └── __init__.py
 │   │   ├── paths.py
 │   │   └── sensor_data
 │   │       ├── app.py
 │   │       ├── Dockerfile
-│   │       ├── __init__.py
-│   │       └── main.py
+│   │       └── __init__.py
 │   ├── pipelines
 │   │   └── s1
 │   │       └── docker-compose.yml
@@ -69,9 +69,13 @@
 ├── docker-compose.yml
 ├── estructura.txt
 ├── frontend
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── .env
 │   ├── eslint.config.js
 │   ├── .gitignore
 │   ├── index.html
+│   ├── nginx.conf
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── postcss.config.js
@@ -109,7 +113,6 @@
 │   │   │   │   └── ScenarioWorkspace.jsx
 │   │   │   └── workspace
 │   │   │       ├── index.js
-│   │   │       ├── Lab1Workspace.jsx
 │   │   │       ├── RagTutorWidget.jsx
 │   │   │       ├── RemoteDesktopPanel.jsx
 │   │   │       └── WorkspacePanel.jsx
@@ -143,13 +146,6 @@
 │   └── start-novnc.sh
 ├── setup.sh
 ├── tree_proyecto.txt
-├── TROUBLESHOOTING.md
-├── vm-agent
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── server.js
-│   └── vmMap.js
-└── .vscode
-    └── settings.json
+└── TROUBLESHOOTING.md
 
-41 directories, 111 files
+42 directories, 106 files
