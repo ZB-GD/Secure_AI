@@ -1,13 +1,12 @@
 from fastapi import FastAPI
-from api.routes import rag
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import subprocess
 import sys
 
-from api.routes import health, labs, logs, pipeline, trainer
+from api.routes import health, labs, logs, pipeline, trainer, tutor
 
-app = FastAPI(title="SecureAI Backend API", version="0.1.0")
+app = FastAPI(title="SecLabs Backend API", version="0.1.0")
 
 
 def _ensure_models_ready() -> None:
@@ -50,7 +49,5 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(labs.router, prefix="/labs", tags=["Labs"])
 app.include_router(logs.router, prefix="/logs", tags=["Logs"])
 app.include_router(pipeline.router, prefix="/api")
-app.include_router(rag.router, prefix="/api/rag", tags=["rag"])
-app.include_router(logs.router, prefix="/logs", tags=["Logs"])
-app.include_router(pipeline.router, prefix="/api")
+app.include_router(tutor.router, prefix="/api/rag", tags=["Tutor RAG"])
 app.include_router(trainer.router, prefix="/api/trainer", tags=["Trainer"])

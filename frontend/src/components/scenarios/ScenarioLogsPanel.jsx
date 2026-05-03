@@ -11,7 +11,7 @@ export default function ScenarioLogsPanel({ node }) {
     async function fetchLogs() {
       setLoading(true);
       try {
-        const data = await request(`/logs/${node}`);
+        const data = await request(`/logs/pipeline/${node}`);
         setLogs(data.lines || []);
       } catch (err) {
         console.error("Error fetching logs:", err);

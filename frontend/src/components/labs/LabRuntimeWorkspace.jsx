@@ -116,7 +116,7 @@ function LogsTab({ logs, statusLabel }) {
             letterSpacing: "0.1em",
           }}
         >
-          PIPELINE LOG STREAM
+          LAB EVENT LOG
         </div>
         <span
           style={{
@@ -276,7 +276,7 @@ function MetricsTab({ runtime }) {
         <div style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7, fontFamily: "var(--font-mono)" }}>
           The attack runs from the VM terminal:{"\n"}
           <span style={{ color: "var(--orange)" }}>
-            python3 /home/lab/scripts/poison_data.py
+            python3 /home/lab/Desktop/Lab1/poison_data.py
           </span>
           {"\n\n"}
           Metrics update automatically every 5 seconds after the attack executes.

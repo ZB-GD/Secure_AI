@@ -49,7 +49,9 @@ export function useLabRuntime(labId, options = {}) {
       const payload = await labService.getStatusById(labId);
       if (!payload) return;
 
-      setRemoteUrl(payload?.terminal_url || "");
+      if (payload?.terminal_url) {
+        setRemoteUrl(payload.terminal_url);
+      }
       setRuntime((prev) => ({
         ...prev,
         ...buildRuntimeFromStatus(payload),
