@@ -1,15 +1,18 @@
 """
-poison_data.py - CityFlow AI Lab 1: isolated data poisoning simulation
+poison_data.py - CityFlow AI Lab 1: isolated data poisoning attack
 
-This script runs entirely inside the Lab 1 container. It does not call the
-backend pipeline. The frontend lab window reads the log file written here.
+This script runs entirely inside the Lab 1 container. It attacks the local
+vulnerable node at 127.0.0.1:5000 and does not call the backend pipeline.
 """
 
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
+
 
 LOG_PATH = Path("/home/lab/output/lab1-attack.log")
+TARGET_URL = "http://127.0.0.1:5000/ingest"
 
 
 def write_lines(lines):
@@ -32,7 +35,26 @@ def run_attack():
         "signed": False,
     }
 
-    congestion_score = poisoned_reading["traffic_volume"] / 8000
+    try:
+        response = requests.post(TARGET_URL, json=poisoned_reading, timeout=5)
+        response.raise_for_status()
+        result = response.json()
+    except requests.RequestException as exc:
+        lines = [
+            "",
+            "=" * 62,
+            "  CityFlow AI - MQTT_INJECTOR.PY",
+            "  Lab 1: Isolated Data Poisoning Attack",
+            "=" * 62,
+            f"[LAB] container=lab-phase-1 timestamp={now}",
+            f"[ERROR] Could not reach local vulnerable target: {TARGET_URL}",
+            f"[ERROR] {exc}",
+            "[FIX] Check that vulnerable_app.py is running inside the Lab 1 VM.",
+            "=" * 62,
+            "",
+        ]
+        write_lines(lines)
+        raise SystemExit(1) from exc
 
     lines = [
         "",
@@ -44,7 +66,7 @@ def run_attack():
         "[ISOLATION] Running inside the Lab 1 container only.",
         "[ISOLATION] No backend pipeline endpoint was called.",
         "",
-        "[*] Opening local unauthenticated ingestion socket...",
+        f"[*] Opening local unauthenticated ingestion socket: {TARGET_URL}",
         "[*] No token, signature, or device identity required.",
         "",
         "[*] Sending forged reading:",
@@ -54,12 +76,10 @@ def run_attack():
         f"    temp           = {poisoned_reading['temp']} K",
         f"    signed         = {poisoned_reading['signed']}",
         "",
-        "[NODE-1] ACCEPTED reading because input validation is missing.",
-        "[NODE-1] forwarded=1 dropped=0",
-        f"[NODE-2] computed congestion_score={congestion_score:.3f}",
-        "[NODE-2] anomaly propagated because feature bounds are missing.",
-        "[NODE-3] predicted state='free' during rush hour.",
-        "[NODE-4] would issue SET_ALL_GREEN without a safety gate.",
+        f"[TARGET] HTTP {response.status_code}",
+        f"[TARGET] accepted={result.get('accepted')} reason={result.get('reason')}",
+        f"[TARGET] forwarded={result.get('forwarded')} dropped={result.get('dropped')}",
+        f"[TARGET] congestion_score={result.get('congestion_score')}",
         "",
         "[RESULT] ATTACK SUCCESSFUL inside isolated lab runtime.",
         "[NEXT] Implement validate_reading(), detect_anomaly(), and evaluar_drift().",

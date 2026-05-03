@@ -4,10 +4,16 @@ NOVNC_PORT = 6080          # previously TTYD_PORT = 7681, now using noVNC
 
 LABS = {
     "sensor-data": {
-        "image": "lab-phase-1-ingestion:vuln",
+        "image": "seclabs-lab1:vuln",
         "container_name": "lab-phase-1",
         "log_path": "/home/lab/output/lab1-attack.log",
-        "attack_command": ["python3", "/home/lab/scripts/poison_data.py"],
+        "initial_log": [
+            "CityFlow AI - Lab 1 event log",
+            "Lab runtime started in an isolated container.",
+            "Open the Guide tab and follow the steps.",
+            "Run the attack when instructed to see forged sensor data here.",
+        ],
+        "attack_command": ["python3", "/home/lab/Desktop/Lab1/poison_data.py"],
     },
     "edge-preprocessing": {
         "image": "lab-phase-2-input:vuln",

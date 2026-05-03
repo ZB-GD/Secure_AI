@@ -1,4 +1,5 @@
 import os
+import shlex
 
 import docker
 from fastapi import HTTPException
@@ -16,6 +17,25 @@ def _get_host_port_or_500(container):
     if not ports or not ports[0].get("HostPort"):
         raise HTTPException(status_code=500, detail="Could not resolve the container noVNC port.")
     return ports[0]["HostPort"]
+
+
+def _ensure_lab_log(container, lab: dict) -> None:
+    log_path = lab.get("log_path")
+    if not log_path:
+        return
+
+    initial_lines = lab.get("initial_log") or []
+    quoted_path = shlex.quote(log_path)
+    quoted_parent = shlex.quote(os.path.dirname(log_path))
+    initial_text = "\n".join(initial_lines).replace("'", "'\"'\"'")
+
+    command = (
+        f"mkdir -p {quoted_parent}; "
+        f"if [ ! -s {quoted_path} ]; then "
+        f"printf '%s\\n' '{initial_text}' > {quoted_path}; "
+        "fi"
+    )
+    container.exec_run(["sh", "-lc", command])
 
 def _client():
     try:
@@ -38,6 +58,7 @@ def start_lab_container(node: str, request_host: str | None = None):
     try:
         existing = client.containers.get(container_name)
         if existing.status == "running":
+            _ensure_lab_log(existing, lab)
             host_port = _get_host_port_or_500(existing)
             return {
                 "container_id": existing.id,
@@ -54,6 +75,7 @@ def start_lab_container(node: str, request_host: str | None = None):
             remove=True,
             ports={f"{NOVNC_PORT}/tcp": None},
         )
+        _ensure_lab_log(container, lab)
         host_port = _get_host_port_or_500(container)
         return {
             "container_id": container.id,
@@ -85,7 +107,10 @@ def get_lab_status(node: str):
 
     try:
         container = client.containers.get(container_name)
-        return {"status": container.status}
+        payload = {"status": container.status}
+        if container.status == "running":
+            payload["terminal_url"] = _build_novnc_url(_get_host_port_or_500(container))
+        return payload
     except docker.errors.NotFound:
         return {"status": "not found"}
     except docker.errors.APIError as e:

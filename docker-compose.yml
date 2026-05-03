@@ -1,15 +1,13 @@
-version: "3.9"
-
 services:
   sensor:
     build:
-      context: ./backend
-      dockerfile: nodes/sensor_data/Dockerfile
-    container_name: secure-ai-sensor
+      context: .
+      dockerfile: pipeline_nodes/sensor_data/Dockerfile
+    container_name: seclabs-sensor
     ports:
       - "8001:8001"
     networks:
-      - secure-ai-network
+      - seclabs-network
     restart: unless-stopped
     healthcheck:
       test:
@@ -26,16 +24,16 @@ services:
 
   edge:
     build:
-      context: ./backend
-      dockerfile: nodes/edge_preprocessing/Dockerfile
-    container_name: secure-ai-edge
+      context: .
+      dockerfile: pipeline_nodes/edge_preprocessing/Dockerfile
+    container_name: seclabs-edge
     ports:
       - "8002:8002"
     depends_on:
       sensor:
         condition: service_healthy
     networks:
-      - secure-ai-network
+      - seclabs-network
     restart: unless-stopped
     healthcheck:
       test:
@@ -52,9 +50,9 @@ services:
 
   actuator:
     build:
-      context: ./backend
-      dockerfile: nodes/actuator/Dockerfile
-    container_name: secure-ai-actuator
+      context: .
+      dockerfile: pipeline_nodes/actuator/Dockerfile
+    container_name: seclabs-actuator
     ports:
       - "8003:8003"
     depends_on:
@@ -65,7 +63,7 @@ services:
     volumes:
       - model-store:/models
     networks:
-      - secure-ai-network
+      - seclabs-network
     restart: unless-stopped
     healthcheck:
       test:
@@ -82,9 +80,9 @@ services:
 
   trainer:
     build:
-      context: ./backend
-      dockerfile: nodes/model_trainer/Dockerfile
-    container_name: secure-ai-trainer
+      context: .
+      dockerfile: pipeline_nodes/model_trainer/Dockerfile
+    container_name: seclabs-trainer
     ports:
       - "8004:8004"
     depends_on:
@@ -97,7 +95,7 @@ services:
       - model-store:/models
       - trainer-db:/data
     networks:
-      - secure-ai-network
+      - seclabs-network
     restart: unless-stopped
     healthcheck:
       test:
@@ -113,20 +111,19 @@ services:
       start_period: 10s
 
   backend:
-    env_file:
-      - ./backend/.env
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: secure-ai-backend
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: seclabs-backend
     ports:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - RAG_SERVICE_URL=http://tutor-rag:8010
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - secure-ai-network
+      - seclabs-network
     depends_on:
       sensor:
         condition: service_healthy
@@ -136,23 +133,70 @@ services:
         condition: service_healthy
       trainer:
         condition: service_healthy
+      tutor-rag:
+        condition: service_healthy
     restart: unless-stopped
+
+  tutor-rag:
+    env_file:
+      - ./backend/.env
+    build:
+      context: .
+      dockerfile: services/tutor_rag/Dockerfile
+    container_name: seclabs-tutor-rag
+    ports:
+      - "8010:8010"
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8010/health').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: secure-ai-frontend
+    container_name: seclabs-frontend
     ports:
       - "3000:80"
     networks:
-      - secure-ai-network
+      - seclabs-network
     depends_on:
       - backend
     restart: unless-stopped
 
+  lab-base-novnc:
+    profiles:
+      - labs-build
+    image: lab-base-novnc
+    build:
+      context: ./labs/base-novnc
+      dockerfile: Dockerfile
+    command: ["true"]
+
+  lab1:
+    profiles:
+      - labs-build
+    image: seclabs-lab1:vuln
+    build:
+      context: ./labs/sensor-data
+      dockerfile: Dockerfile
+    depends_on:
+      - lab-base-novnc
+    command: ["true"]
+
 networks:
-  secure-ai-network:
+  seclabs-network:
     driver: bridge
 
 volumes:

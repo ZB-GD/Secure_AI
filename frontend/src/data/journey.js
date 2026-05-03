@@ -84,7 +84,7 @@ export const journey = [
         {
           id: "step-1-1",
           title: "Deconstruct the Exploit",
-          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the attack script to understand how it works:\n\n  cat /home/lab/scripts/poison_data.py\n\nThe script runs inside this isolated Lab 1 container and simulates NODE-1 accepting a row where traffic_volume = -5000. No password, no token — the vulnerable system trusts the sender.",
+          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the vulnerable local node and the attack script:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nThe script runs inside this isolated Lab 1 container and sends traffic_volume = -5000 to http://127.0.0.1:5000/ingest. No password, no token — the vulnerable local node trusts the sender.",
           observation:
             "Notice the script needs no credentials. It models an ingestion path that accepts data without proving device identity. This is the vulnerability.",
           question:
@@ -103,7 +103,7 @@ export const journey = [
         {
           id: "step-1-2",
           title: "Execute the Attack",
-          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/scripts/poison_data.py\n\nThe script injects traffic_volume = -5000 inside the isolated lab runtime. Watch the output — it shows how each simulated node reacts to the poisoned data.",
+          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nThe script injects traffic_volume = -5000 into the local vulnerable node at 127.0.0.1:5000. Watch the output — it shows how the isolated node accepts and propagates the poisoned data.",
           observation:
             "After running the script, switch to the LOGS tab in this panel to see the isolated container logs. Check how NODE-2 computes a negative congestion_score from the poisoned input.",
           question:
@@ -115,7 +115,7 @@ export const journey = [
         {
           id: "step-1-3",
           title: "Defense Layer 1: Sanity Checks",
-          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/scripts/validate_defense.py\n\nFind the function validate_reading() and implement the TODO block. A road cannot have a negative number of cars — add that physical constraint.\n\nTest your implementation:\n\n  python3 /home/lab/scripts/validate_defense.py",
+          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/Desktop/Lab1/validate_defense.py\n\nFind the function validate_reading() and implement the TODO block. A road cannot have a negative number of cars — add that physical constraint.\n\nTest your implementation:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "The variable traffic_volume represents the number of cars per hour on a road segment. What is the absolute physical minimum?",
           question:
@@ -127,7 +127,7 @@ export const journey = [
         {
           id: "step-1-4",
           title: "Defense Layer 2: Statistical Anomaly Detection",
-          body: "Still in validate_defense.py, implement the detectar_anomalia() function using the Z-Score formula already shown in the TODO comments.\n\nZ-Score:  z = |( x - mean ) / std |\nIf z > UMBRAL_Z → QUARANTINE\n\nRun again to verify:\n\n  python3 /home/lab/scripts/validate_defense.py",
+          body: "Still in validate_defense.py, implement the detectar_anomalia() function using the Z-Score formula already shown in the TODO comments.\n\nZ-Score:  z = |( x - mean ) / std |\nIf z > UMBRAL_Z → QUARANTINE\n\nRun again to verify:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value — far outside normal range.",
           question:
@@ -147,7 +147,7 @@ export const journey = [
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
-          body: "Implement the evaluar_drift() function in validate_defense.py. The lab script provides a drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe production threshold is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/scripts/validate_defense.py",
+          body: "Implement the evaluar_drift() function in validate_defense.py. The lab script provides a drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe production threshold is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "When the script reports ✅ for all 3 steps, your 3-layer defense is complete. The QUIZ tab will unlock.",
           question:

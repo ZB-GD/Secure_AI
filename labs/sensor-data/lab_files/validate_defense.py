@@ -7,7 +7,7 @@ Instrucciones:
   1. Edita este archivo con gedit o el editor de texto de la VM
   2. Implementa las funciones marcadas con TODO
   3. Ejecuta el script para ver si tus defensas funcionan:
-       python3 /home/lab/scripts/validate_defense.py
+       python3 /home/lab/Desktop/Lab1/validate_defense.py
 
 El script usa datos locales de laboratorio. No llama al pipeline real.
 """
@@ -244,7 +244,7 @@ def main():
         print("  Ahora ve a la pestaña QUIZ en el panel lateral para la evaluación final.")
     else:
         print("  Sigue editando el archivo y vuelve a ejecutar:")
-        print("  python3 /home/lab/scripts/validate_defense.py")
+        print("  python3 /home/lab/Desktop/Lab1/validate_defense.py")
     print("=" * 62)
     print()
 

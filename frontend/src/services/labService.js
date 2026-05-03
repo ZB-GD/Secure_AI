@@ -96,6 +96,6 @@ export const labService = {
     if (!stage) throw new Error(`No stage configured for ${labId}`);
 
     // Always read isolated lab container logs.
-    return request(`/logs/${stage}?limit=${limit}`, { cache: "no-store" });
+    return request(`/logs/labs/${stage}?limit=${limit}`, { cache: "no-store" });
   },
 };
