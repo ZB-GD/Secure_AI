@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -33,6 +33,13 @@ export default function LabGuide({
   onNextStep,
 }) {
   const [showHint, setShowHint] = useState(false)
+  const [answerTouched, setAnswerTouched] = useState(false)
+
+  useEffect(() => {
+    setShowHint(false)
+    setAnswerTouched(false)
+  }, [currentStep?.id])
+
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
     return (
@@ -48,8 +55,13 @@ export default function LabGuide({
   const answerValid = isValid(currentStep, currentAnswer)
 
   const handleNext = () => {
-    if (!answerValid) return
+    if (!answerValid) {
+      setAnswerTouched(true)
+      return
+    }
+
     setShowHint(false)
+    setAnswerTouched(false)
     onNextStep()
   }
 
@@ -267,13 +279,25 @@ export default function LabGuide({
             <input
               type="text"
               value={currentAnswer}
-              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
+              onChange={(e) => {
+                setAnswerTouched(false)
+                onAnswerChange(currentStep.id, e.target.value)
+              }}
+              onBlur={() => {
+                if ((currentAnswer || "").trim()) {
+                  setAnswerTouched(true)
+                }
+              }}
               placeholder={currentStep.placeholder}
               style={{
                 width: "100%",
                 background: "var(--bg-base)",
                 border: `1px solid ${
-                  answerValid ? "var(--green)" : "var(--border-mid)"
+                  answerValid
+                    ? "var(--green)"
+                    : answerTouched && currentAnswer
+                    ? "var(--red)"
+                    : "var(--border-mid)"
                 }`,
                 borderRadius: "6px",
                 padding: "12px 14px",
@@ -299,7 +323,7 @@ export default function LabGuide({
             )}
           </div>
 
-          {!!currentAnswer && !answerValid && (
+          {answerTouched && !!currentAnswer && !answerValid && (
             <div
               style={{
                 marginTop: "8px",
