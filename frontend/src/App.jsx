@@ -26,7 +26,7 @@ function isStepAnswerValid(step, answer) {
 
 export default function App() {
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState("dashboard");
+  const [activeItemId, setActiveItemId] = useState("scenario-0");
 
   const activeItem = useMemo(
     () =>

@@ -6,7 +6,6 @@ import RuntimeLogsPanel from "./RuntimeLogsPanel";
 import { useLabRuntime } from "../../hooks/useLabRuntime";
 import { request } from "../../services/apiClient";
 import LabGuide from "./LabGuide";
-import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
 const TABS = [
@@ -67,75 +66,6 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                 LOCKED
               </span>
             )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Sub-component: ModeBar ──────────────────────────────────────────────────
-function ModeBar({ view, onSelectView, item, scenarioItem }) {
-  const modes = [
-    {
-      id: "scenario",
-      icon: "◆",
-      label: scenarioItem?.shortTitle || "Pipeline Scenario",
-    },
-    { id: "lab", icon: "⬡", label: item?.shortTitle || "Lab" },
-  ];
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "8px 14px",
-        background: "var(--bg-panel)",
-        borderBottom: "1px solid var(--border-dim)",
-        flexShrink: 0,
-      }}
-    >
-      {modes.map((mode) => {
-        const isActive = view === mode.id;
-        const isScenario = mode.id === "scenario";
-        return (
-          <button
-            key={mode.id}
-            onClick={() => onSelectView(mode.id)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "6px 14px",
-              borderRadius: "7px",
-              border: isActive
-                ? isScenario
-                  ? "1px solid rgba(56,189,248,0.35)"
-                  : "1px solid var(--orange-border)"
-                : "1px solid var(--border-dim)",
-              background: isActive
-                ? isScenario
-                  ? "rgba(56,189,248,0.10)"
-                  : "var(--orange-dim)"
-                : "transparent",
-              color: isActive
-                ? isScenario
-                  ? "var(--blue)"
-                  : "var(--orange)"
-                : "var(--text-3)",
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              fontWeight: "700",
-              letterSpacing: "0.10em",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "all 0.15s",
-            }}
-          >
-            <span style={{ fontSize: "12px" }}>{mode.icon}</span>
-            {mode.label.toUpperCase()}
           </button>
         );
       })}
@@ -799,16 +729,14 @@ Maximum 220 words. Respond in English.`;
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export default function LabRuntimeWorkspace({
   item,
-  scenarioItem,
   currentStep,
   currentAnswer,
   onAnswerChange,
   onPrevStep,
   onNextStep,
   onCompleteLabQuiz,
-  onCompleteScenario,
+  onViewScenario,
 }) {
-  const [view, setView] = useState("lab");
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
   const [rightWidth, setRightWidth] = useState(800);
@@ -853,142 +781,152 @@ export default function LabRuntimeWorkspace({
         overflow: "hidden",
       }}
     >
-      <ModeBar
-        view={view}
-        onSelectView={setView}
-        item={item}
-        scenarioItem={scenarioItem}
-      />
-
-      {view === "scenario" && scenarioItem ? (
-        <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-          <ScenarioWorkspace
-            item={scenarioItem}
-            onCompleteScenario={onCompleteScenario}
+      <section
+        ref={containerRef}
+        style={{
+          display: "grid",
+          gridTemplateColumns: `1fr 12px ${rightWidth}px`,
+          flex: 1,
+          overflow: "hidden",
+          background: "var(--bg-base)",
+          gap: 0,
+          minHeight: 0,
+        }}
+      >
+        {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
+        <div
+          style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}
+        >
+          <RemoteDesktopPanel
+            item={item}
+            remoteUrl={remoteUrl}
+            remoteLoading={remoteLoading}
+            remoteError={remoteError}
+            onRetry={retryRuntime}
           />
         </div>
-      ) : (
-        <section
-          ref={containerRef}
+
+        {/* Splitter */}
+        <div
+          onMouseDown={(e) => {
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = e.clientX;
+            dragStartWidth.current = rightWidth;
+            document.body.style.cursor = "col-resize";
+          }}
+          onTouchStart={(e) => {
+            const touch = e.touches[0];
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = touch.clientX;
+            dragStartWidth.current = rightWidth;
+          }}
           style={{
-            display: "grid",
-            gridTemplateColumns: `1fr 12px ${rightWidth}px`,
-            flex: 1,
-            overflow: "hidden",
-            background: "var(--bg-base)",
-            gap: 0,
-            minHeight: 0,
+            width: "12px",
+            cursor: "col-resize",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
           }}
         >
-          {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
           <div
-            style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}
-          >
-            <RemoteDesktopPanel
-              item={item}
-              remoteUrl={remoteUrl}
-              remoteLoading={remoteLoading}
-              remoteError={remoteError}
-              onRetry={retryRuntime}
-            />
-          </div>
-
-          {/* Splitter */}
-          <div
-            onMouseDown={(e) => {
-              isDragging.current = true;
-              hasUserResized.current = true;
-              dragStartX.current = e.clientX;
-              dragStartWidth.current = rightWidth;
-              document.body.style.cursor = "col-resize";
-            }}
-            onTouchStart={(e) => {
-              const touch = e.touches[0];
-              isDragging.current = true;
-              hasUserResized.current = true;
-              dragStartX.current = touch.clientX;
-              dragStartWidth.current = rightWidth;
-            }}
             style={{
-              width: "12px",
-              cursor: "col-resize",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
+              width: "2px",
+              height: "48px",
+              background: "var(--border-dim)",
+              borderRadius: "2px",
+              opacity: 0.9,
             }}
-          >
-            <div
-              style={{
-                width: "2px",
-                height: "48px",
-                background: "var(--border-dim)",
-                borderRadius: "2px",
-                opacity: 0.9,
-              }}
-            />
-          </div>
+          />
+        </div>
 
-          {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
-          <aside
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              borderLeft: "1px solid var(--border-dim)",
-              background: "var(--bg-panel)",
-              minHeight: 0,
-              overflow: "hidden",
-            }}
-          >
-            <TabBar
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-              quizUnlocked={quizUnlocked}
-            />
-
-            <div
+        {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
+        <aside
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            borderLeft: "1px solid var(--border-dim)",
+            background: "var(--bg-panel)",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          {onViewScenario && (
+            <button
+              onClick={onViewScenario}
               style={{
-                flex: 1,
-                minHeight: 0,
-                overflow: "hidden",
                 display: "flex",
-                flexDirection: "column",
+                alignItems: "center",
+                gap: "6px",
+                padding: "7px 14px",
+                border: "none",
+                borderBottom: "1px solid var(--border-dim)",
+                background: "rgba(56,189,248,0.05)",
+                color: "var(--blue)",
+                fontSize: "10px",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+                flexShrink: 0,
+                transition: "background 0.15s",
               }}
             >
-              {activeTab === "guide" && (
-                <LabGuide
-                  item={item}
-                  currentStep={currentStep}
-                  currentAnswer={currentAnswer}
-                  onAnswerChange={onAnswerChange}
-                  onPrevStep={onPrevStep}
-                  onNextStep={onNextStep}
-                />
-              )}
-              {activeTab === "logs" && (
-                <RuntimeLogsPanel
-                  lines={logs}
-                  statusLabel={runtime.statusLabel}
-                />
-              )}
-              {activeTab === "metrics" && (
-                <MetricsTab
-                  runtime={runtime}
-                  onAttack={triggerAttack}
-                  attackLoading={attackLoading}
-                />
-              )}
-              {activeTab === "quiz" && quizUnlocked && (
-                <QuizTab
-                  item={item}
-                  phase={item?.phase}
-                  onComplete={onCompleteLabQuiz}
-                />
-              )}
-            </div>
-          </aside>
-        </section>
-      )}
+              <span style={{ fontSize: "11px" }}>◆</span>
+              VIEW PIPELINE
+            </button>
+          )}
+          <TabBar
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            quizUnlocked={quizUnlocked}
+          />
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {activeTab === "guide" && (
+              <LabGuide
+                item={item}
+                currentStep={currentStep}
+                currentAnswer={currentAnswer}
+                onAnswerChange={onAnswerChange}
+                onPrevStep={onPrevStep}
+                onNextStep={onNextStep}
+              />
+            )}
+            {activeTab === "logs" && (
+              <RuntimeLogsPanel
+                lines={logs}
+                statusLabel={runtime.statusLabel}
+              />
+            )}
+            {activeTab === "metrics" && (
+              <MetricsTab
+                runtime={runtime}
+                onAttack={triggerAttack}
+                attackLoading={attackLoading}
+              />
+            )}
+            {activeTab === "quiz" && quizUnlocked && (
+              <QuizTab
+                item={item}
+                phase={item?.phase}
+                onComplete={onCompleteLabQuiz}
+              />
+            )}
+          </div>
+        </aside>
+      </section>
     </div>
   );
 }

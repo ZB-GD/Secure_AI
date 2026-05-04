@@ -1,9 +1,9 @@
 export const journey = [
   {
     id: "scenario-0",
-    type: "scenario",
-    shortTitle: "Scenario 0",
-    phase: "Global Incident Context",
+    type: "welcome",
+    shortTitle: "Welcome",
+    phase: "Welcome",
     title: "CityFlow AI · Emergency Gridlock",
     subtitle: "The smart city traffic management system has collapsed.",
     threatStage: "E",
@@ -111,8 +111,7 @@ export const journey = [
           {
             id: "c",
             label: "The payload contains a sensor_id",
-            description:
-              "A sensor identifier is expected telemetry metadata.",
+            description: "A sensor identifier is expected telemetry metadata.",
             correct: false,
           },
         ],
