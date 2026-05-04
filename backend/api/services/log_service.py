@@ -2,7 +2,7 @@ import docker
 from fastapi import HTTPException
 import shlex
 
-from api.models.state import LABS
+from api.models.state import LABS, session_container_name
 
 
 PIPELINE_CONTAINERS = {
@@ -34,14 +34,14 @@ def _get_lab_or_404(node: str):
 	return lab
 
 
-def get_lab_logs(node: str, limit: int = 200):
+def get_lab_logs(node: str, limit: int = 200, session_id: str = "shared"):
 	"""Return latest container log lines for a lab node.
 
 	If a valid lab container is not running yet, return an empty log payload
 	instead of a 404 to avoid noisy frontend polling errors.
 	"""
 	lab = _get_lab_or_404(node)
-	container_name = lab["container_name"]
+	container_name = session_container_name(lab["container_name"], session_id)
 	client = _client()
 
 	safe_limit = max(1, min(limit, 2000))

@@ -102,7 +102,7 @@ export default function ScenarioGuide({ item, onComplete }) {
             <li>Review the incident context above.</li>
             <li>Analyze the backend logs and payloads in your Workspace.</li>
             <li>Identify the anomaly bypassing the security controls.</li>
-            <li>Complete the final assessment to unlock the mitigation lab.</li>
+            <li>Use the dashboard to choose any lab when you are ready.</li>
           </ol>
         </InfoBlock>
 

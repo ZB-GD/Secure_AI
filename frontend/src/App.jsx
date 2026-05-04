@@ -5,8 +5,10 @@ import MainLayout from "./components/layout/MainLayout";
 function bootJourney(items) {
   return items.map((item, index) => ({
     ...item,
-    locked: index !== 0,
+    locked: false,
     completed: false,
+    guideCompleted: false,
+    scenarioViewed: item.type !== "lab",
     currentStepIndex: item.type === "lab" ? 0 : null,
     answers: item.type === "lab" ? {} : null,
     showValidation: false,
@@ -24,39 +26,45 @@ function isStepAnswerValid(step, answer) {
 
 export default function App() {
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState(seedJourney[0].id);
+  const [activeItemId, setActiveItemId] = useState("dashboard");
 
   const activeItem = useMemo(
-    () => items.find((item) => item.id === activeItemId) || items[0],
+    () =>
+      activeItemId === "dashboard"
+        ? {
+            id: "dashboard",
+            type: "dashboard",
+            shortTitle: "Dashboard",
+            phase: "Lab Selection",
+            title: "SecLabs Dashboard",
+            subtitle: "Choose a lab to begin.",
+            threatStage: "E",
+          }
+        : items.find((item) => item.id === activeItemId) || items[0],
     [items, activeItemId],
   );
 
   function handleSelectItem(itemId) {
+    if (itemId === "dashboard") {
+      setActiveItemId("dashboard");
+      return;
+    }
     const target = items.find((item) => item.id === itemId);
     if (!target || target.locked) return;
+    if (target.type === "lab" && !target.guide?.steps?.length) return;
     setActiveItemId(itemId);
   }
 
   function handleCompleteScenario() {
     const currentIndex = items.findIndex((item) => item.id === activeItemId);
-    const nextItem = items[currentIndex + 1];
 
-    // Primero actualizamos los items (completamos el actual y desbloqueamos el siguiente)
     setItems((prev) => {
       const next = [...prev];
       if (currentIndex !== -1) {
         next[currentIndex] = { ...next[currentIndex], completed: true };
       }
-      if (nextItem) {
-        next[currentIndex + 1] = { ...next[currentIndex + 1], locked: false };
-      }
       return next;
     });
-
-    // Luego forzamos la navegación al siguiente item si existe
-    if (nextItem) {
-      setActiveItemId(nextItem.id);
-    }
   }
 
   function handleAnswerChange(stepId, value) {
@@ -104,8 +112,11 @@ export default function App() {
       const isLast =
         current.currentStepIndex === current.guide.steps.length - 1;
       if (isLast) {
-        next[idx] = { ...current, completed: true, showValidation: false };
-        if (next[idx + 1]) next[idx + 1] = { ...next[idx + 1], locked: false };
+        next[idx] = {
+          ...current,
+          guideCompleted: true,
+          showValidation: false,
+        };
         return next;
       }
 
@@ -116,6 +127,22 @@ export default function App() {
       };
       return next;
     });
+  }
+
+  function handleCompleteLabQuiz(itemId) {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, completed: true } : item,
+      ),
+    );
+  }
+
+  function handleStartLab(itemId) {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, scenarioViewed: true } : item,
+      ),
+    );
   }
 
   const currentStep =
@@ -145,6 +172,8 @@ export default function App() {
       onAnswerChange={handleAnswerChange}
       onPrevStep={handlePrevStep}
       onNextStep={handleNextStep}
+      onCompleteLabQuiz={handleCompleteLabQuiz}
+      onStartLab={handleStartLab}
     />
   );
 }

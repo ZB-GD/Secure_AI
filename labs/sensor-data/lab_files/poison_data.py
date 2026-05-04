@@ -77,12 +77,21 @@ def run_attack():
         f"    signed         = {poisoned_reading['signed']}",
         "",
         f"[TARGET] HTTP {response.status_code}",
+        f"[TARGET] mode={result.get('mode')}",
         f"[TARGET] accepted={result.get('accepted')} reason={result.get('reason')}",
         f"[TARGET] forwarded={result.get('forwarded')} dropped={result.get('dropped')}",
         f"[TARGET] congestion_score={result.get('congestion_score')}",
         "",
-        "[RESULT] ATTACK SUCCESSFUL inside isolated lab runtime.",
-        "[NEXT] Implement validate_reading(), detect_anomaly(), and evaluar_drift().",
+        (
+            "[RESULT] ATTACK SUCCESSFUL inside isolated lab runtime."
+            if result.get("accepted")
+            else "[RESULT] ATTACK BLOCKED by local student defense."
+        ),
+        (
+            "[NEXT] Implement validate_reading(), detect_anomaly(), and evaluate_drift()."
+            if result.get("accepted")
+            else "[NEXT] Check LOGS and METRICS: the same poisoned input was rejected."
+        ),
         "=" * 62,
         "",
     ]

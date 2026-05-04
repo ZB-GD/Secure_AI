@@ -271,7 +271,7 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   return [];
 }
 
-function ScenarioOnePipelineRuntime() {
+export function ScenarioOnePipelineRuntime() {
   const fallbackPhases = useMemo(
     () => [
       {
