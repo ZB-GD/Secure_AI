@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel
 
 NOVNC_PORT = 6080          # previously TTYD_PORT = 7681, now using noVNC
@@ -7,11 +9,14 @@ LABS = {
         "image": "seclabs-lab1:vuln",
         "container_name": "lab-phase-1",
         "log_path": "/home/lab/output/lab1-attack.log",
+        "local_status_url": "http://127.0.0.1:5000/status",
         "initial_log": [
             "CityFlow AI - Lab 1 event log",
             "Lab runtime started in an isolated container.",
-            "Open the Guide tab and follow the steps.",
-            "Run the attack when instructed to see forged sensor data here.",
+            "Local vulnerable target: http://127.0.0.1:5000/ingest",
+            "Open Guide, run the health check, then execute poison_data.py.",
+            "After implementing validate_defense.py, run enable_defense.py and repeat the attack.",
+            "Goal: first attack is ACCEPTED; second attack is REJECTED.",
         ],
         "attack_command": ["python3", "/home/lab/Desktop/Lab1/poison_data.py"],
     },
@@ -28,6 +33,12 @@ LABS = {
         "container_name": "lab-phase-4",
     },
 }
+
+def session_container_name(base_name: str, session_id: str) -> str:
+    """Append a sanitised session suffix to a base container name."""
+    safe = re.sub(r"[^a-zA-Z0-9\-]", "", session_id)[:24]
+    return f"{base_name}-{safe}" if safe else base_name
+
 
 class LabStartResponse(BaseModel):
     container_id: str

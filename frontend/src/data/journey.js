@@ -77,16 +77,61 @@ export const journey = [
     subtitle: "Execute the attack and implement defensive boundaries.",
     threatStage: "E",
     envKey: "NODE-1",
-        guide: {
+    scenario: {
+      title: "Trace the Data Poisoning Attack",
+      intro:
+        "CityFlow AI optimizes traffic based on real-time data from IoT sensors. The system recently forced gridlock because its model believed the streets were empty.",
+      context:
+        "The suspicious payload contains traffic_volume=-5000 and temp=0.0K. Those values bypassed ingestion checks and produced a negative congestion_score downstream.",
+      mission:
+        "Your mission is to reproduce the attack safely inside the Lab 1 VM, then implement the defensive gates that should have stopped it.",
+      evidence: [
+        "NODE-1 accepted an impossible traffic reading.",
+        "NODE-2 converted that reading into congestion_score=-0.625.",
+        "Downstream logic trusted the poisoned feature.",
+      ],
+      question: {
+        text: "Looking at NODE-1 and NODE-2, what value proves the sensor data was poisoned?",
+        hint: "Check the traffic_volume in NODE-1 and the resulting congestion_score in NODE-2.",
+        options: [
+          {
+            id: "a",
+            label: "Cloud coverage is above 80%",
+            description:
+              "Cloud coverage may affect traffic, but it is not physically impossible.",
+            correct: false,
+          },
+          {
+            id: "b",
+            label: "traffic_volume is -5000",
+            description:
+              "A road cannot contain a negative number of cars. NODE-2 turns this into congestion_score=-0.625.",
+            correct: true,
+          },
+          {
+            id: "c",
+            label: "The payload contains a sensor_id",
+            description:
+              "A sensor identifier is expected telemetry metadata.",
+            correct: false,
+          },
+        ],
+        wrongFeedback:
+          "Not quite. Focus on the value that is physically impossible and then becomes a negative feature in NODE-2.",
+        correctFeedback:
+          "Correct. traffic_volume=-5000 is physically impossible and should have been rejected by input validation before preprocessing.",
+      },
+    },
+    guide: {
       objective:
-        "Work directly in the VM terminal. Run the attack script, then implement the 3 defensive layers by editing validate_defense.py.",
+        "Attack the intentionally vulnerable local ingestion node, observe the impact, implement three defensive layers, then rerun the same attack and prove it is blocked.",
       steps: [
         {
           id: "step-1-1",
-          title: "Deconstruct the Exploit",
-          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). Read the vulnerable local node and the attack script:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nThe script runs inside this isolated Lab 1 container and sends traffic_volume = -5000 to http://127.0.0.1:5000/ingest. No password, no token — the vulnerable local node trusts the sender.",
+          title: "Inspect the Local Target",
+          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). First confirm the vulnerable app is alive:\n\n  curl http://127.0.0.1:5000/health\n\nThen read the two files that matter:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nThe vulnerable app is the local target. The attack script sends traffic_volume = -5000 to http://127.0.0.1:5000/ingest.",
           observation:
-            "Notice the script needs no credentials. It models an ingestion path that accepts data without proving device identity. This is the vulnerability.",
+            "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
           placeholder: "e.g., Authentication, Signature, Token...",
@@ -105,7 +150,7 @@ export const journey = [
           title: "Execute the Attack",
           body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nThe script injects traffic_volume = -5000 into the local vulnerable node at 127.0.0.1:5000. Watch the output — it shows how the isolated node accepts and propagates the poisoned data.",
           observation:
-            "After running the script, switch to the LOGS tab in this panel to see the isolated container logs. Check how NODE-2 computes a negative congestion_score from the poisoned input.",
+            "After running the script, switch to LOGS and METRICS. LOGS show the event chain; METRICS summarize the impact: accepted poisoned readings, negative congestion_score, drift risk, and model trust.",
           question:
             "What congestion_score does NODE-2 produce when it receives traffic_volume = -5000?",
           placeholder: "e.g., -0.625",
@@ -115,7 +160,7 @@ export const journey = [
         {
           id: "step-1-3",
           title: "Defense Layer 1: Sanity Checks",
-          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/Desktop/Lab1/validate_defense.py\n\nFind the function validate_reading() and implement the TODO block. A road cannot have a negative number of cars — add that physical constraint.\n\nTest your implementation:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/Desktop/Lab1/validate_defense.py\n\nFind validate_reading() and implement the TODO block. This is the first gate: reject impossible raw readings before feature engineering. A road cannot have a negative number of cars, temperature cannot be 0K in this dataset, rain cannot be negative, and cloud percentage must stay between 0 and 100.\n\nTest your implementation:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "The variable traffic_volume represents the number of cars per hour on a road segment. What is the absolute physical minimum?",
           question:
@@ -127,7 +172,7 @@ export const journey = [
         {
           id: "step-1-4",
           title: "Defense Layer 2: Statistical Anomaly Detection",
-          body: "Still in validate_defense.py, implement the detectar_anomalia() function using the Z-Score formula already shown in the TODO comments.\n\nZ-Score:  z = |( x - mean ) / std |\nIf z > UMBRAL_Z → QUARANTINE\n\nRun again to verify:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Still in validate_defense.py, implement detect_anomaly(). This is the second gate: catch values that may be physically possible but statistically suspicious.\n\nUse the Z-Score formula already shown in the TODO comments:\n\n  z = |( x - mean ) / std |\n\nIf z > Z_THRESHOLD, return QUARANTINE so the value does not reach inference.\n\nRun again to verify:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value — far outside normal range.",
           question:
@@ -147,9 +192,9 @@ export const journey = [
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
-          body: "Implement the evaluar_drift() function in validate_defense.py. The lab script provides a drift_score — your job is to decide what happens when it exceeds the threshold.\n\nThe production threshold is RETRAIN_DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Implement evaluate_drift() in validate_defense.py. This is the third gate: protect retraining. If poisoned data shifts the incoming distribution too much, the system should pause retraining instead of promoting a model trained on bad data.\n\nThe safety threshold is DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
-            "When the script reports ✅ for all 3 steps, your 3-layer defense is complete. The QUIZ tab will unlock.",
+            "When the script reports ✅ for all 3 steps, your defense logic is ready. Next you will enable it in the local target and rerun the same attack.",
           question:
             "What mechanism should be automatically triggered if the drift score exceeds the threshold?",
           placeholder: "e.g., Halt retraining, Pause training...",
@@ -164,11 +209,30 @@ export const journey = [
             "block",
           ],
         },
+        {
+          id: "step-1-6",
+          title: "Enable Defense and Rerun",
+          body: "Now switch the local target from vulnerable mode to protected mode:\n\n  python3 /home/lab/Desktop/Lab1/enable_defense.py\n\nThen rerun the exact same attack:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nGo to LOGS and METRICS. The same traffic_volume = -5000 should now be rejected instead of accepted.",
+          observation:
+            "This closes the loop: the first run demonstrates the vulnerability, and the second run proves that your validation gate blocks the poisoned input before it reaches feature engineering.",
+          question:
+            "After enabling defense, what should NODE-1 do with the poisoned traffic_volume=-5000 reading?",
+          placeholder: "e.g., Reject it, block it...",
+          hint: "Look for REJECTED or ATTACK BLOCKED in the LOGS tab.",
+          expectedKeywords: [
+            "reject",
+            "rejected",
+            "block",
+            "blocked",
+            "drop",
+            "quarantine",
+          ],
+        },
       ],
     },
-    // ── Quiz de evaluación final ─────────────────────────────────────────
-    // Se desbloquea en la pestaña "Quiz" al completar todos los pasos de la guía.
-    // El tutor RAG usa estas preguntas para generar feedback personalizado.
+    // Final assessment quiz.
+    // It unlocks in the Quiz tab after the guide steps are completed.
+    // The tutor uses these questions to generate personalized feedback.
     quiz: [
       {
         question:

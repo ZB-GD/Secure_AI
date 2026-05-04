@@ -6,7 +6,7 @@ import RuntimeLogsPanel from "./RuntimeLogsPanel";
 import { useLabRuntime } from "../../hooks/useLabRuntime";
 import { request } from "../../services/apiClient";
 import LabGuide from "./LabGuide";
-
+import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
 const TABS = [
@@ -74,39 +74,279 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
   );
 }
 
-
-// ─── Sub-component: LogsTab ──────────────────────────────────────────────────
-function LogsTab({ logs, statusLabel }) {
-  const scrollRef = useRef(null);
-  useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [logs]);
-
-  const statusColor =
-    statusLabel === "running"
-      ? "var(--green)"
-      : statusLabel === "error"
-        ? "var(--red)"
-        : "var(--orange)";
+// ─── Sub-component: ModeBar ──────────────────────────────────────────────────
+function ModeBar({ view, onSelectView, item, scenarioItem }) {
+  const modes = [
+    {
+      id: "scenario",
+      icon: "◆",
+      label: scenarioItem?.shortTitle || "Pipeline Scenario",
+    },
+    { id: "lab", icon: "⬡", label: item?.shortTitle || "Lab" },
+  ];
 
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
+        alignItems: "center",
+        gap: "4px",
+        padding: "8px 14px",
+        background: "var(--bg-panel)",
+        borderBottom: "1px solid var(--border-dim)",
+        flexShrink: 0,
       }}
     >
+      {modes.map((mode) => {
+        const isActive = view === mode.id;
+        const isScenario = mode.id === "scenario";
+        return (
+          <button
+            key={mode.id}
+            onClick={() => onSelectView(mode.id)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 14px",
+              borderRadius: "7px",
+              border: isActive
+                ? isScenario
+                  ? "1px solid rgba(56,189,248,0.35)"
+                  : "1px solid var(--orange-border)"
+                : "1px solid var(--border-dim)",
+              background: isActive
+                ? isScenario
+                  ? "rgba(56,189,248,0.10)"
+                  : "var(--orange-dim)"
+                : "transparent",
+              color: isActive
+                ? isScenario
+                  ? "var(--blue)"
+                  : "var(--orange)"
+                : "var(--text-3)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontWeight: "700",
+              letterSpacing: "0.10em",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              transition: "all 0.15s",
+            }}
+          >
+            <span style={{ fontSize: "12px" }}>{mode.icon}</span>
+            {mode.label.toUpperCase()}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Sub-component: MetricsTab ───────────────────────────────────────────────
+function MetricsTab({ runtime }) {
+  const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
+  const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
+  const protectedMode =
+    runtime.statusLabel === "protected" || runtime.defenseEnabled;
+  const statusColor = runtime.isCompromised
+    ? "var(--red)"
+    : protectedMode
+      ? "var(--green)"
+      : "var(--orange)";
+  const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
+
+  const metricCards = [
+    {
+      label: "ATTACK ATTEMPTS",
+      value: runtime.attackAttempts ?? 0,
+      suffix: "",
+      color: "var(--text-1)",
+      caption: "How many poisoned submissions were sent to the local target.",
+    },
+    {
+      label: "ACCEPTED / REJECTED",
+      value: `${runtime.acceptedReadings ?? 0}/${runtime.rejectedReadings ?? 0}`,
+      suffix: "",
+      color: runtime.isCompromised ? "var(--red)" : "var(--green)",
+      caption: runtime.isCompromised
+        ? "Accepted poison means the first gate failed."
+        : protectedMode
+          ? "Rejected poison means the defense gate is working."
+          : "No poisoned reading has been accepted yet.",
+    },
+    {
+      label: "CONGESTION SCORE",
+      value: runtime.congestionScore ?? "n/a",
+      suffix: "",
+      color: scoreColor,
+      caption: runtime.isCompromised
+        ? "Negative traffic produces a negative model feature."
+        : "Run the attack to generate the feature.",
+    },
+    {
+      label: "DEFENSE COVERAGE",
+      value: `${runtime.defenseCoverage ?? 0}/3`,
+      suffix: "",
+      color: protectedMode ? "var(--green)" : "var(--orange)",
+      caption: "Layers covered: sanity checks, anomaly detection, drift gate.",
+    },
+    {
+      label: "DOWNSTREAM RISK",
+      value: runtime.driftScore,
+      suffix: "%",
+      color: driftColor,
+      caption: runtime.isCompromised
+        ? "Above the 25% safety threshold used in this lab."
+        : protectedMode
+          ? "Risk drops once poisoned data is rejected."
+          : "Below the safety threshold before the attack.",
+    },
+    {
+      label: "MODEL TRUST",
+      value: runtime.accuracy,
+      suffix: "%",
+      color: accuracyColor,
+      caption: runtime.isCompromised
+        ? "Trust drops because poisoned data reached downstream logic."
+        : "Baseline trust before poisoned input is accepted.",
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        overflowY: "auto",
+        height: "100%",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+      }}
+    >
+      {/* Estado general */}
       <div
         style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid var(--border-dim)",
-          flexShrink: 0,
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
+          background: runtime.isCompromised
+            ? "rgba(248,113,113,0.08)"
+            : "var(--green-dim)",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.1em",
+              marginBottom: "4px",
+            }}
+          >
+            LOCAL LAB STATUS
+          </div>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "var(--text-1)",
+              lineHeight: 1.5,
+            }}
+          >
+            {runtime.lastEvent}
+            {runtime.lastReason && (
+              <span style={{ color: "var(--text-3)" }}>
+                {" "}
+                {runtime.lastReason}
+              </span>
+            )}
+          </div>
+        </div>
+        <span
+          style={{
+            fontSize: "10px",
+            padding: "3px 10px",
+            borderRadius: "999px",
+            border: `1px solid ${statusColor}`,
+            color: statusColor,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            marginLeft: "12px",
+          }}
+        >
+          {runtime.isCompromised
+            ? "COMPROMISED"
+            : protectedMode
+              ? "PROTECTED"
+              : "VULNERABLE"}
+        </span>
+      </div>
+
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
+      >
+        {metricCards.map((metric) => (
+          <div
+            key={metric.label}
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: "8px",
+              padding: "15px",
+              minHeight: "132px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--text-3)",
+                letterSpacing: "0.08em",
+                lineHeight: 1.4,
+              }}
+            >
+              {metric.label}
+            </div>
+            <div
+              style={{
+                fontSize: "30px",
+                color: metric.color,
+                fontWeight: 700,
+                fontFamily: "var(--font-display)",
+                display: "flex",
+                alignItems: "baseline",
+                gap: "4px",
+              }}
+            >
+              {metric.value}
+              {metric.suffix && (
+                <span style={{ fontSize: "15px" }}>{metric.suffix}</span>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--text-3)",
+                lineHeight: 1.5,
+              }}
+            >
+              {metric.caption}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          padding: "14px 16px",
+          borderRadius: "8px",
+          border: "1px solid var(--border-dim)",
+          background: "var(--bg-elevated)",
         }}
       >
         <div
@@ -114,172 +354,51 @@ function LogsTab({ logs, statusLabel }) {
             fontSize: "10px",
             color: "var(--text-3)",
             letterSpacing: "0.1em",
+            marginBottom: "8px",
           }}
         >
-          LAB EVENT LOG
+          WHAT THESE METRICS MEAN
         </div>
-        <span
-          style={{
-            fontSize: "10px",
-            color: statusColor,
-            border: `1px solid ${statusColor}`,
-            borderRadius: "999px",
-            padding: "2px 8px",
-          }}
+        <div
+          style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7 }}
         >
-          {statusLabel?.toUpperCase()}
-        </span>
+          These are lab indicators, not production telemetry. They show whether
+          the local app accepted or rejected poisoned data. The target starts in
+          vulnerable mode, then switches to protected mode after
+          enable_defense.py.
+        </div>
       </div>
+
       <div
-        ref={scrollRef}
         style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "#05080f",
           padding: "14px 16px",
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          lineHeight: 1.7,
-          color: "var(--text-2)",
+          borderRadius: "8px",
+          border: "1px solid var(--orange-border)",
+          background: "rgba(249,115,22,0.06)",
         }}
       >
-        {logs?.length > 0 ? (
-          logs.map((line, i) => (
-            <div key={i} style={{ marginBottom: "3px" }}>
-              {line}
-            </div>
-          ))
-        ) : (
-          <div style={{ color: "var(--text-3)" }}>
-            Waiting for runtime events...
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Sub-component: MetricsTab ───────────────────────────────────────────────
-function MetricsTab({ runtime }) {
-  const driftColor  = runtime.driftScore  > 40 ? "var(--red)"   : "var(--green)";
-  const accuracyColor = runtime.accuracy  < 70 ? "var(--red)"   : "var(--green)";
-  const statusColor = runtime.isCompromised    ? "var(--red)"   : "var(--green)";
-
-  return (
-    <div style={{
-      overflowY: "auto",
-      height: "100%",
-      padding: "16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "14px",
-    }}>
-
-      {/* Estado general */}
-      <div style={{
-        padding: "12px 16px",
-        borderRadius: "10px",
-        border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
-        background: runtime.isCompromised ? "rgba(248,113,113,0.08)" : "var(--green-dim)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <div>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "4px" }}>
-            PIPELINE STATUS
-          </div>
-          <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.5 }}>
-            {runtime.lastEvent}
-          </div>
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--orange)",
+            letterSpacing: "0.1em",
+            marginBottom: "8px",
+          }}
+        >
+          ATTACK COMMAND
         </div>
-        <span style={{
-          fontSize: "10px",
-          padding: "3px 10px",
-          borderRadius: "999px",
-          border: `1px solid ${statusColor}`,
-          color: statusColor,
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          marginLeft: "12px",
-        }}>
-          {runtime.isCompromised ? "COMPROMISED" : "RUNNING"}
-        </span>
-      </div>
-
-      {/* Métricas principales */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-
-        <div style={{
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-dim)",
-          borderRadius: "10px",
-          padding: "16px",
-        }}>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-            MODEL DRIFT
-          </div>
-          <div style={{
-            fontSize: "32px",
-            color: driftColor,
-            fontWeight: "bold",
-            fontFamily: "var(--font-display)",
-            display: "flex",
-            alignItems: "baseline",
-            gap: "4px",
-          }}>
-            {runtime.driftScore}
-            <span style={{ fontSize: "16px" }}>%</span>
-          </div>
-          <div style={{ marginTop: "4px", fontSize: "10px", color: runtime.isCompromised ? "var(--red)" : "var(--text-3)" }}>
-            {runtime.isCompromised ? "Compromised distribution" : "Distribution stable"}
-          </div>
-        </div>
-
-        <div style={{
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-dim)",
-          borderRadius: "10px",
-          padding: "16px",
-        }}>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-            PREDICTION ACCURACY
-          </div>
-          <div style={{
-            fontSize: "32px",
-            color: accuracyColor,
-            fontWeight: "bold",
-            fontFamily: "var(--font-display)",
-            display: "flex",
-            alignItems: "baseline",
-            gap: "4px",
-          }}>
-            {runtime.accuracy}
-            <span style={{ fontSize: "16px" }}>%</span>
-          </div>
-          <div style={{ marginTop: "4px", fontSize: "10px", color: runtime.isCompromised ? "var(--red)" : "var(--text-3)" }}>
-            {runtime.isCompromised ? "Unsafe model update propagated" : "Accuracy within normal margin"}
-          </div>
-        </div>
-      </div>
-
-      {/* Instrucción para el alumno */}
-      <div style={{
-        padding: "14px 16px",
-        borderRadius: "10px",
-        border: "1px solid var(--border-dim)",
-        background: "var(--bg-elevated)",
-      }}>
-        <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-          HOW TO TRIGGER AN ATTACK
-        </div>
-        <div style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7, fontFamily: "var(--font-mono)" }}>
-          The attack runs from the VM terminal:{"\n"}
-          <span style={{ color: "var(--orange)" }}>
-            python3 /home/lab/Desktop/Lab1/poison_data.py
-          </span>
-          {"\n\n"}
-          Metrics update automatically every 5 seconds after the attack executes.
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--text-2)",
+            lineHeight: 1.7,
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          curl http://127.0.0.1:5000/health{"\n"}
+          python3 /home/lab/Desktop/Lab1/poison_data.py{"\n"}
+          python3 /home/lab/Desktop/Lab1/enable_defense.py{"\n"}
+          python3 /home/lab/Desktop/Lab1/poison_data.py
         </div>
       </div>
     </div>
@@ -287,7 +406,7 @@ function MetricsTab({ runtime }) {
 }
 
 // ─── Sub-component: QuizTab ──────────────────────────────────────────────────
-function QuizTab({ item, phase }) {
+function QuizTab({ item, phase, onComplete }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [tutorFeedback, setTutorFeedback] = useState("");
@@ -304,41 +423,44 @@ function QuizTab({ item, phase }) {
   async function handleSubmit() {
     if (!allAnswered) return;
     setSubmitted(true);
+    if (correctCount / quiz.length >= 0.75) {
+      onComplete?.(item.id);
+    }
     setTutorLoading(true);
     setTutorError("");
 
     const wrongItems = quiz
       .map((q, i) =>
         answers[i] !== q.correctAnswerIndex
-          ? `- "${q.question}" → Alumno eligió: "${q.options[answers[i]]}" (correcta: "${q.options[q.correctAnswerIndex]}")`
+          ? `- "${q.question}" -> Student selected: "${q.options[answers[i]]}" (correct: "${q.options[q.correctAnswerIndex]}")`
           : null,
       )
       .filter(Boolean)
       .join("\n");
 
-    const prompt = `Eres el Tutor de Seguridad de CityFlow AI.
-Contexto del laboratorio: ${phase || "Laboratorio de ciberseguridad en pipelines de IA"}.
-El alumno ha completado el quiz con ${correctCount}/${quiz.length} respuestas correctas.
-${wrongItems ? `\nRespuestas incorrectas:\n${wrongItems}` : "\nEl alumno respondió todo correctamente."}
+    const prompt = `You are the CityFlow AI Security Tutor.
+Lab context: ${phase || "Cybersecurity lab for AI pipelines"}.
+The student completed the quiz with ${correctCount}/${quiz.length} correct answers.
+${wrongItems ? `\nIncorrect answers:\n${wrongItems}` : "\nThe student answered everything correctly."}
 
-Por favor:
-1. Felicita o anima según la puntuación de forma breve.
-2. Explica el concepto detrás de cada fallo en 2-3 frases, de forma didáctica.
-3. Relaciona los errores con el pipeline de IA afectado.
-4. Sugiere una acción concreta para reforzar los puntos débiles.
-Máximo 220 palabras. Responde en español.`;
+Please:
+1. Briefly acknowledge the score.
+2. Explain the concept behind each mistake in 2-3 educational sentences.
+3. Relate mistakes to the affected AI pipeline.
+4. Suggest one concrete action to reinforce weak areas.
+Maximum 220 words. Respond in English.`;
 
     try {
       const data = await request("/api/rag/chat", {
         method: "POST",
         body: JSON.stringify({
           message: prompt,
-          context: phase || "Laboratorio general",
+          context: phase || "General lab",
         }),
       });
       setTutorFeedback(data.response);
     } catch (err) {
-      setTutorError(`Error al obtener feedback: ${err.message}`);
+      setTutorError(`Error getting feedback: ${err.message}`);
     } finally {
       setTutorLoading(false);
     }
@@ -361,7 +483,7 @@ Máximo 220 palabras. Responde en español.`;
           fontSize: "13px",
         }}
       >
-        No hay preguntas configuradas para este laboratorio.
+        No questions are configured for this lab.
       </div>
     );
   }
@@ -409,7 +531,7 @@ Máximo 220 palabras. Responde en español.`;
               letterSpacing: "0.08em",
             }}
           >
-            {submitted ? "correctas" : "respondidas"}
+            {submitted ? "correct" : "answered"}
           </div>
         </div>
         <div
@@ -452,7 +574,7 @@ Máximo 220 palabras. Responde en español.`;
               whiteSpace: "nowrap",
             }}
           >
-            Evaluar
+            Evaluate
           </button>
         ) : (
           <button
@@ -468,7 +590,7 @@ Máximo 220 palabras. Responde en español.`;
               whiteSpace: "nowrap",
             }}
           >
-            Reintentar
+            Retry
           </button>
         )}
       </div>
@@ -641,13 +763,13 @@ Máximo 220 palabras. Responde en español.`;
                 fontFamily: "var(--font-mono)",
               }}
             >
-              CITYFLOW TUTOR — Feedback personalizado
+              CITYFLOW TUTOR - Personalized feedback
             </span>
           </div>
           <div style={{ padding: "14px 16px", minHeight: "80px" }}>
             {tutorLoading && (
               <div style={{ color: "var(--text-3)", fontSize: "12px" }}>
-                Analizando tus respuestas...
+                Analyzing your answers...
               </div>
             )}
             {tutorError && (
@@ -677,12 +799,16 @@ Máximo 220 palabras. Responde en español.`;
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export default function LabRuntimeWorkspace({
   item,
+  scenarioItem,
   currentStep,
   currentAnswer,
   onAnswerChange,
   onPrevStep,
   onNextStep,
+  onCompleteLabQuiz,
+  onCompleteScenario,
 }) {
+  const [view, setView] = useState("lab");
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
   const [rightWidth, setRightWidth] = useState(800);
@@ -716,122 +842,154 @@ export default function LabRuntimeWorkspace({
     logLimit: 200,
   });
 
-  // Unlock quiz when lab is complete (last step answered)
-  const totalSteps = item?.guide?.steps?.length ?? 0;
-  const stepIndex = item?.currentStepIndex ?? 0;
-  const quizUnlocked = stepIndex >= totalSteps - 1 && !!item?.guide?.steps;
+  const quizUnlocked = Boolean(item?.guideCompleted);
 
   return (
-    <section
-      ref={containerRef}
+    <div
       style={{
-        display: "grid",
-        gridTemplateColumns: `1fr 12px ${rightWidth}px`,
+        display: "flex",
+        flexDirection: "column",
         height: "100%",
         overflow: "hidden",
-        background: "var(--bg-base)",
-        gap: 0,
       }}
     >
-      {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
-      <div style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}>
-        <RemoteDesktopPanel
-          item={item}
-          remoteUrl={remoteUrl}
-          remoteLoading={remoteLoading}
-          remoteError={remoteError}
-          onRetry={retryRuntime}
-        />
-      </div>
+      <ModeBar
+        view={view}
+        onSelectView={setView}
+        item={item}
+        scenarioItem={scenarioItem}
+      />
 
-      {/* Splitter */}
-      <div
-        onMouseDown={(e) => {
-          isDragging.current = true;
-          hasUserResized.current = true;
-          dragStartX.current = e.clientX;
-          dragStartWidth.current = rightWidth;
-          document.body.style.cursor = "col-resize";
-        }}
-        onTouchStart={(e) => {
-          const touch = e.touches[0];
-          isDragging.current = true;
-          hasUserResized.current = true;
-          dragStartX.current = touch.clientX;
-          dragStartWidth.current = rightWidth;
-        }}
-        style={{
-          width: "12px",
-          cursor: "col-resize",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "transparent",
-        }}
-      >
-        <div
+      {view === "scenario" && scenarioItem ? (
+        <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+          <ScenarioWorkspace
+            item={scenarioItem}
+            onCompleteScenario={onCompleteScenario}
+          />
+        </div>
+      ) : (
+        <section
+          ref={containerRef}
           style={{
-            width: "2px",
-            height: "48px",
-            background: "var(--border-dim)",
-            borderRadius: "2px",
-            opacity: 0.9,
-          }}
-        />
-      </div>
-
-      {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
-      <aside
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          borderLeft: "1px solid var(--border-dim)",
-          background: "var(--bg-panel)",
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
-        <TabBar
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-          quizUnlocked={quizUnlocked}
-        />
-
-        <div
-          style={{
+            display: "grid",
+            gridTemplateColumns: `1fr 12px ${rightWidth}px`,
             flex: 1,
-            minHeight: 0,
             overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
+            background: "var(--bg-base)",
+            gap: 0,
+            minHeight: 0,
           }}
         >
-          {activeTab === "guide" && (
-            <LabGuide
+          {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
+          <div
+            style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}
+          >
+            <RemoteDesktopPanel
               item={item}
-              currentStep={currentStep}
-              currentAnswer={currentAnswer}
-              onAnswerChange={onAnswerChange}
-              onPrevStep={onPrevStep}
-              onNextStep={onNextStep}
+              remoteUrl={remoteUrl}
+              remoteLoading={remoteLoading}
+              remoteError={remoteError}
+              onRetry={retryRuntime}
             />
-          )}
-          {activeTab === "logs" && (
-            <LogsTab logs={logs} statusLabel={runtime.statusLabel} />
-          )}
-          {activeTab === "metrics" && (
-            <MetricsTab
-              runtime={runtime}
-              onAttack={triggerAttack}
-              attackLoading={attackLoading}
+          </div>
+
+          {/* Splitter */}
+          <div
+            onMouseDown={(e) => {
+              isDragging.current = true;
+              hasUserResized.current = true;
+              dragStartX.current = e.clientX;
+              dragStartWidth.current = rightWidth;
+              document.body.style.cursor = "col-resize";
+            }}
+            onTouchStart={(e) => {
+              const touch = e.touches[0];
+              isDragging.current = true;
+              hasUserResized.current = true;
+              dragStartX.current = touch.clientX;
+              dragStartWidth.current = rightWidth;
+            }}
+            style={{
+              width: "12px",
+              cursor: "col-resize",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+            }}
+          >
+            <div
+              style={{
+                width: "2px",
+                height: "48px",
+                background: "var(--border-dim)",
+                borderRadius: "2px",
+                opacity: 0.9,
+              }}
             />
-          )}
-          {activeTab === "quiz" && quizUnlocked && (
-            <QuizTab item={item} phase={item?.phase} />
-          )}
-        </div>
-      </aside>
-    </section>
+          </div>
+
+          {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
+          <aside
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              borderLeft: "1px solid var(--border-dim)",
+              background: "var(--bg-panel)",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            <TabBar
+              activeTab={activeTab}
+              onSelect={setActiveTab}
+              quizUnlocked={quizUnlocked}
+            />
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {activeTab === "guide" && (
+                <LabGuide
+                  item={item}
+                  currentStep={currentStep}
+                  currentAnswer={currentAnswer}
+                  onAnswerChange={onAnswerChange}
+                  onPrevStep={onPrevStep}
+                  onNextStep={onNextStep}
+                />
+              )}
+              {activeTab === "logs" && (
+                <RuntimeLogsPanel
+                  lines={logs}
+                  statusLabel={runtime.statusLabel}
+                />
+              )}
+              {activeTab === "metrics" && (
+                <MetricsTab
+                  runtime={runtime}
+                  onAttack={triggerAttack}
+                  attackLoading={attackLoading}
+                />
+              )}
+              {activeTab === "quiz" && quizUnlocked && (
+                <QuizTab
+                  item={item}
+                  phase={item?.phase}
+                  onComplete={onCompleteLabQuiz}
+                />
+              )}
+            </div>
+          </aside>
+        </section>
+      )}
+    </div>
   );
 }
 

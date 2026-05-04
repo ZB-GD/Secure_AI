@@ -1,4 +1,4 @@
-import { getApiBaseUrl, request } from "./apiClient";
+import { getApiBaseUrl, getSessionId, request } from "./apiClient";
 
 const LAB_STAGE_BY_ID = {
   "lab-1": "sensor-data",
@@ -9,6 +9,10 @@ const LAB_STAGE_BY_ID = {
 
 function getStageForLabId(labId) {
   return LAB_STAGE_BY_ID[labId] || "";
+}
+
+function sessionParam() {
+  return `session=${getSessionId()}`;
 }
 
 function toAbsoluteUrl(url, baseUrl) {
@@ -51,7 +55,7 @@ export const labService = {
 
     const [baseUrl, payload] = await Promise.all([
       getApiBaseUrl(),
-      request(`/labs/${stage}/start`, { method: "POST" }),
+      request(`/labs/${stage}/start?${sessionParam()}`, { method: "POST" }),
     ]);
 
     return normalizePayload(payload, baseUrl);
@@ -63,7 +67,7 @@ export const labService = {
 
     const [baseUrl, payload] = await Promise.all([
       getApiBaseUrl(),
-      request(`/labs/${stage}/stop`, { method: "POST" }),
+      request(`/labs/${stage}/stop?${sessionParam()}`, { method: "POST" }),
     ]);
 
     return normalizePayload(payload, baseUrl);
@@ -75,7 +79,7 @@ export const labService = {
 
     const [baseUrl, payload] = await Promise.all([
       getApiBaseUrl(),
-      request(`/labs/${stage}/status`, { cache: "no-store" }),
+      request(`/labs/${stage}/status?${sessionParam()}`, { cache: "no-store" }),
     ]);
 
     return normalizePayload(payload, baseUrl);
@@ -85,7 +89,7 @@ export const labService = {
     const stage = getStageForLabId(labId);
     if (!stage) throw new Error(`No stage configured for ${labId}`);
 
-    return request(`/labs/${stage}/attack`, {
+    return request(`/labs/${stage}/attack?${sessionParam()}`, {
       method: "POST",
       cache: "no-store",
     });
@@ -95,7 +99,8 @@ export const labService = {
     const stage = getStageForLabId(labId);
     if (!stage) throw new Error(`No stage configured for ${labId}`);
 
-    // Always read isolated lab container logs.
-    return request(`/logs/labs/${stage}?limit=${limit}`, { cache: "no-store" });
+    return request(`/logs/labs/${stage}?limit=${limit}&${sessionParam()}`, {
+      cache: "no-store",
+    });
   },
 };

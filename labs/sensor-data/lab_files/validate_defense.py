@@ -1,15 +1,15 @@
 """
-validate_defense.py — CityFlow AI · Lab 1: Implementación de Defensas
-======================================================================
-Este script es tu entorno de trabajo para los pasos 3, 4 y 5 del laboratorio.
+validate_defense.py - CityFlow AI Lab 1: Defense Implementation
+===============================================================
+This is the student's workspace for steps 3, 4, and 5.
 
-Instrucciones:
-  1. Edita este archivo con gedit o el editor de texto de la VM
-  2. Implementa las funciones marcadas con TODO
-  3. Ejecuta el script para ver si tus defensas funcionan:
+Instructions:
+  1. Edit this file with gedit or the VM text editor.
+  2. Implement the functions marked with TODO.
+  3. Run the script to check whether your defenses work:
        python3 /home/lab/Desktop/Lab1/validate_defense.py
 
-El script usa datos locales de laboratorio. No llama al pipeline real.
+This script uses local lab data only. It does not call the real pipeline.
 """
 
 import numpy as np
@@ -17,236 +17,237 @@ import numpy as np
 BASELINE_SCORES = [0.42, 0.48, 0.39, 0.51, 0.46, 0.44, 0.49, 0.41]
 LAB_DRIFT_SCORE = 0.28
 
-# ════════════════════════════════════════════════════════════════════════════
-#  PASO 3 — DEFENSA CAPA 1: SANITY CHECKS
-#  Implementa esta función para rechazar lecturas físicamente imposibles.
-# ════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+#  STEP 3 - DEFENSE LAYER 1: SANITY CHECKS
+#  Implement this function to reject physically impossible readings.
+# ============================================================================
 
 def validate_reading(reading: dict) -> tuple:
     """
-    Valida una lectura del sensor contra restricciones físicas.
-    Devuelve (is_valid: bool, reason: str)
+    Validate a sensor reading against physical constraints.
+    Return (is_valid: bool, reason: str).
 
-    Restricciones físicas del dataset Metro Interstate Traffic Volume:
-      - traffic_volume >= ???   ← ¿cuál es el mínimo físico de coches en una carretera?
-      - traffic_volume <= 10000 (máximo realista en esta autopista)
-      - temp entre 200 y 350 (Kelvin absoluto — rango físico terrestre)
-      - rain_1h >= 0 (no puede llover negativo)
-      - clouds_all entre 0 y 100 (porcentaje)
+    Physical constraints for the Metro Interstate Traffic Volume dataset:
+      - traffic_volume >= ???   <- What is the physical minimum number of cars?
+      - traffic_volume <= 10000 (realistic maximum for this highway)
+      - temp between 200 and 350 Kelvin
+      - rain_1h >= 0 (rain cannot be negative)
+      - clouds_all between 0 and 100 percent
     """
     traffic = reading.get("traffic_volume")
     temp    = reading.get("temp", 290)
     rain    = reading.get("rain_1h", 0)
     clouds  = reading.get("clouds_all", 0)
 
-    # ── TODO: Implementa aquí tu validación ─────────────────────────────────
+    # -- TODO: Implement your validation here -------------------------------
     #
-    # Descomenta y completa las líneas siguientes:
+    # Uncomment and complete the following lines:
     #
     # if traffic is None:
-    #     return False, "traffic_volume ausente"
+    #     return False, "traffic_volume is missing"
     #
-    # if traffic < ???:    # ← la respuesta del Paso 3 de la guía
-    #     return False, f"traffic_volume={traffic} por debajo del mínimo físico"
+    # if traffic < ???:    # <- Step 3 answer from the guide
+    #     return False, f"traffic_volume={traffic} is below the physical minimum"
     #
     # if traffic > 10_000:
-    #     return False, f"traffic_volume={traffic} supera el máximo realista"
+    #     return False, f"traffic_volume={traffic} exceeds the realistic maximum"
     #
     # if not (200 <= temp <= 350):
-    #     return False, f"Temperatura imposible: {temp}K"
+    #     return False, f"Impossible temperature: {temp}K"
     #
     # if rain < 0:
-    #     return False, "Precipitación negativa imposible"
+    #     return False, "Negative rainfall is impossible"
     #
     # if not (0 <= clouds <= 100):
-    #     return False, f"clouds_all={clouds} fuera de rango 0-100%"
+    #     return False, f"clouds_all={clouds} is outside 0-100%"
     #
-    # ────────────────────────────────────────────────────────────────────────
+    # -----------------------------------------------------------------------
 
-    return True, "OK"   # ← elimina esta línea cuando implementes la lógica
+    return True, "OK"   # Keep this final success case after all rejection checks.
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  PASO 4 — DEFENSA CAPA 2: DETECCIÓN DE ANOMALÍAS (Z-SCORE)
-#  Implementa esta función para detectar valores estadísticamente anómalos.
-# ════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+#  STEP 4 - DEFENSE LAYER 2: ANOMALY DETECTION (Z-SCORE)
+#  Implement this function to detect statistically unusual values.
+# ============================================================================
 
-# Baseline histórico local del laboratorio
+# Local historical baseline for the lab
 MEAN_SCORE = 0.45
 STD_SCORE  = 0.20
-UMBRAL_Z   = 3.0    # ← cambia este valor para ver el efecto
+Z_THRESHOLD = 3.0    # <- change this value to see the effect
 
-def detectar_anomalia(feature: dict) -> tuple:
+def detect_anomaly(feature: dict) -> tuple:
     """
-    Detecta anomalías estadísticas usando Z-Score sobre congestion_score.
-    Devuelve (es_anomalia: bool, z_score: float, accion: str)
+    Detect statistical anomalies using Z-Score on congestion_score.
+    Return (is_anomaly: bool, z_score: float, action: str).
 
-    Fórmula Z-Score:  z = |( x - mean ) / std|
-    Si z > UMBRAL_Z  →  QUARANTINE (no reenviar a NODE-3)
+    Z-Score formula: z = |(x - mean) / std|
+    If z > Z_THRESHOLD -> QUARANTINE (do not forward to NODE-3)
     """
     score = float(feature.get("congestion_score", 0))
 
-    # ── TODO: Implementa el Z-Score ──────────────────────────────────────────
+    # -- TODO: Implement the Z-Score ----------------------------------------
     #
     # z = abs((score - MEAN_SCORE) / STD_SCORE)
     #
-    # if z > UMBRAL_Z:
-    #     return True, round(z, 2), "QUARANTINE — valor anómalo"
-    # return False, round(z, 2), "FORWARD — dentro del rango normal"
+    # if z > Z_THRESHOLD:
+    #     return True, round(z, 2), "QUARANTINE - anomalous value"
+    # return False, round(z, 2), "FORWARD - inside normal range"
     #
-    # ────────────────────────────────────────────────────────────────────────
+    # -----------------------------------------------------------------------
 
-    return False, 0.0, "FORWARD (sin implementar)"   # ← elimina cuando implementes
+    return False, 0.0, "FORWARD (not implemented)"   # <- remove when implemented
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  PASO 5 — DEFENSA CAPA 3: MONITORIZACIÓN DE DRIFT
-#  Observa el drift_score del laboratorio y decide cuándo pausar.
-# ════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+#  STEP 5 - DEFENSE LAYER 3: DRIFT MONITORING
+#  Interpret the lab drift_score and decide when retraining must stop.
+# ============================================================================
 
-DRIFT_UMBRAL = 0.25   # mismo que RETRAIN_DRIFT_THRESHOLD en pipeline_service.py
+DRIFT_THRESHOLD = 0.25   # same value as the production retraining threshold
 
-def evaluar_drift(drift_score: float) -> str:
+def evaluate_drift(drift_score: float) -> str:
     """
-    Decide qué acción tomar según el drift_score observado.
-    Devuelve una cadena con la acción recomendada.
+    Decide what action to take for the observed drift_score.
+    Return the recommended action as a string.
 
-    El laboratorio ya proporciona el drift_score — solo necesitas interpretarlo.
+    The lab gives you the drift_score. Your job is to interpret it.
     """
 
-    # ── TODO: Implementa la lógica de decisión ───────────────────────────────
+    # -- TODO: Implement the decision logic ---------------------------------
     #
-    # if drift_score >= DRIFT_UMBRAL:
-    #     return "HALT RETRAINING — drift demasiado alto, mantener modelo baseline"
-    # return "SAFE — nuevo modelo aprobado para despliegue"
+    # if drift_score >= DRIFT_THRESHOLD:
+    #     return "HALT RETRAINING - drift is too high; keep the baseline model"
+    # return "SAFE - new model approved for deployment"
     #
-    # ────────────────────────────────────────────────────────────────────────
+    # -----------------------------------------------------------------------
 
-    return "Sin implementar"   # ← elimina cuando implementes
+    return "Not implemented"   # <- remove when implemented
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  EJECUCIÓN — no modifiques este bloque
-# ════════════════════════════════════════════════════════════════════════════
+# ============================================================================
+#  EXECUTION - do not modify this block
+# ============================================================================
 
 def main():
     print()
     print("=" * 62)
-    print("  CityFlow AI — Lab 1: Validación de Defensas")
+    print("  CityFlow AI - Lab 1: Defense Validation")
     print("=" * 62)
-    print("  ✓ Modo aislado: usando datos locales del contenedor Lab 1")
+    print("  Local mode: using data inside the isolated Lab 1 container")
     print()
 
-    # ── PASO 3: Sanity Checks ────────────────────────────────────────────────
-    print("─" * 62)
-    print("  PASO 3 · Sanity Checks (NODE-1)")
-    print("─" * 62)
+    # -- STEP 3: Sanity Checks ----------------------------------------------
+    print("-" * 62)
+    print("  STEP 3 - Sanity Checks (NODE-1)")
+    print("-" * 62)
 
-    # Casos de prueba fijos — siempre disponibles
     test_cases = [
         {"traffic_volume": 4200,  "temp": 288.0, "rain_1h": 0, "clouds_all": 40},
         {"traffic_volume": 0,     "temp": 273.0, "rain_1h": 0, "clouds_all": 0},
-        {"traffic_volume": -5000, "temp": 0.0,   "rain_1h": 0, "clouds_all": 0},  # EL ATAQUE
+        {"traffic_volume": -5000, "temp": 0.0,   "rain_1h": 0, "clouds_all": 0},  # ATTACK
         {"traffic_volume": 99999, "temp": 295.0, "rain_1h": 0, "clouds_all": 20},
     ]
 
     expected = [True, True, False, False]
-    paso3_ok = True
+    step3_ok = True
 
     for i, (reading, exp) in enumerate(zip(test_cases, expected)):
         valid, reason = validate_reading(reading)
-        status = "✓ ACEPTADO" if valid else "✗ RECHAZADO"
-        ok = "✅" if valid == exp else "❌ INCORRECTO"
+        status = "ACCEPTED" if valid else "REJECTED"
+        ok = "OK" if valid == exp else "WRONG"
         if valid != exp:
-            paso3_ok = False
-        print(f"  {ok}  [{i+1}] vol={reading['traffic_volume']:>7}  → {status}  ({reason})")
+            step3_ok = False
+        print(f"  {ok:5} [{i+1}] vol={reading['traffic_volume']:>7} -> {status} ({reason})")
 
-    if paso3_ok:
+    if step3_ok:
         print()
-        print("  ✅ Paso 3 completado — sanity checks funcionan correctamente")
+        print("  Step 3 complete - sanity checks work correctly")
     else:
         print()
-        print("  ❌ Revisa tu implementación de validate_reading()")
-        print("     El ataque [-5000] debe ser RECHAZADO.")
+        print("  Review your validate_reading() implementation.")
+        print("  The attack value [-5000] must be REJECTED.")
     print()
 
-    # ── PASO 4: Anomaly Detection ────────────────────────────────────────────
-    print("─" * 62)
-    print("  PASO 4 · Z-Score Anomaly Detection (NODE-2)")
-    print("─" * 62)
+    # -- STEP 4: Anomaly Detection ------------------------------------------
+    print("-" * 62)
+    print("  STEP 4 - Z-Score Anomaly Detection (NODE-2)")
+    print("-" * 62)
 
     global MEAN_SCORE, STD_SCORE
 
     MEAN_SCORE = float(np.mean(BASELINE_SCORES))
     STD_SCORE = float(np.std(BASELINE_SCORES)) or 0.01
 
-    print(f"  Baseline: mean={MEAN_SCORE:.4f}, std={STD_SCORE:.4f}, umbral Z={UMBRAL_Z}")
+    print(f"  Baseline: mean={MEAN_SCORE:.4f}, std={STD_SCORE:.4f}, z threshold={Z_THRESHOLD}")
     print()
 
-    # Features de prueba
     test_features = [
         {"congestion_score": MEAN_SCORE + 0.05, "traffic_volume": 3500},
-        {"congestion_score": -0.625,            "traffic_volume": -5000},  # envenenado
+        {"congestion_score": -0.625,            "traffic_volume": -5000},  # poisoned
         {"congestion_score": MEAN_SCORE - 0.02, "traffic_volume": 1200},
-        {"congestion_score": MEAN_SCORE + UMBRAL_Z * STD_SCORE + 0.1, "traffic_volume": 8500},
+        {"congestion_score": MEAN_SCORE + Z_THRESHOLD * STD_SCORE + 0.1, "traffic_volume": 8500},
     ]
     expected4 = [False, True, False, True]
-    paso4_ok  = True
+    step4_ok  = True
 
     for i, (feat, exp) in enumerate(zip(test_features, expected4)):
-        es_anom, z, accion = detectar_anomalia(feat)
-        flag = "🔴" if es_anom else "🟢"
-        ok   = "✅" if es_anom == exp else "❌"
-        if es_anom != exp:
-            paso4_ok = False
-        print(f"  {ok} {flag}  score={feat['congestion_score']:>7.3f}  "
-              f"Z={z:5.2f}  → {accion}")
+        is_anom, z, action = detect_anomaly(feat)
+        flag = "ANOMALY" if is_anom else "NORMAL"
+        ok   = "OK" if is_anom == exp else "WRONG"
+        if is_anom != exp:
+            step4_ok = False
+        print(f"  {ok:5} {flag:7} score={feat['congestion_score']:>7.3f} "
+              f"Z={z:5.2f} -> {action}")
 
-    if paso4_ok:
+    if step4_ok:
         print()
-        print("  ✅ Paso 4 completado — detección de anomalías funciona")
+        print("  Step 4 complete - anomaly detection works correctly")
     else:
         print()
-        print("  ❌ Revisa tu implementación de detectar_anomalia()")
-        print("     El score negativo [-0.625] debe ser QUARANTINE.")
+        print("  Review your detect_anomaly() implementation.")
+        print("  The negative score [-0.625] must be QUARANTINED.")
     print()
 
-    # ── PASO 5: Drift Monitoring ─────────────────────────────────────────────
-    print("─" * 62)
-    print("  PASO 5 · Drift Monitoring (NODE-4)")
-    print("─" * 62)
+    # -- STEP 5: Drift Monitoring -------------------------------------------
+    print("-" * 62)
+    print("  STEP 5 - Drift Monitoring (NODE-4)")
+    print("-" * 62)
 
     drift_real = LAB_DRIFT_SCORE
 
-    print(f"  Drift score del laboratorio:   {drift_real:.4f}")
-    print(f"  Umbral de seguridad:           {DRIFT_UMBRAL:.2f}")
+    print(f"  Lab drift score:       {drift_real:.4f}")
+    print(f"  Safety threshold:      {DRIFT_THRESHOLD:.2f}")
     print()
 
-    accion = evaluar_drift(drift_real)
-    esperada_halt = drift_real >= DRIFT_UMBRAL
+    action = evaluate_drift(drift_real)
+    expected_halt = drift_real >= DRIFT_THRESHOLD
 
-    if accion == "Sin implementar":
-        print("  ❌ evaluar_drift() no está implementada todavía.")
-        print(f"     Con drift={drift_real:.3f} y umbral={DRIFT_UMBRAL}, la acción correcta es:")
-        print(f"     {'HALT RETRAINING' if esperada_halt else 'SAFE — desplegar'}")
+    if action == "Not implemented":
+        print("  evaluate_drift() is not implemented yet.")
+        print(f"  With drift={drift_real:.3f} and threshold={DRIFT_THRESHOLD}, the correct action is:")
+        print(f"  {'HALT RETRAINING' if expected_halt else 'SAFE - deploy'}")
+        step5_ok = False
     else:
-        es_halt = "halt" in accion.lower() or "pause" in accion.lower() or "stop" in accion.lower()
-        if es_halt == esperada_halt:
-            print(f"  ✅ Paso 5 completado")
+        is_halt = any(word in action.lower() for word in ["halt", "pause", "stop", "abort", "block"])
+        step5_ok = is_halt == expected_halt
+        if step5_ok:
+            print("  Step 5 complete")
         else:
-            print(f"  ❌ Acción incorrecta para este drift_score")
-        print(f"  → Acción decidida: {accion}")
+            print("  Incorrect action for this drift_score")
+        print(f"  Decided action: {action}")
 
     print()
     print("=" * 62)
-    if paso3_ok and paso4_ok:
-        print("  🎉 Defensas implementadas correctamente.")
-        print("  Ahora ve a la pestaña QUIZ en el panel lateral para la evaluación final.")
+    if step3_ok and step4_ok and step5_ok:
+        print("  All defenses are implemented correctly.")
+        print("  Next: run enable_defense.py, then rerun poison_data.py.")
     else:
-        print("  Sigue editando el archivo y vuelve a ejecutar:")
+        print("  Keep editing the file and run again:")
         print("  python3 /home/lab/Desktop/Lab1/validate_defense.py")
     print("=" * 62)
     print()
+
 
 if __name__ == "__main__":
     main()

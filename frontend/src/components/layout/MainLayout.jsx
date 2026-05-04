@@ -31,6 +31,8 @@ export default function MainLayout({
   onAnswerChange,
   onPrevStep,
   onNextStep,
+  onCompleteLabQuiz,
+  onStartLab,
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
@@ -160,13 +162,17 @@ export default function MainLayout({
           }}
         >
           <WorkspacePanel
+            items={items}
             item={activeItem}
+            onSelectItem={onSelectItem}
             onCompleteScenario={onCompleteScenario}
             currentStep={currentStep}
             currentAnswer={currentAnswer}
             onAnswerChange={onAnswerChange}
             onPrevStep={onPrevStep}
             onNextStep={onNextStep}
+            onCompleteLabQuiz={onCompleteLabQuiz}
+            onStartLab={onStartLab}
           />
         </main>
       </div>

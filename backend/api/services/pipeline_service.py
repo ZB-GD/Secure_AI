@@ -24,6 +24,8 @@ TRAINER_URL = os.getenv("PIPELINE_TRAINER_URL", "http://trainer:8004")
 RETRAIN_DRIFT_THRESHOLD = float(os.getenv("PIPELINE_RETRAIN_DRIFT_THRESHOLD", "0.25"))
 RETRAIN_MIN_ROWS = int(os.getenv("PIPELINE_RETRAIN_MIN_ROWS", "50"))
 
+NODE_ORDER = ("sensor", "edge", "actuator", "trainer")
+
 
 def _normalize_base_url(url: str) -> str:
     return url.rstrip("/")
@@ -85,7 +87,11 @@ def _try_post_json(url: str, payload: dict[str, Any]) -> tuple[dict | None, str 
         return None, str(exc.detail)
 
 
-def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
+def _node_mode(node_modes: dict[str, str], node_name: str) -> str:
+    return node_modes.get(node_name, "vulnerable")
+
+
+def run_scenario(scenario_id: int, node_modes: dict[str, str], n_readings: int) -> dict:
     """
     Run pipeline for a given scenario and return a JSON-safe response dict.
     Raises HTTPException on pipeline failure.
@@ -94,24 +100,29 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
         # Measure per-node latency for observability
         t0 = time.time()
 
+        sensor_mode = _node_mode(node_modes, "sensor")
+        edge_mode = _node_mode(node_modes, "edge")
+        actuator_mode = _node_mode(node_modes, "actuator")
+        trainer_mode = _node_mode(node_modes, "trainer")
+
         sensor_start = time.time()
         sensor_output = _post_json(
             f"{_normalize_base_url(SENSOR_URL)}/run",
-            {"mode": mode, "n_readings": n_readings},
+            {"mode": sensor_mode, "n_readings": n_readings},
         )
         sensor_latency = max(0.0, (time.time() - sensor_start) * 1000.0)
 
         edge_start = time.time()
         edge_output = _post_json(
             f"{_normalize_base_url(EDGE_URL)}/process",
-            {"sensor_output": sensor_output, "mode": mode},
+            {"sensor_output": sensor_output, "mode": edge_mode},
         )
         edge_latency = max(0.0, (time.time() - edge_start) * 1000.0)
 
         actuator_start = time.time()
         actuator_output = _post_json(
             f"{_normalize_base_url(ACTUATOR_URL)}/infer",
-            {"preprocessing_output": edge_output, "mode": mode},
+            {"preprocessing_output": edge_output, "mode": actuator_mode},
         )
         actuator_latency = max(0.0, (time.time() - actuator_start) * 1000.0)
 
@@ -132,7 +143,7 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
         if should_retrain:
             trainer_retrain_result, trainer_retrain_error = _try_post_json(
                 f"{_normalize_base_url(TRAINER_URL)}/retrain",
-                {"mode": mode, "min_rows": RETRAIN_MIN_ROWS},
+                {"mode": trainer_mode, "min_rows": RETRAIN_MIN_ROWS},
             )
 
         results = {
@@ -175,7 +186,7 @@ def run_scenario(scenario_id: int, mode: str, n_readings: int) -> dict:
         avg_clip_events = (total_clip_events / clipped_count) if clipped_count > 0 else 0.0
 
         metrics = {
-            "mode": mode,
+            "modes": {name: _node_mode(node_modes, name) for name in NODE_ORDER},
             "readings_received": len(n1_readings),
             "readings_dropped": len(n1_dropped),
             "poisoned_readings": poisoned_count,

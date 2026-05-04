@@ -10,13 +10,8 @@ services:
       - seclabs-network
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()",
-        ]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,13 +31,8 @@ services:
       - seclabs-network
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()",
-        ]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,13 +56,8 @@ services:
       - seclabs-network
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8003/health').read()",
-        ]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8003/health').read()"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,13 +83,8 @@ services:
       - seclabs-network
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8004/health').read()",
-        ]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8004/health').read()"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -115,11 +95,16 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: seclabs-backend
+    # Bind only to localhost so students cannot reach port 8000 directly.
+    # All student traffic goes through nginx (frontend container) which
+    # proxies /health, /labs, /logs, /api to this service.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - RAG_SERVICE_URL=http://tutor-rag:8010
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - API_KEY=${API_KEY:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -145,18 +130,13 @@ services:
       dockerfile: services/tutor_rag/Dockerfile
     container_name: seclabs-tutor-rag
     ports:
-      - "8010:8010"
+      - "127.0.0.1:8010:8010"
     networks:
       - seclabs-network
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8010/health').read()",
-        ]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8010/health').read()"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -166,6 +146,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # In production: set VITE_API_BASE_URL="" (empty) so the frontend
+        # uses relative URLs and nginx proxies API calls to the backend.
+        # In development: set VITE_API_BASE_URL to your backend's address.
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_API_BASE_URL_FALLBACK=${VITE_API_BASE_URL_FALLBACK:-}
+        - VITE_API_KEY=${VITE_API_KEY:-}
     container_name: seclabs-frontend
     ports:
       - "3000:80"

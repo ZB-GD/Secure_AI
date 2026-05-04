@@ -26,11 +26,15 @@ COPY lab_files/README-LAB1.txt       /home/lab/README-LAB1.txt
 COPY lab_files/poison_data.py        /home/lab/Desktop/Lab1/poison_data.py
 COPY lab_files/validate_defense.py   /home/lab/Desktop/Lab1/validate_defense.py
 COPY lab_files/vulnerable_app.py     /home/lab/Desktop/Lab1/vulnerable_app.py
+COPY lab_files/enable_defense.py     /home/lab/Desktop/Lab1/enable_defense.py
+COPY lab_files/reset_lab.py          /home/lab/Desktop/Lab1/reset_lab.py
 
 RUN cp /home/lab/README-LAB1.txt /home/lab/Desktop/Lab1/README-LAB1.txt && \
     ln -sf /home/lab/Desktop/Lab1/poison_data.py /home/lab/scripts/poison_data.py && \
     ln -sf /home/lab/Desktop/Lab1/validate_defense.py /home/lab/scripts/validate_defense.py && \
     ln -sf /home/lab/Desktop/Lab1/vulnerable_app.py /home/lab/scripts/vulnerable_app.py && \
+    ln -sf /home/lab/Desktop/Lab1/enable_defense.py /home/lab/scripts/enable_defense.py && \
+    ln -sf /home/lab/Desktop/Lab1/reset_lab.py /home/lab/scripts/reset_lab.py && \
     chmod +x /home/lab/Desktop/Lab1/*.py
 
 RUN printf '%s\n' \
