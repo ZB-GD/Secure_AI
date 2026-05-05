@@ -5,6 +5,7 @@ import LabMetrics from "./LabMetrics";
 import RuntimeLogsPanel from "./RuntimeLogsPanel";
 import { useLabRuntime } from "../../hooks/useLabRuntime";
 import { request } from "../../services/apiClient";
+import LabGuide from "./LabGuide";
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
 const TABS = [
@@ -72,370 +73,210 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
   );
 }
 
-// ─── Sub-component: GuideTab ─────────────────────────────────────────────────
-function GuideTab({
-  item,
-  currentStep,
-  currentAnswer,
-  onAnswerChange,
-  onPrevStep,
-  onNextStep,
-}) {
-  const [showHint, setShowHint] = useState(false);
+// ─── Sub-component: MetricsTab ───────────────────────────────────────────────
+function MetricsTab({ runtime }) {
+  const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
+  const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
+  const protectedMode =
+    runtime.statusLabel === "protected" || runtime.defenseEnabled;
+  const statusColor = runtime.isCompromised
+    ? "var(--red)"
+    : protectedMode
+      ? "var(--green)"
+      : "var(--orange)";
+  const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
 
-  if (!item?.guide?.steps || !currentStep) {
-    return (
-      <div
-        style={{ padding: "24px", color: "var(--text-3)", fontSize: "13px" }}
-      >
-        Loading guide...
-      </div>
-    );
-  }
-
-  const totalSteps = item.guide.steps.length;
-  const stepIndex = item.currentStepIndex ?? 0;
-  const progress = Math.round(((stepIndex + 1) / totalSteps) * 100);
-
-  function isValid(answer) {
-    const value = (answer || "").toLowerCase().trim();
-    if (!value) return false;
-    return (currentStep.expectedKeywords || []).some((kw) => {
-      const keyword = kw.toLowerCase().trim();
-      if (keyword.includes(" ")) return value.includes(keyword);
-      const regex = new RegExp(
-        `(^|\\b)${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\b|$)`,
-        "i",
-      );
-      return regex.test(value);
-    });
-  }
-
-  const answerValid = isValid(currentAnswer);
+  const metricCards = [
+    {
+      label: "ATTACK ATTEMPTS",
+      value: runtime.attackAttempts ?? 0,
+      suffix: "",
+      color: "var(--text-1)",
+      caption: "How many poisoned submissions were sent to the local target.",
+    },
+    {
+      label: "ACCEPTED / REJECTED",
+      value: `${runtime.acceptedReadings ?? 0}/${runtime.rejectedReadings ?? 0}`,
+      suffix: "",
+      color: runtime.isCompromised ? "var(--red)" : "var(--green)",
+      caption: runtime.isCompromised
+        ? "Accepted poison means the first gate failed."
+        : protectedMode
+          ? "Rejected poison means the defense gate is working."
+          : "No poisoned reading has been accepted yet.",
+    },
+    {
+      label: "CONGESTION SCORE",
+      value: runtime.congestionScore ?? "n/a",
+      suffix: "",
+      color: scoreColor,
+      caption: runtime.isCompromised
+        ? "Negative traffic produces a negative model feature."
+        : "Run the attack to generate the feature.",
+    },
+    {
+      label: "DEFENSE COVERAGE",
+      value: `${runtime.defenseCoverage ?? 0}/3`,
+      suffix: "",
+      color: protectedMode ? "var(--green)" : "var(--orange)",
+      caption: "Layers covered: sanity checks, anomaly detection, drift gate.",
+    },
+    {
+      label: "DOWNSTREAM RISK",
+      value: runtime.driftScore,
+      suffix: "%",
+      color: driftColor,
+      caption: runtime.isCompromised
+        ? "Above the 25% safety threshold used in this lab."
+        : protectedMode
+          ? "Risk drops once poisoned data is rejected."
+          : "Below the safety threshold before the attack.",
+    },
+    {
+      label: "MODEL TRUST",
+      value: runtime.accuracy,
+      suffix: "%",
+      color: accuracyColor,
+      caption: runtime.isCompromised
+        ? "Trust drops because poisoned data reached downstream logic."
+        : "Baseline trust before poisoned input is accepted.",
+    },
+  ];
 
   return (
     <div
       style={{
+        overflowY: "auto",
+        height: "100%",
+        padding: "16px",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
+        gap: "14px",
       }}
     >
-      {/* Progress header */}
+      {/* Estado general */}
       <div
         style={{
-          padding: "16px 18px 12px",
-          borderBottom: "1px solid var(--border-dim)",
-          flexShrink: 0,
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
+          background: runtime.isCompromised
+            ? "rgba(248,113,113,0.08)"
+            : "var(--green-dim)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "8px",
-          }}
-        >
+        <div>
           <div
             style={{
               fontSize: "10px",
-              color: "var(--orange)",
-              letterSpacing: "0.12em",
-            }}
-          >
-            {item.phase?.toUpperCase()}
-          </div>
-          <div style={{ fontSize: "10px", color: "var(--text-3)" }}>
-            {stepIndex + 1} / {totalSteps}
-          </div>
-        </div>
-        <div
-          style={{
-            height: "2px",
-            background: "var(--bg-surface)",
-            borderRadius: "2px",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${progress}%`,
-              background: "var(--orange)",
-              transition: "width 0.4s",
-              borderRadius: "2px",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Scrollable body */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "18px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "14px",
-        }}
-      >
-        <h3
-          style={{
-            fontSize: "15px",
-            color: "var(--text-1)",
-            fontFamily: "var(--font-display)",
-            lineHeight: 1.4,
-            margin: 0,
-          }}
-        >
-          {currentStep.title}
-        </h3>
-
-        <div
-          style={{
-            background: "var(--bg-surface)",
-            padding: "14px",
-            borderRadius: "8px",
-            border: "1px solid var(--border-dim)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "9px",
               color: "var(--text-3)",
               letterSpacing: "0.1em",
-              marginBottom: "6px",
+              marginBottom: "4px",
             }}
           >
-            INSTRUCTIONS
+            LOCAL LAB STATUS
           </div>
-          <p
-            style={{
-              fontSize: "12px",
-              lineHeight: 1.7,
-              color: "var(--text-2)",
-              margin: 0,
-            }}
-          >
-            {currentStep.body}
-          </p>
-        </div>
-
-        <div
-          style={{
-            background: "rgba(249,115,22,0.05)",
-            padding: "14px",
-            borderRadius: "8px",
-            border: "1px solid var(--orange-border)",
-          }}
-        >
           <div
             style={{
-              fontSize: "9px",
-              color: "var(--orange)",
-              letterSpacing: "0.1em",
-              marginBottom: "6px",
-            }}
-          >
-            OBSERVATION
-          </div>
-          <p
-            style={{
-              fontSize: "12px",
-              lineHeight: 1.7,
-              color: "var(--text-2)",
-              margin: 0,
-            }}
-          >
-            {currentStep.observation}
-          </p>
-        </div>
-
-        {currentStep.hint && (
-          <div>
-            <button
-              onClick={() => setShowHint(!showHint)}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--border-mid)",
-                color: "var(--text-3)",
-                fontSize: "10px",
-                padding: "5px 10px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              {showHint ? "✕ HIDE HINT" : "💡 SHOW HINT"}
-            </button>
-            {showHint && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  padding: "10px 12px",
-                  background: "rgba(56,189,248,0.05)",
-                  border: "1px solid var(--blue-dim)",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  color: "var(--blue)",
-                }}
-              >
-                {currentStep.hint}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Answer input */}
-        <div style={{ marginTop: "auto", paddingTop: "8px" }}>
-          <div
-            style={{
-              fontSize: "12px",
+              fontSize: "13px",
               color: "var(--text-1)",
-              fontWeight: 600,
-              marginBottom: "10px",
+              lineHeight: 1.5,
             }}
           >
-            {currentStep.question}
-          </div>
-          <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              value={currentAnswer || ""}
-              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
-              placeholder={currentStep.placeholder}
-              style={{
-                width: "100%",
-                background: "var(--bg-base)",
-                border: `1px solid ${answerValid ? "var(--green)" : "var(--border-mid)"}`,
-                borderRadius: "6px",
-                padding: "10px 12px",
-                fontSize: "12px",
-                color: "var(--text-1)",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            {answerValid && (
-              <span
-                style={{
-                  position: "absolute",
-                  right: "10px",
-                  top: "10px",
-                  color: "var(--green)",
-                  fontSize: "12px",
-                }}
-              >
-                ✓
+            {runtime.lastEvent}
+            {runtime.lastReason && (
+              <span style={{ color: "var(--text-3)" }}>
+                {" "}
+                {runtime.lastReason}
               </span>
             )}
           </div>
-          {currentAnswer && !answerValid && (
+        </div>
+        <span
+          style={{
+            fontSize: "10px",
+            padding: "3px 10px",
+            borderRadius: "999px",
+            border: `1px solid ${statusColor}`,
+            color: statusColor,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            marginLeft: "12px",
+          }}
+        >
+          {runtime.isCompromised
+            ? "COMPROMISED"
+            : protectedMode
+              ? "PROTECTED"
+              : "VULNERABLE"}
+        </span>
+      </div>
+
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
+      >
+        {metricCards.map((metric) => (
+          <div
+            key={metric.label}
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: "8px",
+              padding: "15px",
+              minHeight: "132px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
             <div
               style={{
-                marginTop: "6px",
-                fontSize: "11px",
-                color: "var(--red)",
+                fontSize: "10px",
+                color: "var(--text-3)",
+                letterSpacing: "0.08em",
+                lineHeight: 1.4,
               }}
             >
-              Incorrect. Review the workspace.
+              {metric.label}
             </div>
-          )}
-        </div>
+            <div
+              style={{
+                fontSize: "30px",
+                color: metric.color,
+                fontWeight: 700,
+                fontFamily: "var(--font-display)",
+                display: "flex",
+                alignItems: "baseline",
+                gap: "4px",
+              }}
+            >
+              {metric.value}
+              {metric.suffix && (
+                <span style={{ fontSize: "15px" }}>{metric.suffix}</span>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--text-3)",
+                lineHeight: 1.5,
+              }}
+            >
+              {metric.caption}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Navigation footer */}
       <div
         style={{
-          flexShrink: 0,
-          padding: "12px 16px",
-          borderTop: "1px solid var(--border-dim)",
+          padding: "14px 16px",
+          borderRadius: "8px",
+          border: "1px solid var(--border-dim)",
           background: "var(--bg-elevated)",
-          display: "flex",
-          justifyContent: "space-between",
-          gap: "8px",
-        }}
-      >
-        <button
-          onClick={() => {
-            setShowHint(false);
-            onPrevStep();
-          }}
-          disabled={stepIndex === 0}
-          style={{
-            padding: "9px 14px",
-            borderRadius: "6px",
-            background: "transparent",
-            border: "1px solid var(--border-mid)",
-            color: stepIndex === 0 ? "var(--text-3)" : "var(--text-1)",
-            opacity: stepIndex === 0 ? 0.3 : 1,
-            cursor: stepIndex === 0 ? "not-allowed" : "pointer",
-            fontSize: "11px",
-            fontWeight: 600,
-          }}
-        >
-          ← PREV
-        </button>
-        <button
-          onClick={() => {
-            setShowHint(false);
-            onNextStep();
-          }}
-          disabled={!answerValid}
-          style={{
-            flex: 1,
-            padding: "9px 14px",
-            borderRadius: "6px",
-            background: answerValid ? "var(--green)" : "var(--orange)",
-            border: "none",
-            color: "#fff",
-            cursor: answerValid ? "pointer" : "not-allowed",
-            opacity: answerValid ? 1 : 0.65,
-            fontSize: "11px",
-            fontWeight: 600,
-            boxShadow: answerValid ? "0 0 12px rgba(34,197,94,0.25)" : "none",
-          }}
-        >
-          {stepIndex === totalSteps - 1 ? "COMPLETE ✓" : "NEXT →"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Sub-component: LogsTab ──────────────────────────────────────────────────
-function LogsTab({ logs, statusLabel }) {
-  const scrollRef = useRef(null);
-  useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [logs]);
-
-  const statusColor =
-    statusLabel === "running"
-      ? "var(--green)"
-      : statusLabel === "error"
-        ? "var(--red)"
-        : "var(--orange)";
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          padding: "14px 18px",
-          borderBottom: "1px solid var(--border-dim)",
-          flexShrink: 0,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
         }}
       >
         <div
@@ -443,172 +284,51 @@ function LogsTab({ logs, statusLabel }) {
             fontSize: "10px",
             color: "var(--text-3)",
             letterSpacing: "0.1em",
+            marginBottom: "8px",
           }}
         >
-          PIPELINE LOG STREAM
+          WHAT THESE METRICS MEAN
         </div>
-        <span
-          style={{
-            fontSize: "10px",
-            color: statusColor,
-            border: `1px solid ${statusColor}`,
-            borderRadius: "999px",
-            padding: "2px 8px",
-          }}
+        <div
+          style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7 }}
         >
-          {statusLabel?.toUpperCase()}
-        </span>
+          These are lab indicators, not production telemetry. They show whether
+          the local app accepted or rejected poisoned data. The target starts in
+          vulnerable mode, then switches to protected mode after
+          enable_defense.py.
+        </div>
       </div>
+
       <div
-        ref={scrollRef}
         style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "#05080f",
           padding: "14px 16px",
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          lineHeight: 1.7,
-          color: "var(--text-2)",
+          borderRadius: "8px",
+          border: "1px solid var(--orange-border)",
+          background: "rgba(249,115,22,0.06)",
         }}
       >
-        {logs?.length > 0 ? (
-          logs.map((line, i) => (
-            <div key={i} style={{ marginBottom: "3px" }}>
-              {line}
-            </div>
-          ))
-        ) : (
-          <div style={{ color: "var(--text-3)" }}>
-            Waiting for runtime events...
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Sub-component: MetricsTab ───────────────────────────────────────────────
-function MetricsTab({ runtime }) {
-  const driftColor  = runtime.driftScore  > 40 ? "var(--red)"   : "var(--green)";
-  const accuracyColor = runtime.accuracy  < 70 ? "var(--red)"   : "var(--green)";
-  const statusColor = runtime.isCompromised    ? "var(--red)"   : "var(--green)";
-
-  return (
-    <div style={{
-      overflowY: "auto",
-      height: "100%",
-      padding: "16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "14px",
-    }}>
-
-      {/* Estado general */}
-      <div style={{
-        padding: "12px 16px",
-        borderRadius: "10px",
-        border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
-        background: runtime.isCompromised ? "rgba(248,113,113,0.08)" : "var(--green-dim)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <div>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "4px" }}>
-            PIPELINE STATUS
-          </div>
-          <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.5 }}>
-            {runtime.lastEvent}
-          </div>
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--orange)",
+            letterSpacing: "0.1em",
+            marginBottom: "8px",
+          }}
+        >
+          ATTACK COMMAND
         </div>
-        <span style={{
-          fontSize: "10px",
-          padding: "3px 10px",
-          borderRadius: "999px",
-          border: `1px solid ${statusColor}`,
-          color: statusColor,
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          marginLeft: "12px",
-        }}>
-          {runtime.isCompromised ? "COMPROMISED" : "RUNNING"}
-        </span>
-      </div>
-
-      {/* Métricas principales */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-
-        <div style={{
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-dim)",
-          borderRadius: "10px",
-          padding: "16px",
-        }}>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-            MODEL DRIFT
-          </div>
-          <div style={{
-            fontSize: "32px",
-            color: driftColor,
-            fontWeight: "bold",
-            fontFamily: "var(--font-display)",
-            display: "flex",
-            alignItems: "baseline",
-            gap: "4px",
-          }}>
-            {runtime.driftScore}
-            <span style={{ fontSize: "16px" }}>%</span>
-          </div>
-          <div style={{ marginTop: "4px", fontSize: "10px", color: runtime.isCompromised ? "var(--red)" : "var(--text-3)" }}>
-            {runtime.isCompromised ? "Compromised distribution" : "Distribution stable"}
-          </div>
-        </div>
-
-        <div style={{
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-dim)",
-          borderRadius: "10px",
-          padding: "16px",
-        }}>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-            PREDICTION ACCURACY
-          </div>
-          <div style={{
-            fontSize: "32px",
-            color: accuracyColor,
-            fontWeight: "bold",
-            fontFamily: "var(--font-display)",
-            display: "flex",
-            alignItems: "baseline",
-            gap: "4px",
-          }}>
-            {runtime.accuracy}
-            <span style={{ fontSize: "16px" }}>%</span>
-          </div>
-          <div style={{ marginTop: "4px", fontSize: "10px", color: runtime.isCompromised ? "var(--red)" : "var(--text-3)" }}>
-            {runtime.isCompromised ? "Unsafe model update propagated" : "Accuracy within normal margin"}
-          </div>
-        </div>
-      </div>
-
-      {/* Instrucción para el alumno */}
-      <div style={{
-        padding: "14px 16px",
-        borderRadius: "10px",
-        border: "1px solid var(--border-dim)",
-        background: "var(--bg-elevated)",
-      }}>
-        <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", marginBottom: "8px" }}>
-          HOW TO TRIGGER AN ATTACK
-        </div>
-        <div style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7, fontFamily: "var(--font-mono)" }}>
-          The attack runs from the VM terminal:{"\n"}
-          <span style={{ color: "var(--orange)" }}>
-            python3 /home/lab/scripts/poison_data.py
-          </span>
-          {"\n\n"}
-          Metrics update automatically every 5 seconds after the attack executes.
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--text-2)",
+            lineHeight: 1.7,
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          curl http://127.0.0.1:5000/health{"\n"}
+          python3 /home/lab/Desktop/Lab1/poison_data.py{"\n"}
+          python3 /home/lab/Desktop/Lab1/enable_defense.py{"\n"}
+          python3 /home/lab/Desktop/Lab1/poison_data.py
         </div>
       </div>
     </div>
@@ -616,7 +336,7 @@ function MetricsTab({ runtime }) {
 }
 
 // ─── Sub-component: QuizTab ──────────────────────────────────────────────────
-function QuizTab({ item, phase }) {
+function QuizTab({ item, phase, onComplete }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [tutorFeedback, setTutorFeedback] = useState("");
@@ -633,41 +353,44 @@ function QuizTab({ item, phase }) {
   async function handleSubmit() {
     if (!allAnswered) return;
     setSubmitted(true);
+    if (correctCount / quiz.length >= 0.75) {
+      onComplete?.(item.id);
+    }
     setTutorLoading(true);
     setTutorError("");
 
     const wrongItems = quiz
       .map((q, i) =>
         answers[i] !== q.correctAnswerIndex
-          ? `- "${q.question}" → Alumno eligió: "${q.options[answers[i]]}" (correcta: "${q.options[q.correctAnswerIndex]}")`
+          ? `- "${q.question}" -> Student selected: "${q.options[answers[i]]}" (correct: "${q.options[q.correctAnswerIndex]}")`
           : null,
       )
       .filter(Boolean)
       .join("\n");
 
-    const prompt = `Eres el Tutor de Seguridad de CityFlow AI.
-Contexto del laboratorio: ${phase || "Laboratorio de ciberseguridad en pipelines de IA"}.
-El alumno ha completado el quiz con ${correctCount}/${quiz.length} respuestas correctas.
-${wrongItems ? `\nRespuestas incorrectas:\n${wrongItems}` : "\nEl alumno respondió todo correctamente."}
+    const prompt = `You are the CityFlow AI Security Tutor.
+Lab context: ${phase || "Cybersecurity lab for AI pipelines"}.
+The student completed the quiz with ${correctCount}/${quiz.length} correct answers.
+${wrongItems ? `\nIncorrect answers:\n${wrongItems}` : "\nThe student answered everything correctly."}
 
-Por favor:
-1. Felicita o anima según la puntuación de forma breve.
-2. Explica el concepto detrás de cada fallo en 2-3 frases, de forma didáctica.
-3. Relaciona los errores con el pipeline de IA afectado.
-4. Sugiere una acción concreta para reforzar los puntos débiles.
-Máximo 220 palabras. Responde en español.`;
+Please:
+1. Briefly acknowledge the score.
+2. Explain the concept behind each mistake in 2-3 educational sentences.
+3. Relate mistakes to the affected AI pipeline.
+4. Suggest one concrete action to reinforce weak areas.
+Maximum 220 words. Respond in English.`;
 
     try {
       const data = await request("/api/rag/chat", {
         method: "POST",
         body: JSON.stringify({
           message: prompt,
-          context: phase || "Laboratorio general",
+          context: phase || "General lab",
         }),
       });
       setTutorFeedback(data.response);
     } catch (err) {
-      setTutorError(`Error al obtener feedback: ${err.message}`);
+      setTutorError(`Error getting feedback: ${err.message}`);
     } finally {
       setTutorLoading(false);
     }
@@ -690,7 +413,7 @@ Máximo 220 palabras. Responde en español.`;
           fontSize: "13px",
         }}
       >
-        No hay preguntas configuradas para este laboratorio.
+        No questions are configured for this lab.
       </div>
     );
   }
@@ -738,7 +461,7 @@ Máximo 220 palabras. Responde en español.`;
               letterSpacing: "0.08em",
             }}
           >
-            {submitted ? "correctas" : "respondidas"}
+            {submitted ? "correct" : "answered"}
           </div>
         </div>
         <div
@@ -781,7 +504,7 @@ Máximo 220 palabras. Responde en español.`;
               whiteSpace: "nowrap",
             }}
           >
-            Evaluar
+            Evaluate
           </button>
         ) : (
           <button
@@ -797,7 +520,7 @@ Máximo 220 palabras. Responde en español.`;
               whiteSpace: "nowrap",
             }}
           >
-            Reintentar
+            Retry
           </button>
         )}
       </div>
@@ -970,13 +693,13 @@ Máximo 220 palabras. Responde en español.`;
                 fontFamily: "var(--font-mono)",
               }}
             >
-              CITYFLOW TUTOR — Feedback personalizado
+              CITYFLOW TUTOR - Personalized feedback
             </span>
           </div>
           <div style={{ padding: "14px 16px", minHeight: "80px" }}>
             {tutorLoading && (
               <div style={{ color: "var(--text-3)", fontSize: "12px" }}>
-                Analizando tus respuestas...
+                Analyzing your answers...
               </div>
             )}
             {tutorError && (
@@ -1011,6 +734,8 @@ export default function LabRuntimeWorkspace({
   onAnswerChange,
   onPrevStep,
   onNextStep,
+  onCompleteLabQuiz,
+  onViewScenario,
 }) {
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
@@ -1045,122 +770,164 @@ export default function LabRuntimeWorkspace({
     logLimit: 200,
   });
 
-  // Unlock quiz when lab is complete (last step answered)
-  const totalSteps = item?.guide?.steps?.length ?? 0;
-  const stepIndex = item?.currentStepIndex ?? 0;
-  const quizUnlocked = stepIndex >= totalSteps - 1 && !!item?.guide?.steps;
+  const quizUnlocked = Boolean(item?.guideCompleted);
 
   return (
-    <section
-      ref={containerRef}
+    <div
       style={{
-        display: "grid",
-        gridTemplateColumns: `1fr 12px ${rightWidth}px`,
+        display: "flex",
+        flexDirection: "column",
         height: "100%",
         overflow: "hidden",
-        background: "var(--bg-base)",
-        gap: 0,
       }}
     >
-      {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
-      <div style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}>
-        <RemoteDesktopPanel
-          item={item}
-          remoteUrl={remoteUrl}
-          remoteLoading={remoteLoading}
-          remoteError={remoteError}
-          onRetry={retryRuntime}
-        />
-      </div>
-
-      {/* Splitter */}
-      <div
-        onMouseDown={(e) => {
-          isDragging.current = true;
-          hasUserResized.current = true;
-          dragStartX.current = e.clientX;
-          dragStartWidth.current = rightWidth;
-          document.body.style.cursor = "col-resize";
-        }}
-        onTouchStart={(e) => {
-          const touch = e.touches[0];
-          isDragging.current = true;
-          hasUserResized.current = true;
-          dragStartX.current = touch.clientX;
-          dragStartWidth.current = rightWidth;
-        }}
+      <section
+        ref={containerRef}
         style={{
-          width: "12px",
-          cursor: "col-resize",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "transparent",
-        }}
-      >
-        <div
-          style={{
-            width: "2px",
-            height: "48px",
-            background: "var(--border-dim)",
-            borderRadius: "2px",
-            opacity: 0.9,
-          }}
-        />
-      </div>
-
-      {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
-      <aside
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          borderLeft: "1px solid var(--border-dim)",
-          background: "var(--bg-panel)",
-          minHeight: 0,
+          display: "grid",
+          gridTemplateColumns: `1fr 12px ${rightWidth}px`,
+          flex: 1,
           overflow: "hidden",
+          background: "var(--bg-base)",
+          gap: 0,
+          minHeight: 0,
         }}
       >
-        <TabBar
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-          quizUnlocked={quizUnlocked}
-        />
-
+        {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
         <div
+          style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}
+        >
+          <RemoteDesktopPanel
+            item={item}
+            remoteUrl={remoteUrl}
+            remoteLoading={remoteLoading}
+            remoteError={remoteError}
+            onRetry={retryRuntime}
+          />
+        </div>
+
+        {/* Splitter */}
+        <div
+          onMouseDown={(e) => {
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = e.clientX;
+            dragStartWidth.current = rightWidth;
+            document.body.style.cursor = "col-resize";
+          }}
+          onTouchStart={(e) => {
+            const touch = e.touches[0];
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = touch.clientX;
+            dragStartWidth.current = rightWidth;
+          }}
           style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: "hidden",
+            width: "12px",
+            cursor: "col-resize",
             display: "flex",
-            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
           }}
         >
-          {activeTab === "guide" && (
-            <GuideTab
-              item={item}
-              currentStep={currentStep}
-              currentAnswer={currentAnswer}
-              onAnswerChange={onAnswerChange}
-              onPrevStep={onPrevStep}
-              onNextStep={onNextStep}
-            />
-          )}
-          {activeTab === "logs" && (
-            <LogsTab logs={logs} statusLabel={runtime.statusLabel} />
-          )}
-          {activeTab === "metrics" && (
-            <MetricsTab
-              runtime={runtime}
-              onAttack={triggerAttack}
-              attackLoading={attackLoading}
-            />
-          )}
-          {activeTab === "quiz" && quizUnlocked && (
-            <QuizTab item={item} phase={item?.phase} />
-          )}
+          <div
+            style={{
+              width: "2px",
+              height: "48px",
+              background: "var(--border-dim)",
+              borderRadius: "2px",
+              opacity: 0.9,
+            }}
+          />
         </div>
-      </aside>
-    </section>
+
+        {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
+        <aside
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            borderLeft: "1px solid var(--border-dim)",
+            background: "var(--bg-panel)",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          {onViewScenario && (
+            <button
+              onClick={onViewScenario}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "7px 14px",
+                border: "none",
+                borderBottom: "1px solid var(--border-dim)",
+                background: "rgba(56,189,248,0.05)",
+                color: "var(--blue)",
+                fontSize: "10px",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+                flexShrink: 0,
+                transition: "background 0.15s",
+              }}
+            >
+              <span style={{ fontSize: "11px" }}>◆</span>
+              VIEW PIPELINE
+            </button>
+          )}
+          <TabBar
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            quizUnlocked={quizUnlocked}
+          />
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {activeTab === "guide" && (
+              <LabGuide
+                item={item}
+                currentStep={currentStep}
+                currentAnswer={currentAnswer}
+                onAnswerChange={onAnswerChange}
+                onPrevStep={onPrevStep}
+                onNextStep={onNextStep}
+              />
+            )}
+            {activeTab === "logs" && (
+              <RuntimeLogsPanel
+                lines={logs}
+                statusLabel={runtime.statusLabel}
+              />
+            )}
+            {activeTab === "metrics" && (
+              <MetricsTab
+                runtime={runtime}
+                onAttack={triggerAttack}
+                attackLoading={attackLoading}
+              />
+            )}
+            {activeTab === "quiz" && quizUnlocked && (
+              <QuizTab
+                item={item}
+                phase={item?.phase}
+                onComplete={onCompleteLabQuiz}
+              />
+            )}
+          </div>
+        </aside>
+      </section>
+    </div>
   );
 }
 

@@ -43,9 +43,9 @@ openssl s_client -connect registry-1.docker.io:443 </dev/null 2>&1 | grep -E "su
 
 ```bash
 # Con la VM apagada, desde el host:
-sudo rm -f /tmp/SecureAI-serial   # limpiar socket serie si da error de bloqueo
-VBoxManage modifyvm "SecureAI-Lab" --nic1 bridged --bridgeadapter1 wlp1s0
-VBoxManage startvm "SecureAI-Lab" --type headless
+sudo rm -f /tmp/SecLabs-serial   # limpiar socket serie si da error de bloqueo
+VBoxManage modifyvm "SecLabs-Lab" --nic1 bridged --bridgeadapter1 wlp1s0
+VBoxManage startvm "SecLabs-Lab" --type headless
 ```
 
 > Sustituye `wlp1s0` por el nombre de tu interfaz wifi (`ip link` para verlo).
@@ -98,19 +98,19 @@ sudo netplan apply
 **Solución**: Usar `sudo VBoxManage` para operaciones con VRDE/RDP y registrar la VM con sudo:
 
 ```bash
-sudo VBoxManage registervm ~/VirtualBox\ VMs/SecureAI-Lab/SecureAI-Lab.vbox
-sudo VBoxManage modifyvm "SecureAI-Lab" --vrde on --vrdeport 3389
-sudo VBoxManage startvm "SecureAI-Lab" --type headless
+sudo VBoxManage registervm ~/VirtualBox\ VMs/SecLabs-Lab/SecLabs-Lab.vbox
+sudo VBoxManage modifyvm "SecLabs-Lab" --vrde on --vrdeport 3389
+sudo VBoxManage startvm "SecLabs-Lab" --type headless
 ```
 
 ---
 
-## Error al arrancar: socket `/tmp/SecureAI-serial` bloqueado
+## Error al arrancar: socket `/tmp/SecLabs-serial` bloqueado
 
 **Causa**: La VM fue arrancada anteriormente con `sudo`, dejando el socket con permisos de root.
 
 **Solución**:
 ```bash
-sudo rm -f /tmp/SecureAI-serial
-VBoxManage startvm "SecureAI-Lab" --type headless
+sudo rm -f /tmp/SecLabs-serial
+VBoxManage startvm "SecLabs-Lab" --type headless
 ```
