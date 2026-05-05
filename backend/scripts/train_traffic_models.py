@@ -28,12 +28,20 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
 
-OUTPUT_DIR = Path(os.environ.get("MODELS_DIR", str(Path(__file__).resolve().parents[1] / "models")))
+_SCRIPT_PATH = Path(__file__).resolve()
+_BACKEND_DIR = _SCRIPT_PATH.parents[1]
+_REPO_DIR = _BACKEND_DIR.parent
+
+OUTPUT_DIR = Path(os.environ.get("MODELS_DIR", str(_BACKEND_DIR / "models")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+_DEFAULT_DATASET_PATH = _BACKEND_DIR / "data" / "datasets" / "metro_interstate_traffic_volume.csv"
+if not _DEFAULT_DATASET_PATH.exists():
+    _DEFAULT_DATASET_PATH = _REPO_DIR / "data" / "datasets" / "metro_interstate_traffic_volume.csv"
+
 DATASET_PATH = Path(
     os.environ.get(
         "TRAFFIC_DATASET_PATH",
-        str(Path(__file__).resolve().parents[1] / "data" / "datasets" / "metro_interstate_traffic_volume.csv"),
+        str(_DEFAULT_DATASET_PATH),
     )
 )
 

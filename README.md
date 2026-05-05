@@ -1,4 +1,4 @@
-# Secure AI Pipeline — TFG
+# SecLabs — TFG
 
 Educational platform for learning security in AI pipelines. It allows users to run a complete AI pipeline, explore vulnerabilities in an isolated environment, and restore a clean pipeline once the lab is finished.
 
@@ -7,23 +7,29 @@ Educational platform for learning security in AI pipelines. It allows users to r
 ## 📁 Project structure
 
 ```text
-Secure_AI/
-├── backend/
-│   ├── api/                        # REST API that manages containers dynamically
-│   ├── labs/
-│   │   ├── phase-1-ingestion/      # Isolated container — Phase 1
-│   │   ├── phase-2-input/          # Isolated container — Phase 2
-│   │   ├── phase-3-model/          # Isolated container — Phase 3
-│   │   └── phase-4-output/         # Isolated container — Phase 4
-│   ├── pipelines/
-│   │   ├── docker-compose.e1.yml   # E1: functional general pipeline
-│   │   ├── docker-compose.e3-p1.yml
-│   │   ├── docker-compose.e3-p2.yml
-│   │   ├── docker-compose.e3-p3.yml
-│   │   └── docker-compose.e3-p4.yml # E3: post-lab cleanup per phase
+SecLabs/
+├── backend/                         # Orchestrator API and state manager
+│   ├── api/
+│   ├── scripts/
 │   └── requirements.txt
+├── pipeline_nodes/                  # Main traffic AI pipeline services
+│   ├── docker-compose.pipeline.yml
+│   ├── sensor_data/
+│   ├── edge_preprocessing/
+│   ├── model_trainer/
+│   └── actuator/
+├── services/
+│   └── tutor_rag/                   # RAG tutor service used by the UI
+├── labs/                            # Disposable student lab sandboxes
+│   ├── base-novnc/
+│   ├── sensor-data/
+│   ├── edge-preprocessing/
+│   ├── traffic-inference/
+│   └── decision-retraining/
+├── data/
+│   └── datasets/
 ├── frontend/                        # User interface (React)
-├── docker-compose.yml               # Root Compose file
+├── docker-compose.yml               # Root Compose file for the platform
 ├── setup.sh                         # Development environment setup (run inside the VM)
 └── TROUBLESHOOTING.md               # Known issues and solutions
 ```
@@ -73,19 +79,19 @@ wget https://releases.ubuntu.com/22.04.5/ubuntu-22.04.5-live-server-amd64.iso -P
 Create and configure the VM:
 
 ```bash
-VBoxManage createvm --name "SecureAI-Lab" --ostype Ubuntu_64 --register
-VBoxManage modifyvm "SecureAI-Lab" --memory 2048 --cpus 2
-VBoxManage createhd --filename ~/VirtualBox\ VMs/SecureAI-Lab/SecureAI-Lab.vdi --size 20480
-VBoxManage storagectl "SecureAI-Lab" --name "SATA" --add sata --controller IntelAhci
-VBoxManage storageattach "SecureAI-Lab" --storagectl "SATA" --port 0 --device 0 --type hdd \
-  --medium ~/VirtualBox\ VMs/SecureAI-Lab/SecureAI-Lab.vdi
-VBoxManage storagectl "SecureAI-Lab" --name "IDE" --add ide
-VBoxManage storageattach "SecureAI-Lab" --storagectl "IDE" --port 0 --device 0 --type dvddrive \
+VBoxManage createvm --name "SecLabs-Lab" --ostype Ubuntu_64 --register
+VBoxManage modifyvm "SecLabs-Lab" --memory 2048 --cpus 2
+VBoxManage createhd --filename ~/VirtualBox\ VMs/SecLabs-Lab/SecLabs-Lab.vdi --size 20480
+VBoxManage storagectl "SecLabs-Lab" --name "SATA" --add sata --controller IntelAhci
+VBoxManage storageattach "SecLabs-Lab" --storagectl "SATA" --port 0 --device 0 --type hdd \
+  --medium ~/VirtualBox\ VMs/SecLabs-Lab/SecLabs-Lab.vdi
+VBoxManage storagectl "SecLabs-Lab" --name "IDE" --add ide
+VBoxManage storageattach "SecLabs-Lab" --storagectl "IDE" --port 0 --device 0 --type dvddrive \
   --medium ~/Downloads/ubuntu-22.04.5-live-server-amd64.iso
-VBoxManage modifyvm "SecureAI-Lab" --boot1 dvd --boot2 disk --boot3 none --boot4 none
-VBoxManage modifyvm "SecureAI-Lab" --nic1 nat
-VBoxManage modifyvm "SecureAI-Lab" --natpf1 "ssh,tcp,,2222,,22"
-VBoxManage modifyvm "SecureAI-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
+VBoxManage modifyvm "SecLabs-Lab" --boot1 dvd --boot2 disk --boot3 none --boot4 none
+VBoxManage modifyvm "SecLabs-Lab" --nic1 nat
+VBoxManage modifyvm "SecLabs-Lab" --natpf1 "ssh,tcp,,2222,,22"
+VBoxManage modifyvm "SecLabs-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
 ```
 
 ### 3. Install Ubuntu Server
@@ -93,7 +99,7 @@ VBoxManage modifyvm "SecureAI-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
 Start the VM:
 
 ```bash
-VBoxManage startvm "SecureAI-Lab" --type headless
+VBoxManage startvm "SecLabs-Lab" --type headless
 ```
 
 Connect to view the installation screen:
@@ -126,8 +132,8 @@ ssh <your_user>@<enp0s8_IP>
 Inside the VM:
 
 ```bash
-git clone https://github.com/ZB-GD/Secure_AI.git
-cd Secure_AI
+git clone https://github.com/ZB-GD/SecLabs.git
+cd SecLabs
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -140,13 +146,13 @@ The script installs Docker, Python 3, Node.js, and configures the permanent host
 
 ```bash
 # Start the VM (from the host)
-VBoxManage startvm "SecureAI-Lab" --type headless
+VBoxManage startvm "SecLabs-Lab" --type headless
 
 # Connect through SSH
 ssh <your_user>@<enp0s8_IP>
 
 # Power off the VM
-VBoxManage controlvm "SecureAI-Lab" poweroff
+VBoxManage controlvm "SecLabs-Lab" poweroff
 ```
 
 ---
@@ -177,7 +183,7 @@ main
 
 ```bash
 git clone <repo-url>
-cd Secure_AI
+cd SecLabs
 
 # Fetch remote branches
 git fetch origin

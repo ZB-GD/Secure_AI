@@ -1,19 +1,32 @@
 import { useEffect, useRef } from "react";
 
-export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }) {
+export default function RuntimeLogsPanel({
+  lines = [],
+  statusLabel = "unknown",
+}) {
   const scrollRef = useRef(null);
+  const shouldFollowRef = useRef(true);
 
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (shouldFollowRef.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [lines]);
+
+  function handleLogScroll() {
+    const node = scrollRef.current;
+    if (!node) return;
+    const distanceFromBottom =
+      node.scrollHeight - node.scrollTop - node.clientHeight;
+    shouldFollowRef.current = distanceFromBottom < 24;
+  }
 
   const statusColor =
     statusLabel === "running"
       ? "var(--green)"
-      : statusLabel === "error"
-      ? "var(--red)"
-      : "var(--orange)";
+      : statusLabel === "error" || statusLabel === "compromised"
+        ? "var(--red)"
+        : "var(--orange)";
 
   return (
     <section
@@ -47,10 +60,10 @@ export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }
               marginBottom: "4px",
             }}
           >
-            RUNTIME LOG STREAM
+            ISOLATED CONTAINER LOG STREAM
           </div>
           <div style={{ fontSize: "12px", color: "var(--text-2)" }}>
-            Simulated near-real-time node events
+            Live Docker output from the lab container
           </div>
         </div>
 
@@ -70,6 +83,7 @@ export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }
 
       <div
         ref={scrollRef}
+        onScroll={handleLogScroll}
         style={{
           flex: 1,
           minHeight: 0,
@@ -85,7 +99,23 @@ export default function RuntimeLogsPanel({ lines = [], statusLabel = "unknown" }
       >
         {lines.length > 0 ? (
           lines.map((line, index) => (
-            <div key={`${index}-${line}`} style={{ marginBottom: "4px" }}>
+            <div
+              key={`${index}-${line}`}
+              style={{
+                marginBottom: "4px",
+                color: line.includes("[ERROR]")
+                  ? "var(--red)"
+                  : line.includes("REJECTED") || line.includes("ATTACK BLOCKED")
+                    ? "var(--green)"
+                    : line.includes("[RESULT]") ||
+                        line.includes("ATTACK SUCCESSFUL")
+                      ? "var(--orange)"
+                      : line.includes("ACCEPTED") ||
+                          line.includes("congestion_score")
+                        ? "var(--green)"
+                        : "var(--text-2)",
+              }}
+            >
               {line}
             </div>
           ))
