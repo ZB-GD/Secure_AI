@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { labService } from "../../services/labService";
+
 export default function RemoteDesktopPanel({
   item,
   remoteUrl,
@@ -7,6 +7,12 @@ export default function RemoteDesktopPanel({
   remoteError,
   onRetry,
 }) {
+  const [iframeKey, setIframeKey] = useState(0);
+
+  useEffect(() => {
+    setIframeKey(0);
+  }, [remoteUrl]);
+
   if (remoteLoading) {
     return (
       <section
@@ -215,8 +221,14 @@ export default function RemoteDesktopPanel({
             }}
           >
             <iframe
+              key={iframeKey}
               title={`Remote Interface ${item.id}`}
               src={remoteUrl}
+              onLoad={() => {
+                if (iframeKey === 0) {
+                  window.setTimeout(() => setIframeKey(1), 1200);
+                }
+              }}
               style={{ width: "100%", height: "100%", border: "none" }}
             />
           </div>

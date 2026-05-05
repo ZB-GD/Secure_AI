@@ -1,19 +1,19 @@
 #!/bin/bash
-# setup.sh — Secure_AI
+# setup.sh — SecLabs
 #
 # Ejecutar DENTRO de la VM, una vez instalado Ubuntu Server 22.04.
 # Instala Docker, Python 3, Node.js y configura la red host-only permanente.
 #
 # Uso:
-#   git clone https://github.com/ZB-GD/Secure_AI.git
-#   cd Secure_AI
+#   git clone https://github.com/ZB-GD/SecLabs.git
+#   cd SecLabs
 #   chmod +x setup.sh
 #   ./setup.sh
 
 set -e
 
 echo "======================================================"
-echo "  Secure_AI — setup del entorno de desarrollo"
+echo "  SecLabs — setup del entorno de desarrollo"
 echo "======================================================"
 
 

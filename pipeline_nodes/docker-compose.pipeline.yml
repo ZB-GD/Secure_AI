@@ -1,11 +1,9 @@
-version: "3.9"
-
 # S1 — Full vulnerable pipeline
 # All nodes run in VULNERABLE mode.
 # Student observes with lazydocker/ttyd — does not interact directly.
 #
-# Usage (from backend/ root):
-#   docker compose -f pipelines/e1_vulnerable/docker-compose.yml up --build
+# Usage (from project root):
+#   docker compose -f pipeline_nodes/docker-compose.pipeline.yml up --build
 #
 # Volumes:
 #   model-store  — shared between actuator (N3, reads) and trainer (N4, writes)
@@ -14,8 +12,8 @@ version: "3.9"
 services:
   model-init:
     build:
-      context: ../..
-      dockerfile: scripts/Dockerfile.trainer-init
+      context: ..
+      dockerfile: backend/scripts/Dockerfile.trainer-init
     container_name: model-init
     volumes:
       - model-store:/models
@@ -25,8 +23,8 @@ services:
 
   sensor:
     build:
-      context: ../.. # backend/ root (for COPY in Dockerfile)
-      dockerfile: nodes/sensor_data/Dockerfile
+      context: ..
+      dockerfile: pipeline_nodes/sensor_data/Dockerfile
     container_name: n1-sensor
     networks:
       - pipeline-net
@@ -37,8 +35,8 @@ services:
 
   edge:
     build:
-      context: ../..
-      dockerfile: nodes/edge_preprocessing/Dockerfile
+      context: ..
+      dockerfile: pipeline_nodes/edge_preprocessing/Dockerfile
     container_name: n2-edge
     networks:
       - pipeline-net
@@ -51,8 +49,8 @@ services:
 
   actuator:
     build:
-      context: ../..
-      dockerfile: nodes/actuator/Dockerfile
+      context: ..
+      dockerfile: pipeline_nodes/actuator/Dockerfile
     container_name: n3-actuator
     networks:
       - pipeline-net
@@ -71,8 +69,8 @@ services:
 
   trainer:
     build:
-      context: ../..
-      dockerfile: nodes/model_trainer/Dockerfile
+      context: ..
+      dockerfile: pipeline_nodes/model_trainer/Dockerfile
     container_name: n4-trainer
     networks:
       - pipeline-net

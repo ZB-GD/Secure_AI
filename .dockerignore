@@ -1,0 +1,28 @@
+.git
+.vscode
+.agents
+.claude
+
+# Python virtualenvs and cache
+.venv/
+backend/.venv/
+**/__pycache__/
+**/*.py[cod]
+
+# Secrets — never bake into images
+backend/.env
+backend/.env.*
+!backend/.env.example
+.env
+.env.*
+!.env.example
+
+# Frontend build artifacts (frontend uses its own build context)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+# Stale docs
+estructura.txt
+tree_proyecto.txt

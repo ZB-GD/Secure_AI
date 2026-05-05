@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir \
     joblib
 
 # Copy trainer script, paths resolver, and local dataset
-COPY scripts/train_traffic_models.py ./scripts/train_traffic_models.py
-COPY nodes/paths.py ./paths.py
+COPY backend/scripts/train_traffic_models.py ./scripts/train_traffic_models.py
+COPY pipeline_nodes/paths.py ./paths.py
 COPY data/datasets/metro_interstate_traffic_volume.csv ./data/datasets/metro_interstate_traffic_volume.csv
 
 ENV MODELS_DIR=/models

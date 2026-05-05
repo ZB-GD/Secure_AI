@@ -2,11 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /node
 
-COPY requirements.txt .
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only this node's files and local dataset
-COPY nodes/sensor_data/app.py    ./app.py
+COPY pipeline_nodes/sensor_data/app.py    ./app.py
 COPY data/datasets/metro_interstate_traffic_volume.csv ./data/datasets/metro_interstate_traffic_volume.csv
 
 EXPOSE 8001

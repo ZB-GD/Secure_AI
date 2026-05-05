@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -13,7 +13,7 @@ function isValid(step, answer) {
   return (step.expectedKeywords || []).some((kw) => {
     const keyword = kw.toLowerCase().trim()
 
-    // Si es frase, permitimos búsqueda por texto
+    // For phrases, allow plain text matching.
     if (keyword.includes(" ")) {
       return value.includes(keyword)
     }
@@ -22,6 +22,139 @@ function isValid(step, answer) {
     const regex = new RegExp(`(^|\\b)${escapeRegExp(keyword)}(\\b|$)`, "i")
     return regex.test(value)
   })
+}
+
+function CommandBlock({ command }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copyCommand() {
+    try {
+      await navigator.clipboard.writeText(command)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1400)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr auto",
+        alignItems: "stretch",
+        gap: "8px",
+        margin: "10px 0",
+      }}
+    >
+      <pre
+        style={{
+          margin: 0,
+          overflowX: "auto",
+          whiteSpace: "pre",
+          background: "#05080f",
+          border: "1px solid rgba(56,189,248,0.24)",
+          borderRadius: "7px",
+          padding: "11px 12px",
+          color: "var(--green)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "12px",
+          lineHeight: 1.5,
+        }}
+      >
+        <code>{command}</code>
+      </pre>
+
+      <button
+        type="button"
+        onClick={copyCommand}
+        title="Copy command"
+        style={{
+          minWidth: "62px",
+          border: "1px solid var(--border-mid)",
+          borderRadius: "7px",
+          background: copied ? "var(--green-dim)" : "var(--bg-base)",
+          color: copied ? "var(--green)" : "var(--text-2)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "10px",
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      >
+        {copied ? "COPIED" : "COPY"}
+      </button>
+    </div>
+  )
+}
+
+function InstructionText({ text }) {
+  const blocks = []
+  let paragraph = []
+  let commandLines = []
+
+  function flushParagraph() {
+    if (!paragraph.length) return
+    blocks.push({ type: "paragraph", text: paragraph.join(" ") })
+    paragraph = []
+  }
+
+  function flushCommands() {
+    if (!commandLines.length) return
+    blocks.push({ type: "commands", lines: commandLines })
+    commandLines = []
+  }
+
+  for (const rawLine of (text || "").split("\n")) {
+    const line = rawLine.trim()
+
+    if (!line) {
+      flushParagraph()
+      flushCommands()
+      continue
+    }
+
+    if (/^(curl|cat|python3|gedit)\s+/.test(line)) {
+      flushParagraph()
+      commandLines.push(line)
+      continue
+    }
+
+    flushCommands()
+    paragraph.push(line)
+  }
+
+  flushParagraph()
+  flushCommands()
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {blocks.map((block, index) => {
+        if (block.type === "commands") {
+          return (
+            <div key={index}>
+              {block.lines.map((line) => (
+                <CommandBlock key={line} command={line} />
+              ))}
+            </div>
+          )
+        }
+
+        return (
+          <p
+            key={index}
+            style={{
+              margin: 0,
+              fontSize: "13px",
+              lineHeight: "1.7",
+              color: "var(--text-2)",
+            }}
+          >
+            {block.text}
+          </p>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function LabGuide({
@@ -33,6 +166,13 @@ export default function LabGuide({
   onNextStep,
 }) {
   const [showHint, setShowHint] = useState(false)
+  const [answerTouched, setAnswerTouched] = useState(false)
+
+  useEffect(() => {
+    setShowHint(false)
+    setAnswerTouched(false)
+  }, [currentStep?.id])
+
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
     return (
@@ -48,8 +188,13 @@ export default function LabGuide({
   const answerValid = isValid(currentStep, currentAnswer)
 
   const handleNext = () => {
-    if (!answerValid) return
+    if (!answerValid) {
+      setAnswerTouched(true)
+      return
+    }
+
     setShowHint(false)
+    setAnswerTouched(false)
     onNextStep()
   }
 
@@ -169,15 +314,7 @@ export default function LabGuide({
             INSTRUCTIONS
           </div>
 
-          <p
-            style={{
-              fontSize: "13px",
-              lineHeight: "1.7",
-              color: "var(--text-2)",
-            }}
-          >
-            {currentStep.body}
-          </p>
+          <InstructionText text={currentStep.body} />
         </div>
 
         <div
@@ -267,13 +404,25 @@ export default function LabGuide({
             <input
               type="text"
               value={currentAnswer}
-              onChange={(e) => onAnswerChange(currentStep.id, e.target.value)}
+              onChange={(e) => {
+                setAnswerTouched(false)
+                onAnswerChange(currentStep.id, e.target.value)
+              }}
+              onBlur={() => {
+                if ((currentAnswer || "").trim()) {
+                  setAnswerTouched(true)
+                }
+              }}
               placeholder={currentStep.placeholder}
               style={{
                 width: "100%",
                 background: "var(--bg-base)",
                 border: `1px solid ${
-                  answerValid ? "var(--green)" : "var(--border-mid)"
+                  answerValid
+                    ? "var(--green)"
+                    : answerTouched && currentAnswer
+                    ? "var(--red)"
+                    : "var(--border-mid)"
                 }`,
                 borderRadius: "6px",
                 padding: "12px 14px",
@@ -299,7 +448,7 @@ export default function LabGuide({
             )}
           </div>
 
-          {!!currentAnswer && !answerValid && (
+          {answerTouched && !!currentAnswer && !answerValid && (
             <div
               style={{
                 marginTop: "8px",
@@ -366,7 +515,7 @@ export default function LabGuide({
               : "0 0 15px rgba(249,115,22,0.15)",
           }}
         >
-          {stepIndex === totalSteps - 1 ? "COMPLETE LAB ✓" : "NEXT →"}
+          {stepIndex === totalSteps - 1 ? "UNLOCK QUIZ" : "NEXT ->"}
         </button>
       </div>
     </div>
