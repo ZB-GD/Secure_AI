@@ -3,7 +3,7 @@ import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
 
 function bootJourney(items) {
-  return items.map((item, index) => ({
+  return items.map((item) => ({
     ...item,
     locked: false,
     completed: false,
@@ -44,51 +44,51 @@ export default function App() {
     [items, activeItemId],
   );
 
-function hasInvestigationStarted(list = items) {
-  return list.some((item) => item.id === "scenario-0" && item.completed);
-}
-
-function handleSelectItem(itemId) {
-  const investigationStarted = hasInvestigationStarted();
-
-  // Antes de pulsar INITIALIZE INVESTIGATION no se puede navegar.
-  if (!investigationStarted && itemId !== "scenario-0") {
-    return;
+  function hasInvestigationStarted(list = items) {
+    return list.some((item) => item.id === "scenario-0" && item.completed);
   }
 
-  if (itemId === "dashboard") {
-    setActiveItemId("dashboard");
-    return;
+  function handleSelectItem(itemId) {
+    const investigationStarted = hasInvestigationStarted();
+
+    // Before pressing INITIALIZE INVESTIGATION, navigation is blocked.
+    if (!investigationStarted && itemId !== "scenario-0") {
+      return;
+    }
+
+    if (itemId === "dashboard") {
+      setActiveItemId("dashboard");
+      return;
+    }
+
+    const target = items.find((item) => item.id === itemId);
+    if (!target || target.locked) return;
+
+    // Secondary scenarios are opened only from their own lab flow, not from
+    // the top navigation.
+    if (target.type === "scenario" && target.id !== "scenario-0") {
+      return;
+    }
+
+    if (target.type === "lab" && !target.guide?.steps?.length) return;
+
+    setActiveItemId(itemId);
   }
 
-  const target = items.find((item) => item.id === itemId);
-  if (!target || target.locked) return;
+  function handleCompleteScenario() {
+    const currentId = activeItemId;
 
-  // Los scenarios no se abren desde la navegación superior.
-  // El scenario del lab se abre solo desde el flujo del propio lab.
-  if (target.type === "scenario" && target.id !== "scenario-0") {
-    return;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === currentId ? { ...item, completed: true } : item,
+      ),
+    );
+
+    // Completing the welcome screen takes us straight to the dashboard.
+    if (currentId === "scenario-0") {
+      setActiveItemId("dashboard");
+    }
   }
-
-  if (target.type === "lab" && !target.guide?.steps?.length) return;
-
-  setActiveItemId(itemId);
-}
-
-function handleCompleteScenario() {
-  const currentId = activeItemId;
-
-  setItems((prev) =>
-    prev.map((item) =>
-      item.id === currentId ? { ...item, completed: true } : item,
-    ),
-  );
-
-  // Al completar la pantalla inicial, vamos directamente al dashboard.
-  if (currentId === "scenario-0") {
-    setActiveItemId("dashboard");
-  }
-}
 
   function handleAnswerChange(stepId, value) {
     setItems((prev) =>
@@ -160,15 +160,15 @@ function handleCompleteScenario() {
     );
   }
 
-function handleStartLab(itemId) {
-  setItems((prev) =>
-    prev.map((item) =>
-      item.id === itemId ? { ...item, scenarioViewed: true } : item,
-    ),
-  );
+  function handleStartLab(itemId) {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, scenarioViewed: true } : item,
+      ),
+    );
 
-  setActiveItemId(itemId);
-}
+    setActiveItemId(itemId);
+  }
 
   const currentStep =
     activeItem.type === "lab"
@@ -185,6 +185,11 @@ function handleStartLab(itemId) {
       ? isStepAnswerValid(currentStep, currentAnswer)
       : false;
 
+  // showValidation lives in the item state — pass it down so the guide
+  // can highlight the invalid answer field without duplicating state.
+  const showValidation =
+    activeItem.type === "lab" ? activeItem.showValidation ?? false : false;
+
   return (
     <MainLayout
       items={items}
@@ -192,6 +197,7 @@ function handleStartLab(itemId) {
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
+      showValidation={showValidation}
       onSelectItem={handleSelectItem}
       onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}
