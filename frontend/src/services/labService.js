@@ -12,7 +12,7 @@ function getStageForLabId(labId) {
 }
 
 function sessionParam() {
-  return `session=${getSessionId()}`;
+  return `session_id=${getSessionId()}`;
 }
 
 function toAbsoluteUrl(url, baseUrl) {

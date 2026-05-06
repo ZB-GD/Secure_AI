@@ -130,6 +130,10 @@ export function useLabRuntime(labId, options = {}) {
       const payload = await labService.getStatusById(labId);
       if (!payload) return;
 
+      if (payload?.status === "not found") {
+        setRemoteUrl("");
+      }
+
       if (payload?.terminal_url) {
         setRemoteUrl(payload.terminal_url);
       }
@@ -199,6 +203,13 @@ export function useLabRuntime(labId, options = {}) {
 
     if (autoStart && labId) startRuntime();
   }, [labId, autoStart, startRuntime]);
+
+  // Recover when a redeploy or cleanup stops the disposable lab while the page
+  // remains open. Otherwise noVNC keeps reconnecting to a dead host port.
+  useEffect(() => {
+    if (!autoStart || !labId || remoteLoading || remoteError) return;
+    if (runtime.statusLabel === "not found") startRuntime();
+  }, [autoStart, labId, remoteLoading, remoteError, runtime.statusLabel, startRuntime]);
 
   // Poll isolated container logs.
   useEffect(() => {
