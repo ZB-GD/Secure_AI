@@ -44,28 +44,51 @@ export default function App() {
     [items, activeItemId],
   );
 
-  function handleSelectItem(itemId) {
-    if (itemId === "dashboard") {
-      setActiveItemId("dashboard");
-      return;
-    }
-    const target = items.find((item) => item.id === itemId);
-    if (!target || target.locked) return;
-    if (target.type === "lab" && !target.guide?.steps?.length) return;
-    setActiveItemId(itemId);
+function hasInvestigationStarted(list = items) {
+  return list.some((item) => item.id === "scenario-0" && item.completed);
+}
+
+function handleSelectItem(itemId) {
+  const investigationStarted = hasInvestigationStarted();
+
+  // Antes de pulsar INITIALIZE INVESTIGATION no se puede navegar.
+  if (!investigationStarted && itemId !== "scenario-0") {
+    return;
   }
 
-  function handleCompleteScenario() {
-    const currentIndex = items.findIndex((item) => item.id === activeItemId);
-
-    setItems((prev) => {
-      const next = [...prev];
-      if (currentIndex !== -1) {
-        next[currentIndex] = { ...next[currentIndex], completed: true };
-      }
-      return next;
-    });
+  if (itemId === "dashboard") {
+    setActiveItemId("dashboard");
+    return;
   }
+
+  const target = items.find((item) => item.id === itemId);
+  if (!target || target.locked) return;
+
+  // Los scenarios no se abren desde la navegación superior.
+  // El scenario del lab se abre solo desde el flujo del propio lab.
+  if (target.type === "scenario" && target.id !== "scenario-0") {
+    return;
+  }
+
+  if (target.type === "lab" && !target.guide?.steps?.length) return;
+
+  setActiveItemId(itemId);
+}
+
+function handleCompleteScenario() {
+  const currentId = activeItemId;
+
+  setItems((prev) =>
+    prev.map((item) =>
+      item.id === currentId ? { ...item, completed: true } : item,
+    ),
+  );
+
+  // Al completar la pantalla inicial, vamos directamente al dashboard.
+  if (currentId === "scenario-0") {
+    setActiveItemId("dashboard");
+  }
+}
 
   function handleAnswerChange(stepId, value) {
     setItems((prev) =>
@@ -137,13 +160,15 @@ export default function App() {
     );
   }
 
-  function handleStartLab(itemId) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, scenarioViewed: true } : item,
-      ),
-    );
-  }
+function handleStartLab(itemId) {
+  setItems((prev) =>
+    prev.map((item) =>
+      item.id === itemId ? { ...item, scenarioViewed: true } : item,
+    ),
+  );
+
+  setActiveItemId(itemId);
+}
 
   const currentStep =
     activeItem.type === "lab"
