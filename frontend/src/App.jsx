@@ -52,37 +52,49 @@ export default function App() {
     [items, activeItemId],
   );
 
+  function hasInvestigationStarted(list = items) {
+    return list.some((item) => item.id === "scenario-0" && item.completed);
+  }
+
   function handleSelectItem(itemId) {
+    const investigationStarted = hasInvestigationStarted();
+
+    // Antes de pulsar INITIALIZE INVESTIGATION no se puede navegar.
+    if (!investigationStarted && itemId !== "scenario-0") {
+      return;
+    }
+
     if (itemId === "dashboard") {
       setActiveItemId("dashboard");
       return;
     }
+
     const target = items.find((item) => item.id === itemId);
     if (!target || target.locked) return;
+
+    // Los scenarios no se abren desde la navegación superior.
+    // El scenario del lab se abre solo desde el flujo del propio lab.
+    if (target.type === "scenario" && target.id !== "scenario-0") {
+      return;
+    }
+
     if (target.type === "lab" && !target.guide?.steps?.length) return;
+
     setActiveItemId(itemId);
   }
 
   function handleCompleteScenario() {
-    const currentIndex = items.findIndex((item) => item.id === activeItemId);
-    const linkedLabId = getLinkedLabId(activeItemId, items);
+    const currentId = activeItemId;
 
-    setItems((prev) => {
-      return prev.map((item, index) => {
-        if (index === currentIndex) {
-          return { ...item, completed: true };
-        }
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === currentId ? { ...item, completed: true } : item,
+      ),
+    );
 
-        if (item.id === linkedLabId) {
-          return { ...item, scenarioViewed: true };
-        }
-
-        return item;
-      });
-    });
-
-    if (linkedLabId) {
-      setActiveItemId(linkedLabId);
+    // Al completar la pantalla inicial, vamos directamente al dashboard.
+    if (currentId === "scenario-0") {
+      setActiveItemId("dashboard");
     }
   }
 
@@ -162,6 +174,8 @@ export default function App() {
         item.id === itemId ? { ...item, scenarioViewed: true } : item,
       ),
     );
+
+    setActiveItemId(itemId);
   }
 
   const currentStep =

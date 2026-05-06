@@ -17,13 +17,17 @@ export default function WorkspacePanel({
   onCompleteLabQuiz,
   onStartLab,
 }) {
-  const [labView, setLabView] = useState("scenario");
+  const [labView, setLabView] = useState("lab");
 
   useEffect(() => {
-    if (item?.type === "lab") {
-      setLabView(item.scenario ? "scenario" : "lab");
+    if (item?.type !== "lab") return;
+
+    if (item.scenario && !item.scenarioViewed) {
+      setLabView("intro");
+    } else {
+      setLabView("lab");
     }
-  }, [item?.id]);
+  }, [item?.id, item?.scenarioViewed, item?.scenario]);
 
   if (!item) return null;
 
@@ -43,26 +47,30 @@ export default function WorkspacePanel({
 
   if (item.type === "scenario") {
     return (
-      <ScenarioWorkspace item={item} onCompleteScenario={onCompleteScenario} />
+      <ScenarioWorkspace
+        item={item}
+        onCompleteScenario={onCompleteScenario}
+        onSelectItem={onSelectItem}
+      />
     );
   }
 
-  if (item.type === "lab" && item.scenario && labView === "scenario") {
-    if (!item.scenarioViewed) {
-      return (
-        <LabScenarioIntro
-          item={item}
-          onStartLab={() => {
-            onStartLab?.(item.id);
-            setLabView("lab");
-          }}
-        />
-      );
-    }
+  if (item.type === "lab" && item.scenario && labView === "intro") {
+    return (
+      <LabScenarioIntro
+        item={item}
+        onStartLab={() => {
+          onStartLab?.(item.id);
+          setLabView("lab");
+        }}
+      />
+    );
+  }
 
-    // Returning visit: compact pipeline reference with back button
+  if (item.type === "lab" && item.scenario && labView === "pipeline") {
     const linkedScenario =
       items?.find((i) => i.id === item.id.replace("lab", "scenario")) || null;
+
     return (
       <div
         style={{
@@ -102,6 +110,7 @@ export default function WorkspacePanel({
           >
             ← BACK TO LAB
           </button>
+
           <span
             style={{
               fontSize: "10px",
@@ -113,33 +122,57 @@ export default function WorkspacePanel({
             PIPELINE REFERENCE
           </span>
         </div>
-        {linkedScenario && (
+
+        {linkedScenario ? (
           <div style={{ flex: 1, overflow: "hidden" }}>
             <ScenarioWorkspace
               item={linkedScenario}
               onCompleteScenario={onCompleteScenario}
+              onSelectItem={onSelectItem}
             />
+          </div>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text-3)",
+              background: "var(--bg-base)",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            No linked scenario found.
           </div>
         )}
       </div>
     );
   }
 
-  const scenarioItem =
-    items?.find((i) => i.id === item.id.replace("lab", "scenario")) || null;
+  if (item.type === "lab") {
+    const scenarioItem =
+      items?.find((i) => i.id === item.id.replace("lab", "scenario")) || null;
+
+    return (
+      <LabRuntimeWorkspace
+        item={item}
+        scenarioItem={scenarioItem}
+        currentStep={currentStep}
+        currentAnswer={currentAnswer}
+        onAnswerChange={onAnswerChange}
+        onPrevStep={onPrevStep}
+        onNextStep={onNextStep}
+        onCompleteLabQuiz={onCompleteLabQuiz}
+        onCompleteScenario={onCompleteScenario}
+        onViewScenario={item.scenario ? () => setLabView("pipeline") : undefined}
+      />
+    );
+  }
 
   return (
-    <LabRuntimeWorkspace
-      item={item}
-      scenarioItem={scenarioItem}
-      currentStep={currentStep}
-      currentAnswer={currentAnswer}
-      onAnswerChange={onAnswerChange}
-      onPrevStep={onPrevStep}
-      onNextStep={onNextStep}
-      onCompleteLabQuiz={onCompleteLabQuiz}
-      onCompleteScenario={onCompleteScenario}
-      onViewScenario={item.scenario ? () => setLabView("scenario") : undefined}
-    />
+    <div style={{ padding: "20px", color: "var(--text-3)" }}>
+      Select a lab to begin.
+    </div>
   );
 }
