@@ -4,9 +4,10 @@ set -euo pipefail
 # SecLabs deployment script
 #
 # Use this on the university server after cloning/updating the project.
-# It does two things:
-#   1. Builds the main platform images and the lab images.
-#   2. Starts only the long-running platform services.
+# It does three things:
+#   1. Stops stale disposable lab containers from previous runs.
+#   2. Builds the main platform images and the lab images.
+#   3. Starts only the long-running platform services.
 #
 # The lab images are built through the `labs-build` Compose profile, but the
 # lab containers themselves are not kept running. The backend starts disposable
@@ -23,13 +24,22 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-echo "[1/3] Building lab base image..."
+echo "[1/4] Stopping stale lab containers..."
+mapfile -t RUNNING_LABS < <(docker ps -q --filter "name=^/lab-phase-")
+if [ "${#RUNNING_LABS[@]}" -gt 0 ]; then
+  echo "Stopping stale lab containers: ${RUNNING_LABS[*]}"
+  docker stop "${RUNNING_LABS[@]}"
+else
+  echo "No stale lab containers found."
+fi
+
+echo "[2/4] Building lab base image..."
 docker compose --profile labs-build build lab-base-novnc
 
-echo "[2/3] Building SecLabs platform and lab images..."
+echo "[3/4] Building SecLabs platform and lab images..."
 docker compose --profile labs-build build
 
-echo "[3/3] Starting SecLabs platform services..."
+echo "[4/4] Starting SecLabs platform services..."
 docker compose up -d --remove-orphans
 
 echo

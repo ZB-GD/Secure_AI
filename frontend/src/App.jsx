@@ -3,7 +3,7 @@ import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
 
 function bootJourney(items) {
-  return items.map((item, index) => ({
+  return items.map((item) => ({
     ...item,
     locked: false,
     completed: false,
@@ -22,6 +22,14 @@ function isStepAnswerValid(step, answer) {
   return (step.expectedKeywords || []).some((kw) =>
     value.includes(kw.toLowerCase()),
   );
+}
+
+function getLinkedLabId(itemId, items) {
+  const match = itemId.match(/^scenario-(\d+)$/);
+  if (!match) return null;
+
+  const linkedLabId = `lab-${match[1]}`;
+  return items.some((item) => item.id === linkedLabId) ? linkedLabId : null;
 }
 
 export default function App() {
@@ -57,14 +65,25 @@ export default function App() {
 
   function handleCompleteScenario() {
     const currentIndex = items.findIndex((item) => item.id === activeItemId);
+    const linkedLabId = getLinkedLabId(activeItemId, items);
 
     setItems((prev) => {
-      const next = [...prev];
-      if (currentIndex !== -1) {
-        next[currentIndex] = { ...next[currentIndex], completed: true };
-      }
-      return next;
+      return prev.map((item, index) => {
+        if (index === currentIndex) {
+          return { ...item, completed: true };
+        }
+
+        if (item.id === linkedLabId) {
+          return { ...item, scenarioViewed: true };
+        }
+
+        return item;
+      });
     });
+
+    if (linkedLabId) {
+      setActiveItemId(linkedLabId);
+    }
   }
 
   function handleAnswerChange(stepId, value) {
