@@ -3,6 +3,7 @@ import os
 import shlex
 import threading
 import time
+from datetime import datetime
 
 import docker
 from fastapi import HTTPException
@@ -10,8 +11,8 @@ from api.models.state import LABS, NOVNC_PORT, session_container_name
 
 
 MAX_CONCURRENT_LABS = int(os.getenv("MAX_CONCURRENT_LABS", "20"))
-LAB_HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("LAB_HEARTBEAT_TIMEOUT_SECONDS", "300"))
-LAB_CLEANUP_INTERVAL_SECONDS = int(os.getenv("LAB_CLEANUP_INTERVAL_SECONDS", "60"))
+LAB_HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("LAB_HEARTBEAT_TIMEOUT_SECONDS", "180"))
+LAB_CLEANUP_INTERVAL_SECONDS = int(os.getenv("LAB_CLEANUP_INTERVAL_SECONDS", "30"))
 
 _heartbeat_lock = threading.Lock()
 _last_seen_by_container: dict[str, float] = {}
@@ -164,28 +165,45 @@ def _running_managed_containers(client):
 
     return list(by_id.values())
 
+def _container_started_at_epoch(container) -> float | None:
+    started_at = container.attrs.get("State", {}).get("StartedAt", "")
+    if not started_at or started_at.startswith("0001-"):
+        return None
+
+    try:
+        return datetime.fromisoformat(started_at.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
 def _prune_stale_lab_containers(client=None) -> None:
     client = client or _client()
     now = time.time()
 
     for container in _running_managed_containers(client):
+        container.reload()
         with _heartbeat_lock:
             last_seen = _last_seen_by_container.get(container.name)
 
         if last_seen is None:
-            started_at = container.attrs.get("State", {}).get("StartedAt", "")
-            try:
-                started_epoch = time.strptime(started_at.split(".")[0], "%Y-%m-%dT%H:%M:%S")
-                last_seen = time.mktime(started_epoch)
-            except (TypeError, ValueError):
-                last_seen = now
+            last_seen = _container_started_at_epoch(container) or now
+            with _heartbeat_lock:
+                _last_seen_by_container[container.name] = last_seen
 
         if now - last_seen <= LAB_HEARTBEAT_TIMEOUT_SECONDS:
             continue
 
         try:
+            print(
+                "[LAB-CLEANUP] Stopping stale lab container "
+                f"{container.name}; idle_for={int(now - last_seen)}s",
+                flush=True,
+            )
             container.stop()
         except docker.errors.APIError:
+            print(
+                f"[LAB-CLEANUP] Failed to stop stale lab container {container.name}.",
+                flush=True,
+            )
             continue
 
         with _heartbeat_lock:
@@ -223,10 +241,15 @@ def start_lab_cleanup_thread() -> None:
         while True:
             try:
                 _prune_stale_lab_containers()
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[LAB-CLEANUP] Cleanup pass failed: {exc}", flush=True)
             time.sleep(LAB_CLEANUP_INTERVAL_SECONDS)
 
+    print(
+        "[LAB-CLEANUP] Starting cleanup thread; "
+        f"timeout={LAB_HEARTBEAT_TIMEOUT_SECONDS}s interval={LAB_CLEANUP_INTERVAL_SECONDS}s",
+        flush=True,
+    )
     threading.Thread(target=_run, name="lab-container-cleanup", daemon=True).start()
 
 def _client():

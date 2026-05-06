@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import RagTutorWidget from "../workspace/RagTutorWidget";
 
 const LAST_LAB_STORAGE_KEY = "seclabs-last-lab-id";
 
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const labs = items.filter((i) => i.type === "lab");
 
-  const completedCount = labs.filter((i) => i.completed).length;
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
   const [lastLabId, setLastLabId] = useState(
     () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
@@ -249,32 +249,12 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           })}
         </div>
 
-        <div style={{ minWidth: "120px", textAlign: "right" }}>
-          <div
-            style={{
-              fontSize: "9px",
-              color: "var(--text-3)",
-              letterSpacing: "0.12em",
-              marginBottom: "4px",
-            }}
-          >
-            PROGRESS
-          </div>
-
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {completedCount}
-            <span style={{ color: "var(--text-3)", fontSize: "13px" }}>
-              /{labs.length}
-            </span>
-          </div>
-        </div>
+        <RagTutorWidget
+          labId={activeItem?.id}
+          phase={activeItem?.phase}
+          activeItem={activeItem}
+          placement="topbar"
+        />
       </div>
 
     </header>
