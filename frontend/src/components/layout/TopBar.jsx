@@ -69,24 +69,22 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   ];
 
   function handleTabClick(tab) {
-    if (tab.disabled) return;
+  if (tab.disabled) return;
 
-    if (tab.id === "home") {
-      setNavView("home");
-      onSelectItem("dashboard");
-      return;
-    }
-
-    if (tab.id === "labs") {
-      setNavView("labs");
-
-      if (activeId !== "dashboard" && activeItem?.type !== "lab") {
-        onSelectItem("dashboard");
-      }
-
-      return;
-    }
+  if (tab.id === "home") {
+    setNavView("home");
+    onSelectItem("dashboard");
+    return;
   }
+
+  if (tab.id === "labs") {
+    if (!lastUnlockedLab) return;
+
+    setNavView("labs");
+    onSelectItem(lastUnlockedLab.id);
+    return;
+  }
+}
 
   return (
     <header
