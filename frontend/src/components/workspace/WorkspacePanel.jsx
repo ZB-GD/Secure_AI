@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
+import { ScenarioOnePipelineRuntime } from "../scenarios/ScenarioWorkspace";
 import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace";
 import LabDashboard from "../labs/LabDashboard";
 import LabScenarioIntro from "../labs/LabScenarioIntro";
@@ -33,6 +34,10 @@ export default function WorkspacePanel({
 
   if (item.type === "dashboard") {
     return <LabDashboard items={items || []} onSelectItem={onSelectItem} />;
+  }
+
+  if (item.type === "pipeline") {
+    return <ScenarioOnePipelineRuntime />;
   }
 
   if (item.type === "welcome") {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function RuntimeLogsPanel({
   lines = [],
@@ -6,6 +6,7 @@ export default function RuntimeLogsPanel({
 }) {
   const scrollRef = useRef(null);
   const shouldFollowRef = useRef(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   useEffect(() => {
     if (shouldFollowRef.current && scrollRef.current) {
@@ -18,7 +19,17 @@ export default function RuntimeLogsPanel({
     if (!node) return;
     const distanceFromBottom =
       node.scrollHeight - node.scrollTop - node.clientHeight;
-    shouldFollowRef.current = distanceFromBottom < 24;
+    const atBottom = distanceFromBottom < 24;
+    shouldFollowRef.current = atBottom;
+    setIsAtBottom(atBottom);
+  }
+
+  function jumpToLatest() {
+    const node = scrollRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+    shouldFollowRef.current = true;
+    setIsAtBottom(true);
   }
 
   const statusColor =
@@ -82,47 +93,78 @@ export default function RuntimeLogsPanel({
       </header>
 
       <div
-        ref={scrollRef}
-        onScroll={handleLogScroll}
         style={{
           flex: 1,
           minHeight: 0,
-          overflowY: "auto",
+          position: "relative",
           background: "#05080f",
-          padding: "14px 16px",
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          lineHeight: "1.7",
-          color: "var(--text-2)",
-          whiteSpace: "pre-wrap",
         }}
       >
-        {lines.length > 0 ? (
-          lines.map((line, index) => (
-            <div
-              key={`${index}-${line}`}
-              style={{
-                marginBottom: "4px",
-                color: line.includes("[ERROR]")
-                  ? "var(--red)"
-                  : line.includes("REJECTED") || line.includes("ATTACK BLOCKED")
-                    ? "var(--green)"
-                    : line.includes("[RESULT]") ||
-                        line.includes("ATTACK SUCCESSFUL")
-                      ? "var(--orange)"
-                      : line.includes("ACCEPTED") ||
-                          line.includes("congestion_score")
-                        ? "var(--green)"
-                        : "var(--text-2)",
-              }}
-            >
-              {line}
+        <div
+          ref={scrollRef}
+          onScroll={handleLogScroll}
+          style={{
+            height: "100%",
+            overflowY: "auto",
+            padding: "14px 16px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            lineHeight: "1.7",
+            color: "var(--text-2)",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {lines.length > 0 ? (
+            lines.map((line, index) => (
+              <div
+                key={`${index}-${line}`}
+                style={{
+                  marginBottom: "4px",
+                  color: line.includes("[ERROR]")
+                    ? "var(--red)"
+                    : line.includes("REJECTED") || line.includes("ATTACK BLOCKED")
+                      ? "var(--green)"
+                      : line.includes("[RESULT]") ||
+                          line.includes("ATTACK SUCCESSFUL")
+                        ? "var(--orange)"
+                        : line.includes("ACCEPTED") ||
+                            line.includes("congestion_score")
+                          ? "var(--green)"
+                          : "var(--text-2)",
+                }}
+              >
+                {line}
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--text-3)" }}>
+              Waiting for runtime events...
             </div>
-          ))
-        ) : (
-          <div style={{ color: "var(--text-3)" }}>
-            Waiting for runtime events...
-          </div>
+          )}
+        </div>
+
+        {!isAtBottom && lines.length > 0 && (
+          <button
+            type="button"
+            onClick={jumpToLatest}
+            style={{
+              position: "absolute",
+              right: "14px",
+              bottom: "14px",
+              padding: "7px 10px",
+              borderRadius: "999px",
+              border: "1px solid var(--orange-border)",
+              background: "rgba(15,23,42,0.94)",
+              color: "var(--orange)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 10px 24px rgba(0,0,0,0.3)",
+            }}
+          >
+            ↓ LATEST
+          </button>
         )}
       </div>
     </section>
