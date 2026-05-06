@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
-import RagTutorWidget from "../workspace/RagTutorWidget";
 
 const SIDEBAR_MIN_WIDTH = 280;
 const SIDEBAR_MAX_WIDTH = 620;
@@ -272,14 +271,6 @@ export default function MainLayout({
         </main>
       </div>
 
-      {/* Floating tutor only for scenarios — labs have it integrated in Quiz tab */}
-      {!isFullWidthBriefing && isScenario && (
-        <RagTutorWidget
-          labId={activeItem?.id}
-          phase={activeItem?.phase}
-          activeItem={activeItem}
-        />
-      )}
     </div>
   );
 }
