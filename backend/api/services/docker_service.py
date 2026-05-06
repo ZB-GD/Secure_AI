@@ -1,11 +1,21 @@
 import json
 import os
 import shlex
+import threading
 import time
 
 import docker
 from fastapi import HTTPException
 from api.models.state import LABS, NOVNC_PORT, session_container_name
+
+
+MAX_CONCURRENT_LABS = int(os.getenv("MAX_CONCURRENT_LABS", "20"))
+LAB_HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("LAB_HEARTBEAT_TIMEOUT_SECONDS", "300"))
+LAB_CLEANUP_INTERVAL_SECONDS = int(os.getenv("LAB_CLEANUP_INTERVAL_SECONDS", "60"))
+
+_heartbeat_lock = threading.Lock()
+_last_seen_by_container: dict[str, float] = {}
+_cleanup_thread_started = False
 
 
 def _build_novnc_url(host_port: str, request_host: str | None = None):
@@ -133,6 +143,92 @@ def _get_local_lab_metrics(container, lab: dict) -> dict:
         "downstream_risk": state.get("downstream_risk", "low"),
     }
 
+def _managed_container_filters() -> dict:
+    return {"label": "seclabs.lab=true"}
+
+def _is_managed_container(container) -> bool:
+    labels = container.labels or {}
+    if labels.get("seclabs.lab") == "true":
+        return True
+
+    names = [lab["container_name"] for lab in LABS.values()]
+    return any(container.name.startswith(f"{name}-") for name in names)
+
+def _running_managed_containers(client):
+    labeled = client.containers.list(filters=_managed_container_filters())
+    by_id = {container.id: container for container in labeled}
+
+    for container in client.containers.list():
+        if _is_managed_container(container):
+            by_id[container.id] = container
+
+    return list(by_id.values())
+
+def _prune_stale_lab_containers(client=None) -> None:
+    client = client or _client()
+    now = time.time()
+
+    for container in _running_managed_containers(client):
+        with _heartbeat_lock:
+            last_seen = _last_seen_by_container.get(container.name)
+
+        if last_seen is None:
+            started_at = container.attrs.get("State", {}).get("StartedAt", "")
+            try:
+                started_epoch = time.strptime(started_at.split(".")[0], "%Y-%m-%dT%H:%M:%S")
+                last_seen = time.mktime(started_epoch)
+            except (TypeError, ValueError):
+                last_seen = now
+
+        if now - last_seen <= LAB_HEARTBEAT_TIMEOUT_SECONDS:
+            continue
+
+        try:
+            container.stop()
+        except docker.errors.APIError:
+            continue
+
+        with _heartbeat_lock:
+            _last_seen_by_container.pop(container.name, None)
+
+def _ensure_concurrency_available(client, requested_container_name: str) -> None:
+    _prune_stale_lab_containers(client)
+
+    running = [
+        container
+        for container in _running_managed_containers(client)
+        if container.name != requested_container_name
+    ]
+    if len(running) >= MAX_CONCURRENT_LABS:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Maximum concurrent lab containers reached. "
+                "Try again after another lab is stopped or cleaned up."
+            ),
+        )
+
+def _record_heartbeat(container_name: str) -> None:
+    with _heartbeat_lock:
+        _last_seen_by_container[container_name] = time.time()
+
+def start_lab_cleanup_thread() -> None:
+    global _cleanup_thread_started
+    if _cleanup_thread_started:
+        return
+
+    _cleanup_thread_started = True
+
+    def _run() -> None:
+        while True:
+            try:
+                _prune_stale_lab_containers()
+            except Exception:
+                pass
+            time.sleep(LAB_CLEANUP_INTERVAL_SECONDS)
+
+    threading.Thread(target=_run, name="lab-container-cleanup", daemon=True).start()
+
 def _client():
     try:
         return docker.from_env()
@@ -154,6 +250,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
     try:
         existing = client.containers.get(container_name)
         if existing.status == "running":
+            _record_heartbeat(container_name)
             _ensure_lab_log(existing, lab)
             _wait_for_novnc(existing)
             host_port = _get_host_port_or_500(existing)
@@ -165,6 +262,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
         pass
 
     try:
+        _ensure_concurrency_available(client, container_name)
         container = client.containers.run(
             image,
             name=container_name,
@@ -174,7 +272,13 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
             mem_limit="768m",
             nano_cpus=1_000_000_000,
             pids_limit=200,
+            labels={
+                "seclabs.lab": "true",
+                "seclabs.node": node,
+                "seclabs.session": session_id,
+            },
         )
+        _record_heartbeat(container_name)
         _ensure_lab_log(container, lab)
         _wait_for_novnc(container)
         host_port = _get_host_port_or_500(container)
@@ -195,11 +299,30 @@ def stop_lab_container(node: str, session_id: str = "shared"):
     try:
         container = client.containers.get(container_name)
         container.stop()
+        with _heartbeat_lock:
+            _last_seen_by_container.pop(container_name, None)
         return {"stopped": True}
     except docker.errors.NotFound:
         raise HTTPException(status_code=404, detail=f"Node '{node}' is not running.")
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error while stopping container: {e}")
+
+def record_lab_heartbeat(node: str, session_id: str = "shared"):
+    lab = _get_lab_or_404(node)
+    container_name = session_container_name(lab["container_name"], session_id)
+    client = _client()
+
+    try:
+        container = client.containers.get(container_name)
+        container.reload()
+        if container.status != "running":
+            return {"status": container.status, "heartbeat": False}
+        _record_heartbeat(container_name)
+        return {"status": "running", "heartbeat": True}
+    except docker.errors.NotFound:
+        return {"status": "not found", "heartbeat": False}
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error while recording heartbeat: {e}")
 
 def get_lab_status(node: str, session_id: str = "shared"):
     lab = _get_lab_or_404(node)

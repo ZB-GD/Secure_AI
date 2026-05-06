@@ -1,18 +1,41 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
+import { getSessionId } from "./services/apiClient";
+
+const STORAGE_KEY = `seclabs-progress-${getSessionId()}`;
+const ACTIVE_ITEM_STORAGE_KEY = `${STORAGE_KEY}-active-item`;
 
 function bootJourney(items) {
-  return items.map((item) => ({
+  const defaults = items.map((item) => ({
     ...item,
     locked: false,
     completed: false,
     guideCompleted: false,
+    quizScore: null,
+    startedAt: null,
+    completedAt: null,
     scenarioViewed: item.type !== "lab",
     currentStepIndex: item.type === "lab" ? 0 : null,
     answers: item.type === "lab" ? {} : null,
     showValidation: false,
   }));
+
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return defaults;
+
+  try {
+    const savedItems = JSON.parse(saved);
+    if (!Array.isArray(savedItems)) return defaults;
+
+    const savedById = new Map(savedItems.map((item) => [item.id, item]));
+    return defaults.map((item) => ({
+      ...item,
+      ...(savedById.get(item.id) || {}),
+    }));
+  } catch {
+    return defaults;
+  }
 }
 
 function isStepAnswerValid(step, answer) {
@@ -34,7 +57,17 @@ function getLinkedLabId(itemId, items) {
 
 export default function App() {
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState("scenario-0");
+  const [activeItemId, setActiveItemId] = useState(
+    () => localStorage.getItem(ACTIVE_ITEM_STORAGE_KEY) || "scenario-0",
+  );
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem(ACTIVE_ITEM_STORAGE_KEY, activeItemId);
+  }, [activeItemId]);
 
   const activeItem = useMemo(
     () =>
@@ -48,6 +81,16 @@ export default function App() {
             subtitle: "Choose a lab to begin.",
             threatStage: "E",
           }
+        : activeItemId === "pipeline"
+          ? {
+              id: "pipeline",
+              type: "pipeline",
+              shortTitle: "Pipeline",
+              phase: "General Pipeline",
+              title: "CityFlow AI Pipeline",
+              subtitle: "Inspect how telemetry moves through each AI node.",
+              threatStage: "P",
+            }
         : items.find((item) => item.id === activeItemId) || items[0],
     [items, activeItemId],
   );
@@ -66,6 +109,11 @@ export default function App() {
 
     if (itemId === "dashboard") {
       setActiveItemId("dashboard");
+      return;
+    }
+
+    if (itemId === "pipeline") {
+      setActiveItemId("pipeline");
       return;
     }
 
@@ -160,10 +208,17 @@ export default function App() {
     });
   }
 
-  function handleCompleteLabQuiz(itemId) {
+  function handleCompleteLabQuiz(itemId, result = {}) {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, completed: true } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              completed: true,
+              quizScore: result.score ?? item.quizScore ?? null,
+              completedAt: new Date().toISOString(),
+            }
+          : item,
       ),
     );
   }
@@ -171,7 +226,13 @@ export default function App() {
   function handleStartLab(itemId) {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, scenarioViewed: true } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              scenarioViewed: true,
+              startedAt: item.startedAt || new Date().toISOString(),
+            }
+          : item,
       ),
     );
 

@@ -3,8 +3,9 @@ import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
 import { journey } from "../../data/journey";
 
 export default function LabScenarioIntro({ item, onStartLab }) {
+  const linkedId = item.id.replace("lab", "scenario");
   const scenarioItem =
-    journey.find((entry) => entry.id === "scenario-1") || item.scenario;
+    journey.find((entry) => entry.id === linkedId) || item.scenario;
 
   return (
     <section

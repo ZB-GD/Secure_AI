@@ -77,6 +77,12 @@ export const journey = [
     subtitle: "Execute the attack and implement defensive boundaries.",
     threatStage: "E",
     envKey: "NODE-1",
+    attackCommands: [
+      "curl http://127.0.0.1:5000/health",
+      "python3 /home/lab/Desktop/Lab1/poison_data.py",
+      "python3 /home/lab/Desktop/Lab1/enable_defense.py",
+      "python3 /home/lab/Desktop/Lab1/poison_data.py",
+    ],
     scenario: {
       title: "Trace the Data Poisoning Attack",
       intro:
@@ -409,6 +415,7 @@ export const journey = [
     subtitle: "Defend the RAG Tutor",
     threatStage: "P",
     envKey: "RAG-NODE",
+    attackCommands: [],
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },
@@ -433,6 +440,7 @@ export const journey = [
     subtitle: "Coming soon",
     threatStage: "T",
     envKey: "SEC-NODE",
+    attackCommands: [],
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },

@@ -85,6 +85,16 @@ export const labService = {
     return normalizePayload(payload, baseUrl);
   },
 
+  async heartbeatLabById(labId) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    return request(`/labs/${stage}/heartbeat?${sessionParam()}`, {
+      method: "POST",
+      cache: "no-store",
+    });
+  },
+
   async triggerAttackById(labId) {
     const stage = getStageForLabId(labId);
     if (!stage) throw new Error(`No stage configured for ${labId}`);

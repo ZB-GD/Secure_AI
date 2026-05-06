@@ -225,6 +225,19 @@ export function useLabRuntime(labId, options = {}) {
     return () => window.clearInterval(timer);
   }, [labId, pollIntervalMs, refreshStatus]);
 
+  // Keep disposable lab containers alive only while the browser session is active.
+  useEffect(() => {
+    if (!labId) return;
+
+    const sendHeartbeat = () => {
+      labService.heartbeatLabById(labId).catch(() => {});
+    };
+
+    sendHeartbeat();
+    const timer = window.setInterval(sendHeartbeat, 60_000);
+    return () => window.clearInterval(timer);
+  }, [labId]);
+
   return {
     remoteUrl,
     remoteLoading,

@@ -32,16 +32,16 @@ export default function PipelineCanvas({
       <div
         style={{
           display: "flex",
-          gap: 12,
+          gap: 10,
           alignItems: "center",
           overflowX: "auto",
-          padding: "8px 4px",
+          padding: "10px 6px 14px",
         }}
       >
         {phases.map((p, idx) => (
           <div
             key={p.id}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            style={{ display: "flex", alignItems: "center", gap: 10 }}
           >
             <PipelineNodeCard
               node={p}
@@ -51,11 +51,26 @@ export default function PipelineCanvas({
             {idx < phases.length - 1 && (
               <div
                 style={{
-                  width: 36,
-                  height: 2,
-                  background: "var(--border-dim)",
+                  position: "relative",
+                  width: 34,
+                  height: 1,
+                  background: "rgba(148,163,184,0.22)",
+                  flexShrink: 0,
                 }}
-              />
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    right: -1,
+                    top: -3,
+                    width: 7,
+                    height: 7,
+                    borderTop: "1px solid rgba(148,163,184,0.35)",
+                    borderRight: "1px solid rgba(148,163,184,0.35)",
+                    transform: "rotate(45deg)",
+                  }}
+                />
+              </div>
             )}
           </div>
         ))}
