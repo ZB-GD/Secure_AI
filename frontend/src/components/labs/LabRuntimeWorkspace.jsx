@@ -343,28 +343,58 @@ function QuizTab({ item, phase, onComplete }) {
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorError, setTutorError] = useState("");
 
-  const quiz = item?.quiz || [];
-  const allAnswered =
-    quiz.length > 0 && Object.keys(answers).length === quiz.length;
-  const correctCount = quiz.filter(
-    (q, i) => answers[i] === q.correctAnswerIndex,
+  const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
+
+  const answeredCount = quiz.filter((_, index) =>
+    Object.prototype.hasOwnProperty.call(answers, index),
   ).length;
+
+  const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
+
+  const correctCount = quiz.filter(
+    (question, index) => answers[index] === question.correctAnswerIndex,
+  ).length;
+
+  const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
+
+  function getOptions(question) {
+    if (Array.isArray(question?.options)) return question.options;
+    if (Array.isArray(question?.choices)) return question.choices;
+    if (Array.isArray(question?.answers)) return question.answers;
+    return [];
+  }
+
+  function selectAnswer(questionIndex, optionIndex) {
+    if (submitted) return;
+
+    setAnswers((prev) => ({
+      ...prev,
+      [questionIndex]: optionIndex,
+    }));
+  }
 
   async function handleSubmit() {
     if (!allAnswered) return;
+
     setSubmitted(true);
-    if (correctCount / quiz.length >= 0.75) {
+
+    if (scoreRatio >= 0.75) {
       onComplete?.(item.id);
     }
+
     setTutorLoading(true);
     setTutorError("");
+    setTutorFeedback("");
 
     const wrongItems = quiz
-      .map((q, i) =>
-        answers[i] !== q.correctAnswerIndex
-          ? `- "${q.question}" -> Student selected: "${q.options[answers[i]]}" (correct: "${q.options[q.correctAnswerIndex]}")`
-          : null,
-      )
+      .map((question, index) => {
+        const options = getOptions(question);
+        const selectedIndex = answers[index];
+
+        if (selectedIndex === question.correctAnswerIndex) return null;
+
+        return `- "${question.question}" -> Student selected: "${options[selectedIndex] || "No answer"}" (correct: "${options[question.correctAnswerIndex] || "Unknown"}")`;
+      })
       .filter(Boolean)
       .join("\n");
 
@@ -388,9 +418,12 @@ Maximum 220 words. Respond in English.`;
           context: phase || "General lab",
         }),
       });
-      setTutorFeedback(data.response);
+
+      setTutorFeedback(
+        data?.response || "Tutor feedback received, but the response was empty.",
+      );
     } catch (err) {
-      setTutorError(`Error getting feedback: ${err.message}`);
+      setTutorError(`Tutor feedback unavailable: ${err.message}`);
     } finally {
       setTutorLoading(false);
     }
@@ -421,15 +454,14 @@ Maximum 220 words. Respond in English.`;
   return (
     <div
       style={{
-        overflowY: "auto",
         height: "100%",
+        overflowY: "auto",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
         gap: "14px",
       }}
     >
-      {/* Score bar */}
       <div
         style={{
           display: "flex",
@@ -439,6 +471,9 @@ Maximum 220 words. Respond in English.`;
           background: "var(--bg-elevated)",
           borderRadius: "8px",
           border: "1px solid var(--border-dim)",
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
         }}
       >
         <div>
@@ -452,8 +487,9 @@ Maximum 220 words. Respond in English.`;
           >
             {submitted
               ? `${correctCount}/${quiz.length}`
-              : `${Object.keys(answers).length}/${quiz.length}`}
+              : `${answeredCount}/${quiz.length}`}
           </div>
+
           <div
             style={{
               fontSize: "10px",
@@ -464,32 +500,35 @@ Maximum 220 words. Respond in English.`;
             {submitted ? "correct" : "answered"}
           </div>
         </div>
+
         <div
           style={{
             flex: 1,
             height: "4px",
             background: "var(--bg-surface)",
             borderRadius: "2px",
+            overflow: "hidden",
           }}
         >
           <div
             style={{
               height: "100%",
-              borderRadius: "2px",
-              transition: "width 0.4s",
               width: submitted
-                ? `${Math.round((correctCount / quiz.length) * 100)}%`
-                : `${Math.round((Object.keys(answers).length / quiz.length) * 100)}%`,
+                ? `${Math.round(scoreRatio * 100)}%`
+                : `${Math.round((answeredCount / quiz.length) * 100)}%`,
               background: submitted
-                ? correctCount / quiz.length >= 0.75
+                ? scoreRatio >= 0.75
                   ? "var(--green)"
                   : "var(--orange)"
-                : "var(--border-mid)",
+                : "var(--orange)",
+              transition: "width 0.25s ease",
             }}
           />
         </div>
+
         {!submitted ? (
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!allAnswered}
             style={{
@@ -504,10 +543,11 @@ Maximum 220 words. Respond in English.`;
               whiteSpace: "nowrap",
             }}
           >
-            Evaluate
+            Evaluar test!!!!!
           </button>
         ) : (
           <button
+            type="button"
             onClick={reset}
             style={{
               padding: "8px 12px",
@@ -525,140 +565,187 @@ Maximum 220 words. Respond in English.`;
         )}
       </div>
 
-      {/* Questions */}
-      {quiz.map((q, qi) => (
-        <div
-          key={qi}
-          style={{
-            background: "var(--bg-panel)",
-            border: "1px solid var(--border-dim)",
-            borderRadius: "10px",
-            overflow: "hidden",
-          }}
-        >
-          <div
+      {quiz.map((question, questionIndex) => {
+        const options = getOptions(question);
+        const selectedAnswer = answers[questionIndex];
+
+        return (
+          <section
+            key={`${question.question}-${questionIndex}`}
             style={{
-              padding: "12px 14px",
-              borderBottom: "1px solid var(--border-dim)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "8px",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: "10px",
+              overflow: "hidden",
+              flexShrink: 0,
             }}
           >
             <div
               style={{
-                fontSize: "12px",
-                color: "var(--text-1)",
-                lineHeight: 1.5,
-                flex: 1,
+                padding: "12px 14px",
+                borderBottom: "1px solid var(--border-dim)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
               }}
             >
-              {q.question}
-            </div>
-            {submitted && (
-              <span
+              <div
                 style={{
-                  fontSize: "9px",
-                  padding: "2px 8px",
-                  borderRadius: "999px",
-                  flexShrink: 0,
-                  background:
-                    answers[qi] === q.correctAnswerIndex
-                      ? "var(--green-dim)"
-                      : "var(--red-dim)",
-                  color:
-                    answers[qi] === q.correctAnswerIndex
-                      ? "var(--green)"
-                      : "var(--red)",
-                  border: `1px solid ${answers[qi] === q.correctAnswerIndex ? "var(--green-border)" : "rgba(248,113,113,0.28)"}`,
+                  fontSize: "12px",
+                  color: "var(--text-1)",
+                  lineHeight: 1.5,
+                  fontWeight: 600,
                 }}
               >
-                {answers[qi] === q.correctAnswerIndex ? "CORRECT" : "WRONG"}
-              </span>
-            )}
-          </div>
-          <div
-            style={{
-              padding: "10px 12px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-            }}
-          >
-            {q.options.map((opt, oi) => {
-              let bg = "var(--bg-base)";
-              let border = "var(--border-dim)";
-              let color = "var(--text-2)";
-              if (submitted) {
-                if (oi === q.correctAnswerIndex) {
-                  bg = "var(--green-dim)";
-                  border = "var(--green-border)";
-                  color = "var(--green)";
-                } else if (
-                  oi === answers[qi] &&
-                  answers[qi] !== q.correctAnswerIndex
-                ) {
-                  bg = "var(--red-dim)";
-                  border = "rgba(248,113,113,0.28)";
-                  color = "var(--red)";
-                }
-              } else if (answers[qi] === oi) {
-                border = "var(--orange-border)";
-                bg = "var(--orange-dim)";
-                color = "var(--text-1)";
-              }
-              return (
-                <button
-                  key={oi}
-                  onClick={() =>
-                    !submitted && setAnswers((prev) => ({ ...prev, [qi]: oi }))
-                  }
-                  disabled={submitted}
+                {questionIndex + 1}. {question.question}
+              </div>
+
+              {submitted && (
+                <span
                   style={{
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    border: `1px solid ${border}`,
-                    background: bg,
-                    color,
-                    fontSize: "11px",
-                    cursor: submitted ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    transition: "all 0.15s",
+                    fontSize: "9px",
+                    padding: "3px 8px",
+                    borderRadius: "999px",
+                    flexShrink: 0,
+                    background:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green-dim)"
+                        : "var(--red-dim)",
+                    color:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green)"
+                        : "var(--red)",
+                    border:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "1px solid var(--green-border)"
+                        : "1px solid rgba(248,113,113,0.28)",
                   }}
                 >
-                  <span
-                    style={{ fontSize: "10px", opacity: 0.6, flexShrink: 0 }}
-                  >
-                    {String.fromCharCode(65 + oi)}
-                  </span>
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-          {submitted && q.explanation && (
+                  {selectedAnswer === question.correctAnswerIndex
+                    ? "CORRECT"
+                    : "WRONG"}
+                </span>
+              )}
+            </div>
+
             <div
               style={{
-                padding: "10px 14px",
-                borderTop: "1px solid var(--border-dim)",
-                background: "rgba(56,189,248,0.04)",
-                fontSize: "11px",
-                color: "var(--text-2)",
-                lineHeight: 1.6,
-                borderLeft: "2px solid var(--blue-dim)",
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
               }}
             >
-              {q.explanation}
-            </div>
-          )}
-        </div>
-      ))}
+              {options.length === 0 ? (
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "7px",
+                    border: "1px solid rgba(248,113,113,0.28)",
+                    background: "var(--red-dim)",
+                    color: "var(--red)",
+                    fontSize: "11px",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  No options found for this question. Check that this quiz item
+                  has an <code>options</code> array.
+                </div>
+              ) : (
+                options.map((option, optionIndex) => {
+                  const isSelected = selectedAnswer === optionIndex;
+                  const isCorrect = optionIndex === question.correctAnswerIndex;
 
-      {/* Tutor feedback */}
+                  let background = "var(--bg-base)";
+                  let border = "var(--border-dim)";
+                  let color = "var(--text-2)";
+
+                  if (!submitted && isSelected) {
+                    background = "var(--orange-dim)";
+                    border = "var(--orange-border)";
+                    color = "var(--text-1)";
+                  }
+
+                  if (submitted && isCorrect) {
+                    background = "var(--green-dim)";
+                    border = "var(--green-border)";
+                    color = "var(--green)";
+                  }
+
+                  if (submitted && isSelected && !isCorrect) {
+                    background = "var(--red-dim)";
+                    border = "rgba(248,113,113,0.28)";
+                    color = "var(--red)";
+                  }
+
+                  return (
+                    <button
+                      key={`${questionIndex}-${optionIndex}`}
+                      type="button"
+                      onClick={() => selectAnswer(questionIndex, optionIndex)}
+                      disabled={submitted}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "10px",
+                        textAlign: "left",
+                        padding: "10px 12px",
+                        borderRadius: "7px",
+                        border: `1px solid ${border}`,
+                        background,
+                        color,
+                        fontSize: "11px",
+                        lineHeight: 1.5,
+                        cursor: submitted ? "default" : "pointer",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "999px",
+                          border: `1px solid ${
+                            isSelected ? "var(--orange)" : "var(--border-mid)"
+                          }`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          fontSize: "9px",
+                          color: isSelected
+                            ? "var(--orange)"
+                            : "var(--text-3)",
+                        }}
+                      >
+                        {String.fromCharCode(65 + optionIndex)}
+                      </span>
+
+                      <span>{option}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {submitted && question.explanation && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--border-dim)",
+                  background: "rgba(56,189,248,0.04)",
+                  fontSize: "11px",
+                  color: "var(--text-2)",
+                  lineHeight: 1.6,
+                }}
+              >
+                {question.explanation}
+              </div>
+            )}
+          </section>
+        );
+      })}
+
       {submitted && (
         <div
           style={{
@@ -685,6 +772,7 @@ Maximum 220 words. Respond in English.`;
                 background: tutorFeedback ? "var(--green)" : "var(--orange)",
               }}
             />
+
             <span
               style={{
                 fontSize: "11px",
@@ -696,17 +784,20 @@ Maximum 220 words. Respond in English.`;
               CITYFLOW TUTOR - Personalized feedback
             </span>
           </div>
+
           <div style={{ padding: "14px 16px", minHeight: "80px" }}>
             {tutorLoading && (
               <div style={{ color: "var(--text-3)", fontSize: "12px" }}>
                 Analyzing your answers...
               </div>
             )}
+
             {tutorError && (
               <div style={{ color: "var(--red)", fontSize: "12px" }}>
                 {tutorError}
               </div>
             )}
+
             {tutorFeedback && (
               <div
                 style={{
@@ -725,7 +816,6 @@ Maximum 220 words. Respond in English.`;
     </div>
   );
 }
-
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export default function LabRuntimeWorkspace({
   item,
