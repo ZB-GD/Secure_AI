@@ -1,14 +1,15 @@
-import ScenarioGuide from "../scenarios/ScenarioGuide";
-import LabGuide from "../labs/LabGuide";
+import ScenarioGuide from "../scenarios/ScenarioGuide"
+import LabGuide from "../labs/LabGuide"
 
 export default function Sidebar(props) {
-  const { item, width = 360 } = props;
+  const { item, width = 360 } = props
 
   return (
     <aside
       style={{
-        width: `${width}px`,
-        minWidth: `${width}px`,
+        width,
+        minWidth: width,
+        flex: `0 0 ${width}px`,
         height: "100%",
         display: "flex",
         flexDirection: "column",
@@ -33,5 +34,5 @@ export default function Sidebar(props) {
         )}
       </div>
     </aside>
-  );
+  )
 }

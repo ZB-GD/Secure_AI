@@ -46,7 +46,7 @@ export default function PipelineCanvas({
             <PipelineNodeCard
               node={p}
               isActive={p.id === activeNodeId}
-              onClick={() => onNodeClick(p.id)}
+              onClick={() => onNodeClick?.(p.id)}
             />
             {idx < phases.length - 1 && (
               <div
