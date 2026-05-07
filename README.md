@@ -32,7 +32,6 @@ SecLabs/
 ├── docker-compose.yml               # Root Compose file for the platform
 ├── setup.sh                         # Development environment setup (run inside the VM)
 ├── deploy.sh                        # Build images and start the platform
-├── stop.sh                          # Stop platform services and disposable labs
 └── TROUBLESHOOTING.md               # Known issues and solutions
 ```
 
@@ -161,17 +160,11 @@ VBoxManage controlvm "SecLabs-Lab" poweroff
 
 Inside the VM, from the repository root:
 
-```bash
-chmod +x deploy.sh stop.sh
+````bash
+chmod +x deploy.sh
 
 # Build lab/platform images and start the platform
 ./deploy.sh
-
-# Stop platform containers and any running lab-phase-* sandboxes
-./stop.sh
-```
-
-`docker compose down` only stops the long-running platform containers. Lab containers are started dynamically by the backend, so use `./stop.sh` when you want a clean shutdown.
 
 ---
 
@@ -186,7 +179,7 @@ main
 └── dev                           ← stable integration
     ├── feature/backend-glaira    ← backend and infrastructure
     └── feature/frontend-zineb    ← user interface
-```
+````
 
 - **`main`**: main/production branch. It only receives merges from `dev` when everything is stable.
 - **`dev`**: integration branch. Validated changes are merged here through Pull Requests.
