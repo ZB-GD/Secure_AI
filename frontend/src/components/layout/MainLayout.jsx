@@ -139,6 +139,7 @@ export default function MainLayout({
   const isResizingRef = useRef(false);
   const isFullWidthBriefing = activeItem.id === "scenario-0";
   const isScenario = activeItem.type === "scenario";
+  const showSidebar = !isFullWidthBriefing && isScenario;
 
   const stopResize = useCallback(() => {
     if (!isResizingRef.current) return;
@@ -223,8 +224,8 @@ export default function MainLayout({
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
-        {/* Sidebar only for scenarios (labs have guide inside the tabbed panel) */}
-        {!isFullWidthBriefing && isScenario && (
+        {/* Sidebar only for standalone scenario items */}
+        {showSidebar && (
           <>
             <Sidebar
               item={activeItem}

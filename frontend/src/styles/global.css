@@ -173,37 +173,12 @@ body,
   height: 100%;
   overflow: auto;
   background: var(--bg-base);
-  padding: 8px 18px 14px;
-  gap: 8px;
+  padding: 12px 20px 16px;
 }
 
-.scenario-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 10px 16px 9px;
-  border: 1px solid var(--border-dim);
-  border-radius: 10px;
-  background: linear-gradient(
-    180deg,
-    rgba(17, 24, 39, 0.92),
-    rgba(12, 17, 32, 0.84)
-  );
-}
-
-.scenario-header__main {
-  min-width: 0;
-  width: 100%;
-}
-
-.scenario-header__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 9px;
-  max-width: 420px;
+.scenario-window-header {
+  padding: 22px 24px 20px;
+  border-bottom: 1px solid var(--border-dim);
 }
 
 .scenario-eyebrow {
@@ -274,9 +249,11 @@ body,
 }
 
 .scenario-metrics-band--inside {
-  padding: 8px 12px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border-dim);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.015);
+  flex-shrink: 0;
+  overflow-x: auto;
 }
 
 .scenario-metrics-grid {
@@ -287,18 +264,13 @@ body,
 
 .scenario-metric {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 34px;
-  padding: 6px 8px;
+  gap: 4px;
+  padding: 8px 10px;
   border: 1px solid var(--border-dim);
   border-radius: 5px;
   background: rgba(12, 17, 32, 0.72);
-}
-
-.scenario-metric__text {
-  min-width: 0;
 }
 
 .scenario-metric__label {
@@ -307,24 +279,50 @@ body,
   letter-spacing: 0.12em;
   line-height: 1.2;
   text-transform: uppercase;
+  font-family: var(--font-mono);
 }
 
 .scenario-metric__value {
-  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: var(--text-1);
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   overflow-wrap: anywhere;
-  text-align: right;
 }
 
 .scenario-metric__subtitle {
-  margin-top: 1px;
   color: var(--text-3);
   font-size: 8px;
+  letter-spacing: 0.08em;
   line-height: 1.3;
+  font-family: var(--font-mono);
+}
+
+.scenario-metric__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-3);
+}
+
+.scenario-metric__dot--danger {
+  background: var(--red);
+  box-shadow: 0 0 6px var(--red);
+}
+
+.scenario-metric__dot--warning {
+  background: var(--orange);
+  box-shadow: 0 0 6px var(--orange);
+}
+
+.scenario-metric__dot--good {
+  background: var(--green);
 }
 
 .scenario-metric--danger .scenario-metric__value {
@@ -483,7 +481,7 @@ body,
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 5px 10px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border-dim);
   background: linear-gradient(
     180deg,
@@ -566,10 +564,23 @@ body,
 }
 
 .scenario-window-risk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-2);
   font-size: 10px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.scenario-window-risk__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 6px var(--orange);
+  flex-shrink: 0;
 }
 
 .scenario-window-main {
@@ -579,6 +590,7 @@ body,
   flex: 1;
   overflow: hidden;
 }
+
 
 .scenario-window-status-row {
   display: flex;
@@ -713,7 +725,7 @@ body,
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 11px;
-  padding: 10px 10px;
+  padding: 12px 20px;
   text-transform: uppercase;
 }
 
@@ -736,7 +748,9 @@ body,
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .scenario-summary-callout {
@@ -814,8 +828,7 @@ body,
 }
 
 .scenario-code-block {
-  min-height: 100%;
-  max-height: none;
+  flex: 1;
   margin: 0;
   padding: 14px;
   border: 1px solid var(--border-dim);
@@ -824,14 +837,16 @@ body,
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.6;
-  overflow-x: auto;
+  overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .scenario-log-block {
-  max-height: none;
-  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border: 1px solid var(--border-dim);
   border-radius: 8px;
   background: #05080f;
@@ -845,10 +860,12 @@ body,
   color: var(--text-3);
   font-size: 10px;
   letter-spacing: 0.12em;
+  flex-shrink: 0;
 }
 
 .scenario-log-block__body {
-  max-height: calc(56vh - 34px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 12px;
 }
@@ -964,7 +981,6 @@ body,
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  min-height: 260px;
   border-top: 1px solid var(--border-dim);
   overflow: hidden;
 }

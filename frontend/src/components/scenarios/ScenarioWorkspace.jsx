@@ -509,8 +509,8 @@ export function ScenarioOnePipelineRuntime() {
 
   return (
     <section className="scenario-workspace">
-      <div className="scenario-header">
-        <div className="scenario-header__main">
+      <div className="scenario-unified-window">
+        <div className="scenario-window-header">
           <div className="scenario-eyebrow scenario-eyebrow--blue">
             CityFlow AI / Distributed Pipeline
           </div>
@@ -519,21 +519,22 @@ export function ScenarioOnePipelineRuntime() {
             Inspect what each node receives, emits, and logs as telemetry moves through the AI traffic-control system.
           </p>
         </div>
-      </div>
 
-      <div className="scenario-unified-window">
         <div className="scenario-window-topbar">
           <div className="scenario-window-toolbar">
-            <span className="scenario-window-risk">
-              {compromisedCount} nodes need attention
-            </span>
+            {compromisedCount > 0 && (
+              <span className="scenario-window-risk">
+                <span className="scenario-window-risk__dot" />
+                {compromisedCount} node{compromisedCount !== 1 ? "s" : ""} need attention
+              </span>
+            )}
             <button
               type="button"
               onClick={runBackendPipeline}
               disabled={pipelineLoading}
               className="scenario-refresh-button"
             >
-              {pipelineLoading ? "Running..." : "Refresh Pipeline"}
+              {pipelineLoading ? "Running…" : "↺ Refresh Pipeline"}
             </button>
           </div>
         </div>

@@ -72,89 +72,6 @@ export default function WorkspacePanel({
     );
   }
 
-  if (item.type === "lab" && item.scenario && labView === "pipeline") {
-    const linkedScenario =
-      items?.find((i) => i.id === item.id.replace("lab", "scenario")) || null;
-
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            flexShrink: 0,
-            padding: "8px 16px",
-            borderBottom: "1px solid var(--border-dim)",
-            background: "var(--bg-panel)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <button
-            onClick={() => setLabView("lab")}
-            style={{
-              padding: "6px 12px",
-              borderRadius: "6px",
-              border: "1px solid var(--border-dim)",
-              background: "var(--bg-elevated)",
-              color: "var(--text-2)",
-              fontSize: "10px",
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.08em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            ← BACK TO LAB
-          </button>
-
-          <span
-            style={{
-              fontSize: "10px",
-              color: "var(--text-3)",
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.06em",
-            }}
-          >
-            PIPELINE REFERENCE
-          </span>
-        </div>
-
-        {linkedScenario ? (
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <ScenarioWorkspace
-              item={linkedScenario}
-              onCompleteScenario={onCompleteScenario}
-              onSelectItem={onSelectItem}
-            />
-          </div>
-        ) : (
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-3)",
-              background: "var(--bg-base)",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            No linked scenario found.
-          </div>
-        )}
-      </div>
-    );
-  }
-
   if (item.type === "lab") {
     const scenarioItem =
       items?.find((i) => i.id === item.id.replace("lab", "scenario")) || null;
@@ -170,7 +87,6 @@ export default function WorkspacePanel({
         onNextStep={onNextStep}
         onCompleteLabQuiz={onCompleteLabQuiz}
         onCompleteScenario={onCompleteScenario}
-        onViewScenario={item.scenario ? () => setLabView("pipeline") : undefined}
       />
     );
   }
