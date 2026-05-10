@@ -17,30 +17,26 @@ function Connector({ fromStatus, toStatus }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 0,
         flexShrink: 0,
-        width: "40px",
+        width: "44px",
       }}
     >
-      {/* Line */}
       <div
         style={{
           flex: 1,
-          height: "1.5px",
+          height: "2px",
           background: sameColor
-            ? `rgba(${fromRaw}, 0.35)`
-            : `linear-gradient(90deg, rgba(${fromRaw},0.4), rgba(${toRaw},0.4))`,
+            ? `rgba(${fromRaw}, 0.4)`
+            : `linear-gradient(90deg, rgba(${fromRaw},0.45), rgba(${toRaw},0.45))`,
         }}
       />
-
-      {/* Arrowhead */}
       <div
         style={{
           width: 0,
           height: 0,
-          borderTop: "5px solid transparent",
-          borderBottom: "5px solid transparent",
-          borderLeft: `6px solid rgba(${toRaw}, 0.55)`,
+          borderTop: "6px solid transparent",
+          borderBottom: "6px solid transparent",
+          borderLeft: `7px solid rgba(${toRaw}, 0.6)`,
           flexShrink: 0,
         }}
       />
@@ -56,10 +52,11 @@ export default function PipelineCanvas({
   return (
     <div
       style={{
-        padding: "6px 0 4px",
+        padding: "10px 0 4px",
         display: "flex",
         flexDirection: "column",
-        gap: 7,
+        gap: 6,
+        flexShrink: 0,
       }}
     >
       <div
@@ -67,7 +64,7 @@ export default function PipelineCanvas({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "0 4px",
+          padding: "0 20px",
         }}
       >
         <div
@@ -86,39 +83,30 @@ export default function PipelineCanvas({
 
       <div
         style={{
-          overflowX: "auto",
-          padding: "4px 4px 8px",
+          display: "flex",
+          alignItems: "stretch",
+          width: "100%",
+          padding: "4px 20px 10px",
         }}
       >
-        <div
-          style={{
-            width: "max-content",
-            minWidth: "100%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 0,
-          }}
-        >
-          {phases.map((p, idx) => (
-            <div
-              key={p.id}
-              style={{ display: "flex", alignItems: "center", gap: 0 }}
-            >
-              <PipelineNodeCard
-                node={p}
-                isActive={p.id === activeNodeId}
-                onClick={() => onNodeClick?.(p.id)}
+        {phases.map((p, idx) => (
+          <div
+            key={p.id}
+            style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}
+          >
+            <PipelineNodeCard
+              node={p}
+              isActive={p.id === activeNodeId}
+              onClick={() => onNodeClick?.(p.id)}
+            />
+            {idx < phases.length - 1 && (
+              <Connector
+                fromStatus={p.status}
+                toStatus={phases[idx + 1].status}
               />
-              {idx < phases.length - 1 && (
-                <Connector
-                  fromStatus={p.status}
-                  toStatus={phases[idx + 1].status}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

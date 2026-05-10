@@ -1,12 +1,5 @@
 import { useState } from "react";
 
-const TYPE_LABELS = {
-  "NODE-1": "SEN",
-  "NODE-2": "EDG",
-  "NODE-3": "ACT",
-  "NODE-4": "TRN",
-};
-
 const STATUS_CFG = {
   compromised: {
     color: "var(--red)",
@@ -25,11 +18,39 @@ const STATUS_CFG = {
   },
 };
 
+function StatusIcon({ status, color, colorRaw }) {
+  if (status === "healthy") {
+    return (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle
+          cx="12" cy="12" r="9"
+          stroke={color} strokeWidth="1.5"
+          fill={`rgba(${colorRaw}, 0.12)`}
+        />
+        <path
+          d="M8.5 12L11 14.5L15.5 10"
+          stroke={color} strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 4.5L21 19.5H3L12 4.5Z"
+        stroke={color} strokeWidth="1.5" strokeLinejoin="round"
+        fill={`rgba(${colorRaw}, 0.12)`}
+      />
+      <line x1="12" y1="10.5" x2="12" y2="15" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="12" cy="17.5" r="1" fill={color} />
+    </svg>
+  );
+}
+
 export default function PipelineNodeCard({ node, isActive, onClick }) {
   const [hovered, setHovered] = useState(false);
   const cfg = STATUS_CFG[node.status] || STATUS_CFG.healthy;
-  const typeLabel = TYPE_LABELS[node.code] || node.code?.replace("NODE-", "N");
-  const nodeNum = node.code?.replace("NODE-", "") || "";
   const lit = isActive || hovered;
 
   return (
@@ -42,34 +63,34 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        width: "190px",
-        minHeight: "112px",
+        alignItems: "center",
+        flex: 1,
+        minWidth: 0,
+        minHeight: "114px",
         padding: 0,
         borderRadius: "10px",
-        border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.45 : 0.1})`,
+        border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.55 : 0.2})`,
         background: lit
-          ? `rgba(${cfg.colorRaw}, 0.06)`
+          ? `rgba(${cfg.colorRaw}, 0.07)`
           : "rgba(12,17,32,0.85)",
         boxShadow: isActive
-          ? `0 0 0 1px rgba(${cfg.colorRaw},0.25), 0 0 28px rgba(${cfg.colorRaw},0.15), 0 12px 32px rgba(0,0,0,0.35)`
+          ? `0 0 0 1px rgba(${cfg.colorRaw},0.3), 0 0 32px rgba(${cfg.colorRaw},0.18), 0 12px 32px rgba(0,0,0,0.35)`
           : hovered
-            ? `0 0 16px rgba(${cfg.colorRaw},0.1), 0 8px 20px rgba(0,0,0,0.25)`
+            ? `0 0 18px rgba(${cfg.colorRaw},0.12), 0 8px 20px rgba(0,0,0,0.25)`
             : "0 4px 12px rgba(0,0,0,0.2)",
         cursor: "pointer",
-        textAlign: "left",
+        textAlign: "center",
         overflow: "hidden",
-        transition:
-          "border-color 0.18s, box-shadow 0.18s, background 0.18s",
-        flexShrink: 0,
+        transition: "border-color 0.18s, box-shadow 0.18s, background 0.18s",
       }}
     >
       {/* Top status stripe */}
       <div
         style={{
           height: "2px",
-          background: `rgba(${cfg.colorRaw}, ${lit ? 1 : 0.45})`,
+          width: "100%",
+          background: `rgba(${cfg.colorRaw}, ${lit ? 1 : 0.5})`,
           flexShrink: 0,
-          transition: "opacity 0.18s",
         }}
       />
 
@@ -77,81 +98,20 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
       <div
         style={{
           flex: 1,
-          padding: "9px 12px 8px",
+          padding: "12px 14px 8px",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
           gap: "7px",
-          position: "relative",
-          overflow: "hidden",
+          width: "100%",
         }}
       >
-        {/* Watermark number */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            right: "6px",
-            top: "2px",
-            fontSize: "54px",
-            fontWeight: 800,
-            fontFamily: "var(--font-display)",
-            color: cfg.color,
-            opacity: lit ? 0.07 : 0.03,
-            lineHeight: 1,
-            userSelect: "none",
-            pointerEvents: "none",
-            transition: "opacity 0.18s",
-          }}
-        >
-          {nodeNum}
-        </div>
+        <StatusIcon status={node.status} color={cfg.color} colorRaw={cfg.colorRaw} />
 
-        {/* Type badge + status dot */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <span
-            style={{
-              padding: "2px 8px",
-              borderRadius: "4px",
-              border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.5 : 0.22})`,
-              background: `rgba(${cfg.colorRaw}, ${lit ? 0.12 : 0.06})`,
-              color: cfg.color,
-              fontSize: "9px",
-              fontWeight: 700,
-              fontFamily: "var(--font-mono)",
-              letterSpacing: "0.14em",
-              transition: "border-color 0.18s, background 0.18s",
-            }}
-          >
-            {typeLabel}
-          </span>
-
-          <span
-            style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background: cfg.color,
-              flexShrink: 0,
-              opacity: node.status === "healthy" ? 0.5 : 1,
-              boxShadow:
-                node.status !== "healthy"
-                  ? `0 0 7px ${cfg.color}`
-                  : "none",
-            }}
-          />
-        </div>
-
-        {/* Node name */}
         <div
           style={{
             color: lit ? "var(--text-1)" : "var(--text-2)",
-            fontSize: "11px",
+            fontSize: "12px",
             fontWeight: 700,
             fontFamily: "var(--font-display)",
             lineHeight: 1.3,
@@ -161,34 +121,33 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
           {node.name}
         </div>
 
-        {/* Summary */}
-        <div
+        <span
           style={{
-            color: "var(--text-3)",
+            padding: "2px 10px",
+            borderRadius: "999px",
+            border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.6 : 0.3})`,
+            background: `rgba(${cfg.colorRaw}, ${lit ? 0.15 : 0.07})`,
+            color: cfg.color,
             fontSize: "9px",
+            fontWeight: 700,
             fontFamily: "var(--font-mono)",
-            lineHeight: 1.35,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
+            letterSpacing: "0.14em",
           }}
-          title={node.statusReason || node.summary}
         >
-          {node.statusReason || node.summary}
-        </div>
+          {cfg.label}
+        </span>
       </div>
 
-      {/* Footer status bar */}
+      {/* Footer */}
       <div
         style={{
-          padding: "5px 12px",
-          borderTop: `1px solid rgba(255,255,255,0.04)`,
-          background: lit
-            ? `rgba(${cfg.colorRaw}, 0.07)`
-            : "rgba(0,0,0,0.25)",
+          padding: "6px 12px",
+          borderTop: `1px solid rgba(255,255,255,0.05)`,
+          background: lit ? `rgba(${cfg.colorRaw}, 0.07)` : "rgba(0,0,0,0.25)",
+          width: "100%",
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: "6px",
           flexShrink: 0,
           transition: "background 0.18s",
@@ -201,6 +160,8 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
             borderRadius: "50%",
             background: cfg.color,
             flexShrink: 0,
+            opacity: node.status === "healthy" ? 0.6 : 1,
+            boxShadow: node.status !== "healthy" ? `0 0 6px ${cfg.color}` : "none",
           }}
         />
         <span
@@ -208,19 +169,8 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
             fontSize: "9px",
             fontFamily: "var(--font-mono)",
             letterSpacing: "0.12em",
-            color: cfg.color,
-            fontWeight: 600,
-          }}
-        >
-          {cfg.label}
-        </span>
-        <span
-          style={{
-            fontSize: "9px",
-            fontFamily: "var(--font-mono)",
             color: "var(--text-3)",
-            marginLeft: "auto",
-            letterSpacing: "0.06em",
+            fontWeight: 600,
           }}
         >
           {node.code}
