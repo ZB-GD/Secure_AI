@@ -561,6 +561,71 @@ Maximum 220 words. Respond in English.`;
             }}
           >
             Retry
+            {!submitted ? (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!allAnswered}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "none",
+              background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
+              color: allAnswered ? "#fff" : "var(--text-3)",
+              fontSize: "11px",
+              fontWeight: 700,
+              cursor: allAnswered ? "pointer" : "not-allowed",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Evaluate
+          </button>
+        ) : (
+          <div style={{ display: "flex", gap: "8px" }}>
+            {/* Solo mostramos el botón de reintentar si NO han sacado un 100% */}
+            {scoreRatio < 1 && (
+              <button
+                type="button"
+                onClick={reset}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--border-dim)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Retry Incorrect
+              </button>
+            )}
+            
+            {/* Botón para salir */}
+            <button
+              type="button"
+              onClick={() => {
+                 // Si tenéis un router, cambiad esto por vuestra navegación.
+                 // Si no, un simple click recargará y los devolverá al inicio.
+                 window.location.href = "/";
+              }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "none",
+                background: "rgba(56,189,248,0.15)", // Azulito tecnológico
+                color: "var(--blue)",
+                fontSize: "11px",
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Exit to Dashboard
+            </button>
+          </div>
+        )}
           </button>
         )}
       </div>
@@ -601,11 +666,14 @@ Maximum 220 words. Respond in English.`;
               </div>
 
               {submitted && (
-                <span
+               <span
                   style={{
                     fontSize: "9px",
-                    padding: "3px 8px",
-                    borderRadius: "999px",
+                    fontWeight: 700,
+                    padding: "4px 10px", // Más espacio interior
+                    borderRadius: "12px", // Forma de píldora perfecta
+                    display: "inline-block", // Evita que se deforme
+                    whiteSpace: "nowrap", // Evita que el texto salte de línea
                     flexShrink: 0,
                     background:
                       selectedAnswer === question.correctAnswerIndex
