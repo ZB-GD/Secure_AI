@@ -335,24 +335,25 @@ function MetricsTab({ runtime }) {
   );
 }
 
-// ─── Sub-component: QuizTab ──────────────────────────────────────────────────
+
 function QuizTab({ item, phase, onComplete }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [tutorFeedback, setTutorFeedback] = useState("");
+  const [docLinks, setDocLinks] = useState([]);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorError, setTutorError] = useState("");
 
   const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
 
-  const answeredCount = quiz.filter((_, index) =>
-    Object.prototype.hasOwnProperty.call(answers, index),
+  const answeredCount = quiz.filter((_, i) =>
+    Object.prototype.hasOwnProperty.call(answers, i)
   ).length;
 
   const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
 
   const correctCount = quiz.filter(
-    (question, index) => answers[index] === question.correctAnswerIndex,
+    (q, i) => answers[i] === q.correctAnswerIndex
   ).length;
 
   const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
@@ -366,16 +367,11 @@ function QuizTab({ item, phase, onComplete }) {
 
   function selectAnswer(questionIndex, optionIndex) {
     if (submitted) return;
-
-    setAnswers((prev) => ({
-      ...prev,
-      [questionIndex]: optionIndex,
-    }));
+    setAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }));
   }
 
   async function handleSubmit() {
     if (!allAnswered) return;
-
     setSubmitted(true);
 
     if (scoreRatio >= 0.75) {
@@ -385,43 +381,40 @@ function QuizTab({ item, phase, onComplete }) {
     setTutorLoading(true);
     setTutorError("");
     setTutorFeedback("");
+    setDocLinks([]);
 
-    const wrongItems = quiz
+    // Build the wrong_answers payload the backend expects
+    const wrongAnswers = quiz
       .map((question, index) => {
         const options = getOptions(question);
         const selectedIndex = answers[index];
-
         if (selectedIndex === question.correctAnswerIndex) return null;
-
-        return `- "${question.question}" -> Student selected: "${options[selectedIndex] || "No answer"}" (correct: "${options[question.correctAnswerIndex] || "Unknown"}")`;
+        return {
+          question: question.question,
+          student_answer: options[selectedIndex] ?? "No answer",
+          correct_answer: options[question.correctAnswerIndex] ?? "Unknown",
+          explanation: question.explanation ?? null,
+        };
       })
-      .filter(Boolean)
-      .join("\n");
-
-    const prompt = `You are the CityFlow AI Security Tutor.
-Lab context: ${phase || "Cybersecurity lab for AI pipelines"}.
-The student completed the quiz with ${correctCount}/${quiz.length} correct answers.
-${wrongItems ? `\nIncorrect answers:\n${wrongItems}` : "\nThe student answered everything correctly."}
-
-Please:
-1. Briefly acknowledge the score.
-2. Explain the concept behind each mistake in 2-3 educational sentences.
-3. Relate mistakes to the affected AI pipeline.
-4. Suggest one concrete action to reinforce weak areas.
-Maximum 220 words. Respond in English.`;
+      .filter(Boolean);
 
     try {
-      const data = await request("/api/rag/chat", {
-        method: "POST",
-        body: JSON.stringify({
-          message: prompt,
-          context: phase || "General lab",
-        }),
-      });
+      const ragUrl = "http://localhost:3000/api/rag/quiz-feedback"
+const resp = await fetch(ragUrl, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    lab_id: item.id,
+    phase: phase || "Cybersecurity lab",
+    score: correctCount,
+    total: quiz.length,
+    wrong_answers: wrongAnswers,
+  }),
+})
+const data = await resp.json()
 
-      setTutorFeedback(
-        data?.response || "Tutor feedback received, but the response was empty.",
-      );
+      setTutorFeedback(data?.feedback ?? "");
+      setDocLinks(Array.isArray(data?.doc_links) ? data.doc_links : []);
     } catch (err) {
       setTutorError(`Tutor feedback unavailable: ${err.message}`);
     } finally {
@@ -434,96 +427,40 @@ Maximum 220 words. Respond in English.`;
     setSubmitted(false);
     setTutorFeedback("");
     setTutorError("");
+    setDocLinks([]);
   }
 
   if (quiz.length === 0) {
     return (
-      <div
-        style={{
-          padding: "32px 20px",
-          textAlign: "center",
-          color: "var(--text-3)",
-          fontSize: "13px",
-        }}
-      >
+      <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-3)", fontSize: "13px" }}>
         No questions are configured for this lab.
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        height: "100%",
-        overflowY: "auto",
-        padding: "16px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "12px 14px",
-          background: "var(--bg-elevated)",
-          borderRadius: "8px",
-          border: "1px solid var(--border-dim)",
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {submitted
-              ? `${correctCount}/${quiz.length}`
-              : `${answeredCount}/${quiz.length}`}
-          </div>
+    <div style={{ height: "100%", overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
-          <div
-            style={{
-              fontSize: "10px",
-              color: "var(--text-3)",
-              letterSpacing: "0.08em",
-            }}
-          >
+      {/* ── Header bar with score + submit/retry ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: "var(--bg-elevated)", borderRadius: "8px", border: "1px solid var(--border-dim)", position: "sticky", top: 0, zIndex: 5 }}>
+        <div>
+          <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+            {submitted ? `${correctCount}/${quiz.length}` : `${answeredCount}/${quiz.length}`}
+          </div>
+          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.08em" }}>
             {submitted ? "correct" : "answered"}
           </div>
         </div>
 
-        <div
-          style={{
-            flex: 1,
-            height: "4px",
-            background: "var(--bg-surface)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: submitted
-                ? `${Math.round(scoreRatio * 100)}%`
-                : `${Math.round((answeredCount / quiz.length) * 100)}%`,
-              background: submitted
-                ? scoreRatio >= 0.75
-                  ? "var(--green)"
-                  : "var(--orange)"
-                : "var(--orange)",
-              transition: "width 0.25s ease",
-            }}
-          />
+        <div style={{ flex: 1, height: "4px", background: "var(--bg-surface)", borderRadius: "2px", overflow: "hidden" }}>
+          <div style={{
+            height: "100%",
+            width: submitted
+              ? `${Math.round(scoreRatio * 100)}%`
+              : `${Math.round((answeredCount / quiz.length) * 100)}%`,
+            background: submitted ? (scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)") : "var(--orange)",
+            transition: "width 0.25s ease",
+          }} />
         </div>
 
         {!submitted ? (
@@ -539,50 +476,15 @@ Maximum 220 words. Respond in English.`;
               color: allAnswered ? "#fff" : "var(--text-3)",
               fontSize: "11px",
               fontWeight: 700,
+              fontFamily: "var(--font-mono)",
               cursor: allAnswered ? "pointer" : "not-allowed",
               whiteSpace: "nowrap",
             }}
           >
-            Evaluar test!!!!!
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={reset}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid var(--border-dim)",
-              background: "transparent",
-              color: "var(--text-2)",
-              fontSize: "11px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Retry
-            {!submitted ? (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!allAnswered}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "none",
-              background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
-              color: allAnswered ? "#fff" : "var(--text-3)",
-              fontSize: "11px",
-              fontWeight: 700,
-              cursor: allAnswered ? "pointer" : "not-allowed",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Evaluate
+            SUBMIT
           </button>
         ) : (
           <div style={{ display: "flex", gap: "8px" }}>
-            {/* Solo mostramos el botón de reintentar si NO han sacado un 100% */}
             {scoreRatio < 1 && (
               <button
                 type="button"
@@ -594,42 +496,19 @@ Maximum 220 words. Respond in English.`;
                   background: "transparent",
                   color: "var(--text-2)",
                   fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                 }}
               >
-                Retry Incorrect
+                RETRY
               </button>
             )}
-            
-            {/* Botón para salir */}
-            <button
-              type="button"
-              onClick={() => {
-                 // Si tenéis un router, cambiad esto por vuestra navegación.
-                 // Si no, un simple click recargará y los devolverá al inicio.
-                 window.location.href = "/";
-              }}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "none",
-                background: "rgba(56,189,248,0.15)", // Azulito tecnológico
-                color: "var(--blue)",
-                fontSize: "11px",
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Exit to Dashboard
-            </button>
           </div>
-        )}
-          </button>
         )}
       </div>
 
+      {/* ── Questions ── */}
       {quiz.map((question, questionIndex) => {
         const options = getOptions(question);
         const selectedAnswer = answers[questionIndex];
@@ -637,176 +516,61 @@ Maximum 220 words. Respond in English.`;
         return (
           <section
             key={`${question.question}-${questionIndex}`}
-            style={{
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-dim)",
-              borderRadius: "10px",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
+            style={{ background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "10px", overflow: "hidden", flexShrink: 0 }}
           >
-            <div
-              style={{
-                padding: "12px 14px",
-                borderBottom: "1px solid var(--border-dim)",
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "12px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "var(--text-1)",
-                  lineHeight: 1.5,
-                  fontWeight: 600,
-                }}
-              >
+            <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between", gap: "12px" }}>
+              <div style={{ fontSize: "12px", color: "var(--text-1)", lineHeight: 1.5, fontWeight: 600 }}>
                 {questionIndex + 1}. {question.question}
               </div>
 
               {submitted && (
-               <span
-                  style={{
-                    fontSize: "9px",
-                    fontWeight: 700,
-                    padding: "4px 10px", // Más espacio interior
-                    borderRadius: "12px", // Forma de píldora perfecta
-                    display: "inline-block", // Evita que se deforme
-                    whiteSpace: "nowrap", // Evita que el texto salte de línea
-                    flexShrink: 0,
-                    background:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "var(--green-dim)"
-                        : "var(--red-dim)",
-                    color:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "var(--green)"
-                        : "var(--red)",
-                    border:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "1px solid var(--green-border)"
-                        : "1px solid rgba(248,113,113,0.28)",
-                  }}
-                >
-                  {selectedAnswer === question.correctAnswerIndex
-                    ? "CORRECT"
-                    : "WRONG"}
+                <span style={{
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  padding: "4px 10px",
+                  borderRadius: "12px",
+                  flexShrink: 0,
+                  background: selectedAnswer === question.correctAnswerIndex ? "var(--green-dim)" : "var(--red-dim)",
+                  color: selectedAnswer === question.correctAnswerIndex ? "var(--green)" : "var(--red)",
+                  border: selectedAnswer === question.correctAnswerIndex ? "1px solid var(--green-border)" : "1px solid rgba(248,113,113,0.28)",
+                }}>
+                  {selectedAnswer === question.correctAnswerIndex ? "CORRECT" : "WRONG"}
                 </span>
               )}
             </div>
 
-            <div
-              style={{
-                padding: "12px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-            >
-              {options.length === 0 ? (
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: "7px",
-                    border: "1px solid rgba(248,113,113,0.28)",
-                    background: "var(--red-dim)",
-                    color: "var(--red)",
-                    fontSize: "11px",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  No options found for this question. Check that this quiz item
-                  has an <code>options</code> array.
-                </div>
-              ) : (
-                options.map((option, optionIndex) => {
-                  const isSelected = selectedAnswer === optionIndex;
-                  const isCorrect = optionIndex === question.correctAnswerIndex;
+            <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {options.map((option, optionIndex) => {
+                const isSelected = selectedAnswer === optionIndex;
+                const isCorrect = optionIndex === question.correctAnswerIndex;
 
-                  let background = "var(--bg-base)";
-                  let border = "var(--border-dim)";
-                  let color = "var(--text-2)";
+                let background = "var(--bg-base)";
+                let border = "var(--border-dim)";
+                let color = "var(--text-2)";
 
-                  if (!submitted && isSelected) {
-                    background = "var(--orange-dim)";
-                    border = "var(--orange-border)";
-                    color = "var(--text-1)";
-                  }
+                if (!submitted && isSelected) { background = "var(--orange-dim)"; border = "var(--orange-border)"; color = "var(--text-1)"; }
+                if (submitted && isCorrect)   { background = "var(--green-dim)";  border = "var(--green-border)";  color = "var(--green)"; }
+                if (submitted && isSelected && !isCorrect) { background = "var(--red-dim)"; border = "rgba(248,113,113,0.28)"; color = "var(--red)"; }
 
-                  if (submitted && isCorrect) {
-                    background = "var(--green-dim)";
-                    border = "var(--green-border)";
-                    color = "var(--green)";
-                  }
-
-                  if (submitted && isSelected && !isCorrect) {
-                    background = "var(--red-dim)";
-                    border = "rgba(248,113,113,0.28)";
-                    color = "var(--red)";
-                  }
-
-                  return (
-                    <button
-                      key={`${questionIndex}-${optionIndex}`}
-                      type="button"
-                      onClick={() => selectAnswer(questionIndex, optionIndex)}
-                      disabled={submitted}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "10px",
-                        textAlign: "left",
-                        padding: "10px 12px",
-                        borderRadius: "7px",
-                        border: `1px solid ${border}`,
-                        background,
-                        color,
-                        fontSize: "11px",
-                        lineHeight: 1.5,
-                        cursor: submitted ? "default" : "pointer",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "999px",
-                          border: `1px solid ${
-                            isSelected ? "var(--orange)" : "var(--border-mid)"
-                          }`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                          fontSize: "9px",
-                          color: isSelected
-                            ? "var(--orange)"
-                            : "var(--text-3)",
-                        }}
-                      >
-                        {String.fromCharCode(65 + optionIndex)}
-                      </span>
-
-                      <span>{option}</span>
-                    </button>
-                  );
-                })
-              )}
+                return (
+                  <button
+                    key={`${questionIndex}-${optionIndex}`}
+                    type="button"
+                    onClick={() => selectAnswer(questionIndex, optionIndex)}
+                    disabled={submitted}
+                    style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left", padding: "10px 12px", borderRadius: "7px", border: `1px solid ${border}`, background, color, fontSize: "11px", lineHeight: 1.5, cursor: submitted ? "default" : "pointer" }}
+                  >
+                    <span style={{ width: "20px", height: "20px", borderRadius: "999px", border: `1px solid ${isSelected ? "var(--orange)" : "var(--border-mid)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "9px", color: isSelected ? "var(--orange)" : "var(--text-3)" }}>
+                      {String.fromCharCode(65 + optionIndex)}
+                    </span>
+                    <span>{option}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {submitted && question.explanation && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  borderTop: "1px solid var(--border-dim)",
-                  background: "rgba(56,189,248,0.04)",
-                  fontSize: "11px",
-                  color: "var(--text-2)",
-                  lineHeight: 1.6,
-                }}
-              >
+              <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-dim)", background: "rgba(56,189,248,0.04)", fontSize: "11px", color: "var(--text-2)", lineHeight: 1.6 }}>
                 {question.explanation}
               </div>
             )}
@@ -814,76 +578,80 @@ Maximum 220 words. Respond in English.`;
         );
       })}
 
+      {/* ── Tutor feedback block (shown after submit) ── */}
       {submitted && (
-        <div
-          style={{
-            border: "1px solid var(--border-dim)",
-            borderRadius: "10px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 14px",
-              background: "var(--bg-elevated)",
-              borderBottom: "1px solid var(--border-dim)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: tutorFeedback ? "var(--green)" : "var(--orange)",
-              }}
-            />
+        <div style={{ border: "1px solid var(--border-dim)", borderRadius: "10px", overflow: "hidden" }}>
 
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "var(--text-1)",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              CITYFLOW TUTOR - Personalized feedback
+          {/* Header */}
+          <div style={{ padding: "12px 14px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: tutorFeedback ? "var(--green)" : tutorLoading ? "var(--orange)" : "var(--text-3)" }} />
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+              TUTOR — Personalized feedback
+            </span>
+            <span style={{ marginLeft: "auto", fontSize: "10px", color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)", fontFamily: "var(--font-mono)" }}>
+              {Math.round(scoreRatio * 100)}% — {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
             </span>
           </div>
 
+          {/* Feedback body */}
           <div style={{ padding: "14px 16px", minHeight: "80px" }}>
             {tutorLoading && (
-              <div style={{ color: "var(--text-3)", fontSize: "12px" }}>
+              <div style={{ color: "var(--text-3)", fontSize: "12px", fontFamily: "var(--font-mono)" }}>
                 Analyzing your answers...
               </div>
             )}
 
             {tutorError && (
-              <div style={{ color: "var(--red)", fontSize: "12px" }}>
-                {tutorError}
-              </div>
+              <div style={{ color: "var(--red)", fontSize: "12px" }}>{tutorError}</div>
             )}
 
             {tutorFeedback && (
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "var(--text-1)",
-                  lineHeight: 1.7,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+              <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
                 {tutorFeedback}
               </div>
             )}
           </div>
+
+          {/* Doc links */}
+          {docLinks.length > 0 && (
+            <div style={{ padding: "0 16px 14px" }}>
+              <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.12em", marginBottom: "8px" }}>
+                FURTHER READING
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {docLinks.map((link) => (
+                  <a
+                    key={link.path}
+                    href={link.path}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      background: "var(--bg-base)",
+                      border: "1px solid var(--border-dim)",
+                      color: "var(--blue)",
+                      textDecoration: "none",
+                      fontSize: "11px",
+                      fontFamily: "var(--font-mono)",
+                      transition: "border-color 0.15s",
+                    }}
+                  >
+                    <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
+                    {link.title}
+                    <span style={{ marginLeft: "auto", fontSize: "9px", color: "var(--text-3)" }}>docs →</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 export default function LabRuntimeWorkspace({
   item,
