@@ -335,7 +335,6 @@ function MetricsTab({ runtime }) {
   );
 }
 
-
 function QuizTab({ item, phase, onComplete }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -343,6 +342,8 @@ function QuizTab({ item, phase, onComplete }) {
   const [docLinks, setDocLinks] = useState([]);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorError, setTutorError] = useState("");
+
+  const feedbackRef = useRef(null);
 
   const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
 
@@ -372,6 +373,7 @@ function QuizTab({ item, phase, onComplete }) {
 
   async function handleSubmit() {
     if (!allAnswered) return;
+
     setSubmitted(true);
 
     if (scoreRatio >= 0.75) {
@@ -383,12 +385,13 @@ function QuizTab({ item, phase, onComplete }) {
     setTutorFeedback("");
     setDocLinks([]);
 
-    // Build the wrong_answers payload the backend expects
     const wrongAnswers = quiz
       .map((question, index) => {
         const options = getOptions(question);
         const selectedIndex = answers[index];
+
         if (selectedIndex === question.correctAnswerIndex) return null;
+
         return {
           question: question.question,
           student_answer: options[selectedIndex] ?? "No answer",
@@ -399,24 +402,38 @@ function QuizTab({ item, phase, onComplete }) {
       .filter(Boolean);
 
     try {
-      const ragUrl = "http://localhost:3000/api/rag/quiz-feedback"
-const resp = await fetch(ragUrl, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    lab_id: item.id,
-    phase: phase || "Cybersecurity lab",
-    score: correctCount,
-    total: quiz.length,
-    wrong_answers: wrongAnswers,
-  }),
-})
-const data = await resp.json()
+      const data = await request("/api/rag/quiz-feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          lab_id: item.id,
+          phase: phase || "Cybersecurity lab",
+          score: correctCount,
+          total: quiz.length,
+          wrong_answers: wrongAnswers,
+        }),
+      });
+
+      console.log("QUIZ FEEDBACK RESPONSE:", data);
 
       setTutorFeedback(data?.feedback ?? "");
       setDocLinks(Array.isArray(data?.doc_links) ? data.doc_links : []);
+
+      setTimeout(() => {
+        feedbackRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
     } catch (err) {
+      console.error("QUIZ FEEDBACK ERROR:", err);
       setTutorError(`Tutor feedback unavailable: ${err.message}`);
+
+      setTimeout(() => {
+        feedbackRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
     } finally {
       setTutorLoading(false);
     }
@@ -432,35 +449,93 @@ const data = await resp.json()
 
   if (quiz.length === 0) {
     return (
-      <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-3)", fontSize: "13px" }}>
+      <div
+        style={{
+          padding: "32px 20px",
+          textAlign: "center",
+          color: "var(--text-3)",
+          fontSize: "13px",
+        }}
+      >
         No questions are configured for this lab.
       </div>
     );
   }
 
   return (
-    <div style={{ height: "100%", overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
-
+    <div
+      style={{
+        height: "100%",
+        overflowY: "auto",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+      }}
+    >
       {/* ── Header bar with score + submit/retry ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", background: "var(--bg-elevated)", borderRadius: "8px", border: "1px solid var(--border-dim)", position: "sticky", top: 0, zIndex: 5 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 14px",
+          background: "var(--bg-elevated)",
+          borderRadius: "8px",
+          border: "1px solid var(--border-dim)",
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+        }}
+      >
         <div>
-          <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
-            {submitted ? `${correctCount}/${quiz.length}` : `${answeredCount}/${quiz.length}`}
+          <div
+            style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              color: "var(--text-1)",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            {submitted
+              ? `${correctCount}/${quiz.length}`
+              : `${answeredCount}/${quiz.length}`}
           </div>
-          <div style={{ fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.08em" }}>
+
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.08em",
+            }}
+          >
             {submitted ? "correct" : "answered"}
           </div>
         </div>
 
-        <div style={{ flex: 1, height: "4px", background: "var(--bg-surface)", borderRadius: "2px", overflow: "hidden" }}>
-          <div style={{
-            height: "100%",
-            width: submitted
-              ? `${Math.round(scoreRatio * 100)}%`
-              : `${Math.round((answeredCount / quiz.length) * 100)}%`,
-            background: submitted ? (scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)") : "var(--orange)",
-            transition: "width 0.25s ease",
-          }} />
+        <div
+          style={{
+            flex: 1,
+            height: "4px",
+            background: "var(--bg-surface)",
+            borderRadius: "2px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: submitted
+                ? `${Math.round(scoreRatio * 100)}%`
+                : `${Math.round((answeredCount / quiz.length) * 100)}%`,
+              background: submitted
+                ? scoreRatio >= 0.75
+                  ? "var(--green)"
+                  : "var(--orange)"
+                : "var(--orange)",
+              transition: "width 0.25s ease",
+            }}
+          />
         </div>
 
         {!submitted ? (
@@ -484,141 +559,145 @@ const data = await resp.json()
             SUBMIT
           </button>
         ) : (
-          <div style={{ display: "flex", gap: "8px" }}>
-            {scoreRatio < 1 && (
-              <button
-                type="button"
-                onClick={reset}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid var(--border-dim)",
-                  background: "transparent",
-                  color: "var(--text-2)",
-                  fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                RETRY
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "6px",
+              border: "1px solid var(--border-dim)",
+              background: "transparent",
+              color: "var(--text-2)",
+              fontSize: "11px",
+              fontFamily: "var(--font-mono)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            RETRY
+          </button>
         )}
       </div>
 
-      {/* ── Questions ── */}
-      {quiz.map((question, questionIndex) => {
-        const options = getOptions(question);
-        const selectedAnswer = answers[questionIndex];
-
-        return (
-          <section
-            key={`${question.question}-${questionIndex}`}
-            style={{ background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "10px", overflow: "hidden", flexShrink: 0 }}
-          >
-            <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between", gap: "12px" }}>
-              <div style={{ fontSize: "12px", color: "var(--text-1)", lineHeight: 1.5, fontWeight: 600 }}>
-                {questionIndex + 1}. {question.question}
-              </div>
-
-              {submitted && (
-                <span style={{
-                  fontSize: "9px",
-                  fontWeight: 700,
-                  padding: "4px 10px",
-                  borderRadius: "12px",
-                  flexShrink: 0,
-                  background: selectedAnswer === question.correctAnswerIndex ? "var(--green-dim)" : "var(--red-dim)",
-                  color: selectedAnswer === question.correctAnswerIndex ? "var(--green)" : "var(--red)",
-                  border: selectedAnswer === question.correctAnswerIndex ? "1px solid var(--green-border)" : "1px solid rgba(248,113,113,0.28)",
-                }}>
-                  {selectedAnswer === question.correctAnswerIndex ? "CORRECT" : "WRONG"}
-                </span>
-              )}
-            </div>
-
-            <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-              {options.map((option, optionIndex) => {
-                const isSelected = selectedAnswer === optionIndex;
-                const isCorrect = optionIndex === question.correctAnswerIndex;
-
-                let background = "var(--bg-base)";
-                let border = "var(--border-dim)";
-                let color = "var(--text-2)";
-
-                if (!submitted && isSelected) { background = "var(--orange-dim)"; border = "var(--orange-border)"; color = "var(--text-1)"; }
-                if (submitted && isCorrect)   { background = "var(--green-dim)";  border = "var(--green-border)";  color = "var(--green)"; }
-                if (submitted && isSelected && !isCorrect) { background = "var(--red-dim)"; border = "rgba(248,113,113,0.28)"; color = "var(--red)"; }
-
-                return (
-                  <button
-                    key={`${questionIndex}-${optionIndex}`}
-                    type="button"
-                    onClick={() => selectAnswer(questionIndex, optionIndex)}
-                    disabled={submitted}
-                    style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left", padding: "10px 12px", borderRadius: "7px", border: `1px solid ${border}`, background, color, fontSize: "11px", lineHeight: 1.5, cursor: submitted ? "default" : "pointer" }}
-                  >
-                    <span style={{ width: "20px", height: "20px", borderRadius: "999px", border: `1px solid ${isSelected ? "var(--orange)" : "var(--border-mid)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "9px", color: isSelected ? "var(--orange)" : "var(--text-3)" }}>
-                      {String.fromCharCode(65 + optionIndex)}
-                    </span>
-                    <span>{option}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {submitted && question.explanation && (
-              <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-dim)", background: "rgba(56,189,248,0.04)", fontSize: "11px", color: "var(--text-2)", lineHeight: 1.6 }}>
-                {question.explanation}
-              </div>
-            )}
-          </section>
-        );
-      })}
-
-      {/* ── Tutor feedback block (shown after submit) ── */}
+      {/* ── Tutor feedback block: AHORA VA ARRIBA, no enterrado al final ── */}
       {submitted && (
-        <div style={{ border: "1px solid var(--border-dim)", borderRadius: "10px", overflow: "hidden" }}>
+        <div
+          ref={feedbackRef}
+          style={{
+            border: "1px solid var(--border-dim)",
+            borderRadius: "10px",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "var(--bg-elevated)",
+              borderBottom: "1px solid var(--border-dim)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <div
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: tutorFeedback
+                  ? "var(--green)"
+                  : tutorLoading
+                    ? "var(--orange)"
+                    : tutorError
+                      ? "var(--red)"
+                      : "var(--text-3)",
+              }}
+            />
 
-          {/* Header */}
-          <div style={{ padding: "12px 14px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: tutorFeedback ? "var(--green)" : tutorLoading ? "var(--orange)" : "var(--text-3)" }} />
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "var(--text-1)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
               TUTOR — Personalized feedback
             </span>
-            <span style={{ marginLeft: "auto", fontSize: "10px", color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)", fontFamily: "var(--font-mono)" }}>
-              {Math.round(scoreRatio * 100)}% — {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
+
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: "10px",
+                color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {Math.round(scoreRatio * 100)}% —{" "}
+              {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
             </span>
           </div>
 
-          {/* Feedback body */}
           <div style={{ padding: "14px 16px", minHeight: "80px" }}>
             {tutorLoading && (
-              <div style={{ color: "var(--text-3)", fontSize: "12px", fontFamily: "var(--font-mono)" }}>
+              <div
+                style={{
+                  color: "var(--text-3)",
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
                 Analyzing your answers...
               </div>
             )}
 
             {tutorError && (
-              <div style={{ color: "var(--red)", fontSize: "12px" }}>{tutorError}</div>
+              <div
+                style={{
+                  color: "var(--red)",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {tutorError}
+              </div>
             )}
 
             {tutorFeedback && (
-              <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  color: "var(--text-1)",
+                  lineHeight: 1.75,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
                 {tutorFeedback}
               </div>
             )}
           </div>
 
-          {/* Doc links */}
           {docLinks.length > 0 && (
             <div style={{ padding: "0 16px 14px" }}>
-              <div style={{ fontSize: "9px", color: "var(--text-3)", letterSpacing: "0.12em", marginBottom: "8px" }}>
+              <div
+                style={{
+                  fontSize: "9px",
+                  color: "var(--text-3)",
+                  letterSpacing: "0.12em",
+                  marginBottom: "8px",
+                }}
+              >
                 FURTHER READING
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
                 {docLinks.map((link) => (
                   <a
                     key={link.path}
@@ -635,12 +714,19 @@ const data = await resp.json()
                       textDecoration: "none",
                       fontSize: "11px",
                       fontFamily: "var(--font-mono)",
-                      transition: "border-color 0.15s",
                     }}
                   >
                     <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
                     {link.title}
-                    <span style={{ marginLeft: "auto", fontSize: "9px", color: "var(--text-3)" }}>docs →</span>
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: "9px",
+                        color: "var(--text-3)",
+                      }}
+                    >
+                      docs →
+                    </span>
                   </a>
                 ))}
               </div>
@@ -648,6 +734,172 @@ const data = await resp.json()
           )}
         </div>
       )}
+
+      {/* ── Questions ── */}
+      {quiz.map((question, questionIndex) => {
+        const options = getOptions(question);
+        const selectedAnswer = answers[questionIndex];
+
+        return (
+          <section
+            key={`${question.question}-${questionIndex}`}
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: "10px",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 14px",
+                borderBottom: "1px solid var(--border-dim)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: "var(--text-1)",
+                  lineHeight: 1.5,
+                  fontWeight: 600,
+                }}
+              >
+                {questionIndex + 1}. {question.question}
+              </div>
+
+              {submitted && (
+                <span
+                  style={{
+                    fontSize: "9px",
+                    fontWeight: 700,
+                    padding: "4px 10px",
+                    borderRadius: "12px",
+                    flexShrink: 0,
+                    background:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green-dim)"
+                        : "var(--red-dim)",
+                    color:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green)"
+                        : "var(--red)",
+                    border:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "1px solid var(--green-border)"
+                        : "1px solid rgba(248,113,113,0.28)",
+                  }}
+                >
+                  {selectedAnswer === question.correctAnswerIndex
+                    ? "CORRECT"
+                    : "WRONG"}
+                </span>
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              {options.map((option, optionIndex) => {
+                const isSelected = selectedAnswer === optionIndex;
+                const isCorrect = optionIndex === question.correctAnswerIndex;
+
+                let background = "var(--bg-base)";
+                let border = "var(--border-dim)";
+                let color = "var(--text-2)";
+
+                if (!submitted && isSelected) {
+                  background = "var(--orange-dim)";
+                  border = "var(--orange-border)";
+                  color = "var(--text-1)";
+                }
+
+                if (submitted && isCorrect) {
+                  background = "var(--green-dim)";
+                  border = "var(--green-border)";
+                  color = "var(--green)";
+                }
+
+                if (submitted && isSelected && !isCorrect) {
+                  background = "var(--red-dim)";
+                  border = "rgba(248,113,113,0.28)";
+                  color = "var(--red)";
+                }
+
+                return (
+                  <button
+                    key={`${questionIndex}-${optionIndex}`}
+                    type="button"
+                    onClick={() => selectAnswer(questionIndex, optionIndex)}
+                    disabled={submitted}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      borderRadius: "7px",
+                      border: `1px solid ${border}`,
+                      background,
+                      color,
+                      fontSize: "11px",
+                      lineHeight: 1.5,
+                      cursor: submitted ? "default" : "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "999px",
+                        border: `1px solid ${
+                          isSelected ? "var(--orange)" : "var(--border-mid)"
+                        }`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        fontSize: "9px",
+                        color: isSelected
+                          ? "var(--orange)"
+                          : "var(--text-3)",
+                      }}
+                    >
+                      {String.fromCharCode(65 + optionIndex)}
+                    </span>
+
+                    <span>{option}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {submitted && question.explanation && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--border-dim)",
+                  background: "rgba(56,189,248,0.04)",
+                  fontSize: "11px",
+                  color: "var(--text-2)",
+                  lineHeight: 1.6,
+                }}
+              >
+                {question.explanation}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
