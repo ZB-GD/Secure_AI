@@ -8,49 +8,34 @@
 │   │   │   ├── health.py
 │   │   │   ├── labs.py
 │   │   │   ├── logs.py
-│   │   │   └── pipeline.py
+│   │   │   ├── pipeline.py
+│   │   │   ├── trainer.py
+│   │   │   └── tutor.py
 │   │   └── services
 │   │       ├── docker_service.py
 │   │       ├── log_service.py
 │   │       └── pipeline_service.py
 │   ├── Dockerfile
-│   ├── labs
-│   │   ├── base-novnc
-│   │   │   ├── Dockerfile
-│   │   │   └── supervisord.conf
-│   │   ├── decision-retraining
-│   │   │   └── Dockerfile
-│   │   ├── edge-preprocessing
-│   │   │   └── Dockerfile
-│   │   ├── sensor-data
-│   │   │   ├── Dockerfile
-│   │   │   └── lab_files
-│   │   └── traffic-inference
-│   │       └── Dockerfile
+│   ├── .env
 │   ├── main.py
-│   ├── nodes
-│   │   ├── decision_retraining
-│   │   │   ├── app.py
-│   │   │   └── __init__.py
-│   │   ├── edge_preprocessing
-│   │   │   ├── app.py
-│   │   │   └── __init__.py
-│   │   ├── sensor_data
-│   │   │   ├── app.py
-│   │   │   └── __init__.py
-│   │   └── traffic_inference
-│   │       ├── app.py
-│   │       └── __init__.py
 │   ├── requirements.txt
-│   ├── run_pipeline.py
 │   └── scripts
+│       ├── Dockerfile.trainer-init
 │       └── train_traffic_models.py
+├── data
+│   └── datasets
+│       └── metro_interstate_traffic_volume.csv
+├── deploy.sh
 ├── docker-compose.yml
+├── .dockerignore
 ├── estructura.txt
 ├── frontend
+│   ├── Dockerfile
+│   ├── .dockerignore
 │   ├── eslint.config.js
 │   ├── .gitignore
 │   ├── index.html
+│   ├── nginx.conf
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── postcss.config.js
@@ -88,21 +73,57 @@
 │   ├── tailwind.config.js
 │   └── vite.config.js
 ├── .gitignore
-├── lab-assets
-│   ├── lab1-data-poisoning
-│   ├── lab2-input-injection
-│   ├── lab3-supply-chain
-│   └── lab4-output-handling
+├── labs
+│   ├── base-novnc
+│   │   ├── Dockerfile
+│   │   └── supervisord.conf
+│   ├── decision-retraining
+│   │   └── Dockerfile
+│   ├── edge-preprocessing
+│   │   └── Dockerfile
+│   ├── sensor-data
+│   │   ├── Dockerfile
+│   │   └── lab_files
+│   │       ├── enable_defense.py
+│   │       ├── poison_data.py
+│   │       ├── README-LAB1.txt
+│   │       ├── reset_lab.py
+│   │       ├── validate_defense.py
+│   │       └── vulnerable_app.py
+│   └── traffic-inference
+│       └── Dockerfile
+├── pipeline_nodes
+│   ├── actuator
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── docker-compose.pipeline.yml
+│   ├── edge_preprocessing
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── model_trainer
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── paths.py
+│   └── sensor_data
+│       ├── app.py
+│       ├── Dockerfile
+│       └── __init__.py
 ├── README.md
 ├── scripts
 │   └── start-novnc.sh
+├── services
+│   └── tutor_rag
+│       ├── app.py
+│       ├── Dockerfile
+│       ├── knowledge_base
+│       │   ├── cityflow_manual.md
+│       │   └── incident_response.md
+│       └── requirements.txt
 ├── setup.sh
 ├── tree_proyecto.txt
-├── TROUBLESHOOTING.md
-└── vm-agent
-    ├── package.json
-    ├── package-lock.json
-    ├── server.js
-    └── vmMap.js
+└── TROUBLESHOOTING.md
 
-38 directories, 68 files
+41 directories, 86 files

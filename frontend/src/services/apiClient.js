@@ -9,18 +9,16 @@ const API_BASE_URL_CANDIDATES = [
 
 const _API_KEY = import.meta.env.VITE_API_KEY || "";
 
-// ── Session identity ──────────────────────────────────────────────────────────
-const SESSION_STORAGE_KEY = "seclabs-session-id";
+// ── Runtime identity ──────────────────────────────────────────────────────────
+let runtimeSessionId = "";
 
 export function getSessionId() {
-  let id = localStorage.getItem(SESSION_STORAGE_KEY);
-  if (!id) {
-    id = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+  if (!runtimeSessionId) {
+    runtimeSessionId = Array.from(crypto.getRandomValues(new Uint8Array(6)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    localStorage.setItem(SESSION_STORAGE_KEY, id);
   }
-  return id;
+  return runtimeSessionId;
 }
 
 // ── Base URL resolution ───────────────────────────────────────────────────────

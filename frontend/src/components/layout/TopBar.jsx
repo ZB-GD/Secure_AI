@@ -1,62 +1,107 @@
 import { useEffect, useState } from "react";
+import RagTutorWidget from "../workspace/RagTutorWidget";
 
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const scenarios = items.filter((i) => i.type === "scenario");
   const labs = items.filter((i) => i.type === "lab");
+
   const completedCount = labs.filter((i) => i.completed).length;
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
+  const [lastLabId, setLastLabId] = useState("");
 
-  // A lab showing its scenario intro (scenarioViewed = false) behaves like a scenario for nav purposes
-  const isLabInScenarioIntro =
+  const investigationStarted = items.some(
+    (item) => item.id === "scenario-0" && item.completed,
+  );
+
+  const unlockedLabs = labs.filter((lab) => lab.scenarioViewed);
+  const hasUnlockedLabs = unlockedLabs.length > 0;
+  const lastUnlockedLab = unlockedLabs[unlockedLabs.length - 1] || null;
+  const currentLab =
+    activeItem?.type === "lab"
+      ? activeItem
+      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
+
+  const isLabScenarioIntro =
     activeItem?.type === "lab" &&
     activeItem?.scenario &&
     !activeItem?.scenarioViewed;
 
-  // When a lab is in scenario-intro mode, highlight the linked scenario in the list
-  const effectiveActiveId = isLabInScenarioIntro
+  const isLabRuntime =
+    activeItem?.type === "lab" &&
+    (!activeItem?.scenario || activeItem?.scenarioViewed);
+
+  const activeScenarioId = isLabScenarioIntro
     ? activeId.replace("lab", "scenario")
     : activeId;
 
-  const initialType = items.find((it) => it.id === activeId)?.type;
-  const [navView, setNavView] = useState(() => {
-    if (activeId === "dashboard" || initialType === "welcome") return "home";
-    if (initialType === "scenario") return "scenarios";
-    if (initialType === "lab") {
-      const labItem = items.find((it) => it.id === activeId);
-      return labItem?.scenario && !labItem?.scenarioViewed ? "scenarios" : "labs";
-    }
-    return "labs";
-  });
+  const [navView, setNavView] = useState("home");
+
+  useEffect(() => {
+    if (activeItem?.type !== "lab") return;
+    setLastLabId(activeItem.id);
+  }, [activeItem]);
 
   useEffect(() => {
     if (!activeId) return;
-    if (activeId === "dashboard") setNavView("home");
-    else {
-      const found = items.find((it) => it.id === activeId);
-      const t = found?.type;
-      if (t === "welcome") setNavView("home");
-      if (t === "scenario") setNavView("scenarios");
-      if (t === "lab") {
-        // Only auto-switch when lab transitions into/out of scenario-intro mode
-        if (found?.scenario && !found?.scenarioViewed) setNavView("scenarios");
-        else setNavView("labs");
-      }
+
+    if (activeItem?.type === "pipeline" || isLabScenarioIntro) {
+      setNavView("scenarios");
+      return;
     }
-  }, [activeId, items]);
+
+    if (isLabRuntime) {
+      setNavView("labs");
+      return;
+    }
+
+    if (activeId === "dashboard" || activeItem?.type === "welcome") {
+      setNavView("home");
+    }
+  }, [activeId, activeItem?.type, isLabScenarioIntro, isLabRuntime]);
 
   const navTabs = [
-    { id: "home", label: "DASHBOARD" },
+    {
+      id: "home",
+      label: "DASHBOARD",
+      disabled: !investigationStarted,
+    },
     {
       id: "scenarios",
-      label: "SCENARIOS",
+      label: "PIPELINE",
       badge: `${scenarios.filter((s) => s.completed).length}/${scenarios.length}`,
+      disabled: !investigationStarted,
     },
     {
       id: "labs",
       label: "LABS",
       badge: `${completedCount}/${labs.length}`,
+      disabled: !investigationStarted || !hasUnlockedLabs,
     },
   ];
+
+  function handleTabClick(tab) {
+    if (tab.disabled) return;
+
+    if (tab.id === "home") {
+      setNavView("home");
+      onSelectItem("dashboard");
+      return;
+    }
+
+    if (tab.id === "labs") {
+      const targetLab = currentLab || lastUnlockedLab;
+      if (!targetLab) return;
+
+      setNavView("labs");
+      onSelectItem(targetLab.id);
+      return;
+    }
+
+    if (tab.id === "scenarios") {
+      setNavView("scenarios");
+      onSelectItem("pipeline");
+    }
+  }
 
   return (
     <header
@@ -66,7 +111,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
         borderBottom: "1px solid var(--border-dim)",
       }}
     >
-      {/* Top row: logo · nav tabs · progress */}
       <div
         style={{
           display: "flex",
@@ -76,7 +120,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           gap: "16px",
         }}
       >
-        {/* Logo */}
         <div
           style={{
             display: "flex",
@@ -109,6 +152,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               AI
             </span>
           </div>
+
           <div>
             <div
               style={{
@@ -121,6 +165,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             >
               SEC<span style={{ color: "var(--orange)" }}>LABS</span>
             </div>
+
             <div
               style={{
                 fontSize: "9px",
@@ -134,7 +179,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           </div>
         </div>
 
-        {/* Segmented nav control */}
         <div
           style={{
             display: "inline-flex",
@@ -144,30 +188,32 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             background: "var(--bg-elevated)",
           }}
         >
-          {navTabs.map((tab, i) => {
+          {navTabs.map((tab, index) => {
             const isActive = navView === tab.id;
-            const isScenario = tab.id === "scenarios";
+            const isScenarioTab = tab.id === "scenarios";
+            const isDisabled = Boolean(tab.disabled);
+
             const activeBg =
               tab.id === "home"
                 ? "var(--orange-dim)"
-                : isScenario
+                : isScenarioTab
                   ? "rgba(56,189,248,0.10)"
                   : "var(--orange-dim)";
+
             const activeColor =
-              isScenario ? "var(--blue)" : "var(--text-1)";
+              isScenarioTab ? "var(--blue)" : "var(--text-1)";
 
             return (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setNavView(tab.id);
-                  if (tab.id === "home") onSelectItem("dashboard");
-                }}
+                type="button"
+                onClick={() => handleTabClick(tab)}
+                disabled={isDisabled}
                 style={{
                   padding: "8px 16px",
                   border: "none",
                   borderRight:
-                    i < navTabs.length - 1
+                    index < navTabs.length - 1
                       ? "1px solid var(--border-dim)"
                       : "none",
                   background: isActive ? activeBg : "transparent",
@@ -175,8 +221,10 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                   fontFamily: "var(--font-mono)",
                   fontSize: "10px",
                   letterSpacing: "0.10em",
-                  cursor: "pointer",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  opacity: isDisabled && !isActive ? 0.35 : 1,
                   whiteSpace: "nowrap",
+                  maxWidth: tab.id === "labs" ? "320px" : "none",
                   display: "flex",
                   alignItems: "center",
                   gap: "7px",
@@ -184,6 +232,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 }}
               >
                 {tab.label}
+
                 {tab.badge !== undefined && (
                   <span
                     style={{
@@ -191,12 +240,12 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                       padding: "1px 6px",
                       borderRadius: "999px",
                       background: isActive
-                        ? isScenario
+                        ? isScenarioTab
                           ? "rgba(56,189,248,0.18)"
                           : "rgba(249,115,22,0.18)"
                         : "var(--bg-surface)",
                       color: isActive
-                        ? isScenario
+                        ? isScenarioTab
                           ? "var(--blue)"
                           : "var(--orange)"
                         : "var(--text-3)",
@@ -211,36 +260,15 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           })}
         </div>
 
-        {/* Progress */}
-        <div style={{ minWidth: "120px", textAlign: "right" }}>
-          <div
-            style={{
-              fontSize: "9px",
-              color: "var(--text-3)",
-              letterSpacing: "0.12em",
-              marginBottom: "4px",
-            }}
-          >
-            PROGRESS
-          </div>
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {completedCount}
-            <span style={{ color: "var(--text-3)", fontSize: "13px" }}>
-              /{labs.length}
-            </span>
-          </div>
-        </div>
+        <RagTutorWidget
+          labId={activeItem?.id}
+          phase={activeItem?.phase}
+          activeItem={activeItem}
+          placement="topbar"
+        />
       </div>
 
-      {/* Item selector row — hidden on home/dashboard */}
-      {navView !== "home" && (
+      {navView === "scenarios" && investigationStarted && (
         <div
           style={{
             display: "flex",
@@ -251,48 +279,122 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             overflowX: "auto",
           }}
         >
-          {(navView === "scenarios" ? scenarios : labs).map((item) => {
-            const isActive = effectiveActiveId === item.id;
-            const isScenario = item.type === "scenario";
+          {scenarios.map((item) => {
+            const isActive = activeScenarioId === item.id;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  border: isActive
+                    ? "1px solid rgba(56,189,248,0.35)"
+                    : "1px solid var(--border-dim)",
+                  background: isActive
+                    ? "rgba(56,189,248,0.10)"
+                    : "transparent",
+                  opacity: isActive ? 1 : 0.35,
+                  cursor: "not-allowed",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    background: isActive ? "var(--blue)" : "var(--text-3)",
+                    flexShrink: 0,
+                  }}
+                />
+
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontFamily: "var(--font-mono)",
+                    letterSpacing: "0.08em",
+                    color: isActive ? "var(--blue)" : "var(--text-3)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {item.shortTitle}
+                </span>
+
+                <span
+                  style={{
+                    fontSize: "10px",
+                    color: isActive ? "var(--text-2)" : "var(--text-3)",
+                    fontFamily: "var(--font-display)",
+                    maxWidth: "180px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {item.phase}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {navView === "labs" && investigationStarted && hasUnlockedLabs && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 20px 8px",
+            borderTop: "1px solid var(--border-dim)",
+            overflowX: "auto",
+          }}
+        >
+          {labs.map((item) => {
+            const isActive = activeId === item.id;
+            const unlocked = Boolean(item.scenarioViewed);
             const available =
-              isScenario || (item.guide?.steps?.length ?? 0) > 0;
+              unlocked && (item.guide?.steps?.length ?? 0) > 0;
 
             const borderColor = isActive
-              ? isScenario
-                ? "rgba(56,189,248,0.35)"
-                : "var(--orange-border)"
+              ? "var(--orange-border)"
               : item.completed
                 ? "rgba(34,197,94,0.20)"
                 : "var(--border-dim)";
 
             const bgColor = isActive
-              ? isScenario
-                ? "rgba(56,189,248,0.10)"
-                : "var(--orange-dim)"
+              ? "var(--orange-dim)"
               : item.completed
                 ? "rgba(34,197,94,0.05)"
                 : "transparent";
 
             const dotColor = isActive
-              ? isScenario
-                ? "var(--blue)"
-                : "var(--orange)"
+              ? "var(--orange)"
               : item.completed
                 ? "var(--green)"
-                : "var(--text-3)";
+                : unlocked
+                  ? "var(--orange)"
+                  : "var(--text-3)";
 
             const labelColor = isActive
-              ? isScenario
-                ? "var(--blue)"
-                : "var(--text-1)"
+              ? "var(--text-1)"
               : item.completed
                 ? "var(--green)"
-                : "var(--text-3)";
+                : unlocked
+                  ? "var(--text-2)"
+                  : "var(--text-3)";
 
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectItem(item.id)}
+                type="button"
+                onClick={() => available && onSelectItem(item.id)}
                 disabled={!available}
                 style={{
                   display: "flex",
@@ -304,7 +406,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                   background: bgColor,
                   opacity: available ? 1 : 0.35,
                   cursor: available ? "pointer" : "not-allowed",
-                  transition: "all 0.15s",
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                 }}
@@ -318,6 +419,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                     flexShrink: 0,
                   }}
                 />
+
                 <span
                   style={{
                     fontSize: "10px",
@@ -329,6 +431,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 >
                   {item.shortTitle}
                 </span>
+
                 <span
                   style={{
                     fontSize: "10px",

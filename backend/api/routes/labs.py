@@ -16,6 +16,11 @@ def stop_lab_by_node(node: str, session_id: str = Query(default="shared")):
     return docker_service.stop_lab_container(node, session_id)
 
 
+@router.post("/{node}/heartbeat")
+def heartbeat_lab_by_node(node: str, session_id: str = Query(default="shared")):
+    return docker_service.record_lab_heartbeat(node, session_id)
+
+
 @router.get("/{node}/status")
 def get_lab_status(node: str, session_id: str = Query(default="shared")):
     return docker_service.get_lab_status(node, session_id)
