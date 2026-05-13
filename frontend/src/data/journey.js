@@ -77,6 +77,12 @@ export const journey = [
     subtitle: "Execute the attack and implement defensive boundaries.",
     threatStage: "E",
     envKey: "NODE-1",
+    attackCommands: [
+      "curl http://127.0.0.1:5000/health",
+      "python3 /home/lab/Desktop/Lab1/poison_data.py",
+      "python3 /home/lab/Desktop/Lab1/enable_defense.py",
+      "python3 /home/lab/Desktop/Lab1/poison_data.py",
+    ],
     scenario: {
       title: "Trace the Data Poisoning Attack",
       intro:
@@ -229,17 +235,18 @@ export const journey = [
         },
       ],
     },
-    // Final assessment quiz.
-    // It unlocks in the Quiz tab after the guide steps are completed.
-    // The tutor uses these questions to generate personalized feedback.
+    // ─── QUIZ ────────────────────────────────────────────────────────────────
+    // Unlocks in the Quiz tab after all guide steps are completed.
+    // OPTIONS must be plain strings — the QuizTab component auto-generates
+    // the A / B / C labels, so do NOT add "A) " prefixes here.
     quiz: [
       {
         question:
           "What architectural vulnerability allowed the script to inject the '-5000' value directly into the training pipeline?",
         options: [
-          "A) Lack of AES-256 database encryption.",
-          "B) Unauthenticated IoT/telemetry ingestion endpoints.",
-          "C) A SQL injection vulnerability in the Frontend.",
+          "Lack of AES-256 database encryption.",
+          "Unauthenticated IoT/telemetry ingestion endpoints.",
+          "A SQL injection vulnerability in the Frontend.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -249,9 +256,9 @@ export const journey = [
         question:
           "What is the most computationally efficient way to prevent impossible values like '-5000 cars' from poisoning the model?",
         options: [
-          "A) Implementing Sanity Checks (Range Validation) at the Ingestion Node.",
-          "B) Training a Generative AI to read the incoming logs.",
-          "C) Wiping the database every hour.",
+          "Implementing Sanity Checks (Range Validation) at the Ingestion Node.",
+          "Training a Generative AI to read the incoming logs.",
+          "Wiping the database every hour.",
         ],
         correctAnswerIndex: 0,
         explanation:
@@ -261,9 +268,9 @@ export const journey = [
         question:
           "If an attacker injects '5000' (a positive but physically unrealistic number for that street), a basic '> 0' sanity check won't block it. What defense must act at Node 2 (Pre-processing)?",
         options: [
-          "A) Turning off the cameras during rush hour.",
-          "B) Statistical Anomaly Detection (e.g., Z-Score, Isolation Forests).",
-          "C) Changing the MQTT protocol to HTTP.",
+          "Turning off the cameras during rush hour.",
+          "Statistical Anomaly Detection (e.g., Z-Score, Isolation Forests).",
+          "Changing the MQTT protocol to HTTP.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -273,9 +280,9 @@ export const journey = [
         question:
           "By injecting manipulated data during the collection phase, what type of Machine Learning attack is being executed?",
         options: [
-          "A) Model Evasion.",
-          "B) Prompt Injection.",
-          "C) Data Poisoning.",
+          "Model Evasion.",
+          "Prompt Injection.",
+          "Data Poisoning.",
         ],
         correctAnswerIndex: 2,
         explanation:
@@ -285,9 +292,9 @@ export const journey = [
         question:
           "Why did the 'Model Drift' metric spike sharply immediately after the attack?",
         options: [
-          "A) The model ran out of allocated memory.",
-          "B) The new incoming data distribution differed drastically from the previously learned baseline.",
-          "C) The neural network architecture was too small.",
+          "The model ran out of allocated memory.",
+          "The new incoming data distribution differed drastically from the previously learned baseline.",
+          "The neural network architecture was too small.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -297,9 +304,9 @@ export const journey = [
         question:
           "Node 4 executed the order to turn the street red based purely on the AI's prediction. From a Cyber-Physical Security perspective, what is the design flaw?",
         options: [
-          "A) Blindly trusting the model output without strict hard-coded limits (Guardrails).",
-          "B) Using red lights instead of yellow lights.",
-          "C) Updating the model every 5 minutes instead of 10.",
+          "Blindly trusting the model output without strict hard-coded limits (Guardrails).",
+          "Using red lights instead of yellow lights.",
+          "Updating the model every 5 minutes instead of 10.",
         ],
         correctAnswerIndex: 0,
         explanation:
@@ -309,9 +316,9 @@ export const journey = [
         question:
           "After confirming that model 'v2.1' is poisoned and causing city-wide gridlock, what should be the immediate incident response action?",
         options: [
-          "A) Let the model continue learning until it corrects itself.",
-          "B) Rollback the model to the last known good version (v2.0) and quarantine Node 1.",
-          "C) Shut down all traffic lights in the city.",
+          "Let the model continue learning until it corrects itself.",
+          "Rollback the model to the last known good version (v2.0) and quarantine Node 1.",
+          "Shut down all traffic lights in the city.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -321,9 +328,9 @@ export const journey = [
         question:
           "In a distributed AI pipeline like CityFlow, where is it typically easiest for an attacker to inject poisoned data?",
         options: [
-          "A) Directly into the final weights of the neural network.",
-          "B) At the Edge device (Sensor) or during data transit (MQTT).",
-          "C) Into the React metrics dashboard.",
+          "Directly into the final weights of the neural network.",
+          "At the Edge device (Sensor) or during data transit (MQTT).",
+          "Into the React metrics dashboard.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -333,9 +340,9 @@ export const journey = [
         question:
           "What security control would guarantee that the payload sent by 'cam_north_01' actually came from that camera and was not modified in transit?",
         options: [
-          "A) A digital signature (Firmware Trust / mTLS).",
-          "B) Saving the data as CSV instead of JSON.",
-          "C) A traditional Web Application Firewall (WAF).",
+          "A digital signature (Firmware Trust / mTLS).",
+          "Saving the data as CSV instead of JSON.",
+          "A traditional Web Application Firewall (WAF).",
         ],
         correctAnswerIndex: 0,
         explanation:
@@ -345,9 +352,9 @@ export const journey = [
         question:
           "Why is a Data Poisoning attack often more silent and dangerous than a traditional DDoS attack?",
         options: [
-          "A) Because it physically destroys the server hardware.",
-          "B) Because the system remains online and reports 'Healthy' while making malicious decisions.",
-          "C) Because it is easier to script in Python.",
+          "Because it physically destroys the server hardware.",
+          "Because the system remains online and reports 'Healthy' while making malicious decisions.",
+          "Because it is easier to script in Python.",
         ],
         correctAnswerIndex: 1,
         explanation:
@@ -409,6 +416,7 @@ export const journey = [
     subtitle: "Defend the RAG Tutor",
     threatStage: "P",
     envKey: "RAG-NODE",
+    attackCommands: [],
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },
@@ -433,6 +441,7 @@ export const journey = [
     subtitle: "Coming soon",
     threatStage: "T",
     envKey: "SEC-NODE",
+    attackCommands: [],
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },

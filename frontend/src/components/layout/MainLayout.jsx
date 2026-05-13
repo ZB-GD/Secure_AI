@@ -2,11 +2,104 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
-import RagTutorWidget from "../workspace/RagTutorWidget";
 
 const SIDEBAR_MIN_WIDTH = 280;
 const SIDEBAR_MAX_WIDTH = 620;
 const SIDEBAR_DEFAULT_WIDTH = 360;
+
+function buildBreadcrumb(activeItem) {
+  if (!activeItem) return ["Dashboard"];
+
+  if (activeItem.type === "welcome") {
+    return ["Emergency Briefing"];
+  }
+
+  if (activeItem.type === "dashboard") {
+    return ["Dashboard"];
+  }
+
+  if (activeItem.type === "pipeline") {
+    return ["Dashboard", "Pipeline"];
+  }
+
+  if (activeItem.type === "lab") {
+    const labLabel = activeItem.shortTitle || activeItem.title || "Lab";
+    const steps = activeItem.guide?.steps || [];
+
+    if (activeItem.scenario && !activeItem.scenarioViewed) {
+      return ["Dashboard", labLabel, "Scenario"];
+    }
+
+    if (steps.length > 0) {
+      const stepNumber = Math.min(
+        Math.max((activeItem.currentStepIndex ?? 0) + 1, 1),
+        steps.length,
+      );
+      return ["Dashboard", labLabel, `Guide · Step ${stepNumber}/${steps.length}`];
+    }
+
+    return ["Dashboard", labLabel];
+  }
+
+  if (activeItem.type === "scenario") {
+    return ["Dashboard", activeItem.shortTitle || activeItem.title || "Scenario"];
+  }
+
+  return ["Dashboard"];
+}
+
+function BreadcrumbStrip({ activeItem }) {
+  const crumbs = buildBreadcrumb(activeItem);
+
+  return (
+    <div
+      aria-label="Current location"
+      style={{
+        flexShrink: 0,
+        minHeight: "30px",
+        display: "flex",
+        alignItems: "center",
+        gap: "7px",
+        padding: "6px 24px",
+        borderBottom: "1px solid var(--border-dim)",
+        background: "rgba(15,23,42,0.58)",
+        color: "var(--text-3)",
+        fontFamily: "var(--font-mono)",
+        fontSize: "10px",
+        letterSpacing: "0.08em",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+      }}
+    >
+      {crumbs.map((crumb, index) => {
+        const isLast = index === crumbs.length - 1;
+
+        return (
+          <span
+            key={`${crumb}-${index}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              minWidth: 0,
+              color: isLast ? "var(--text-1)" : "var(--text-3)",
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {crumb}
+            </span>
+            {!isLast && <span style={{ color: "var(--text-3)" }}>{">"}</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function clampSidebarWidth(width) {
   const viewportMax =
@@ -36,16 +129,12 @@ export default function MainLayout({
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
-    const saved = Number(
-      window.localStorage.getItem("seclabs-sidebar-width"),
-    );
-    return clampSidebarWidth(
-      Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH,
-    );
+    return clampSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
   });
   const isResizingRef = useRef(false);
   const isFullWidthBriefing = activeItem.id === "scenario-0";
   const isScenario = activeItem.type === "scenario";
+  const showSidebar = !isFullWidthBriefing && isScenario;
 
   const stopResize = useCallback(() => {
     if (!isResizingRef.current) return;
@@ -93,14 +182,6 @@ export default function MainLayout({
   }, [resizeGuide, stopResize]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      "seclabs-sidebar-width",
-      String(sidebarWidth),
-    );
-  }, [sidebarWidth]);
-
-  useEffect(() => {
     function handleWindowResize() {
       setSidebarWidth((width) => clampSidebarWidth(width));
     }
@@ -125,12 +206,13 @@ export default function MainLayout({
         activeItem={activeItem}
         onSelectItem={onSelectItem}
       />
+      <BreadcrumbStrip activeItem={activeItem} />
 
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
-        {/* Sidebar only for scenarios (labs have guide inside the tabbed panel) */}
-        {!isFullWidthBriefing && isScenario && (
+        {/* Sidebar only for standalone scenario items */}
+        {showSidebar && (
           <>
             <Sidebar
               item={activeItem}
@@ -177,14 +259,6 @@ export default function MainLayout({
         </main>
       </div>
 
-      {/* Floating tutor only for scenarios — labs have it integrated in Quiz tab */}
-      {!isFullWidthBriefing && isScenario && (
-        <RagTutorWidget
-          labId={activeItem?.id}
-          phase={activeItem?.phase}
-          activeItem={activeItem}
-        />
-      )}
     </div>
   );
 }

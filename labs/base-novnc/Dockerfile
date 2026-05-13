@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd --gid 1000 lab && \
+    useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash lab
+
 # Configuración de supervisord: arranca todos los procesos necesarios
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

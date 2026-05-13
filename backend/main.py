@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.routes import health, labs, logs, pipeline, trainer, tutor
+from api.services import docker_service
 
 app = FastAPI(title="SecLabs Backend API", version="0.1.0")
 
@@ -68,6 +69,7 @@ def _ensure_models_ready() -> None:
 @app.on_event("startup")
 def _startup_bootstrap_models() -> None:
     _ensure_models_ready()
+    docker_service.start_lab_cleanup_thread()
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────

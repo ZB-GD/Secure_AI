@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { request } from "../../services/apiClient"
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -167,10 +168,19 @@ export default function LabGuide({
 }) {
   const [showHint, setShowHint] = useState(false)
   const [answerTouched, setAnswerTouched] = useState(false)
+  const [tutorOpen, setTutorOpen] = useState(false)
+  const [tutorQuestion, setTutorQuestion] = useState("")
+  const [tutorAnswer, setTutorAnswer] = useState("")
+  const [tutorLoading, setTutorLoading] = useState(false)
+  const [tutorError, setTutorError] = useState("")
 
   useEffect(() => {
     setShowHint(false)
     setAnswerTouched(false)
+    setTutorOpen(false)
+    setTutorQuestion(currentStep?.title || "")
+    setTutorAnswer("")
+    setTutorError("")
   }, [currentStep?.id])
 
 
@@ -186,6 +196,28 @@ export default function LabGuide({
   const stepIndex = item.currentStepIndex
   const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
   const answerValid = isValid(currentStep, currentAnswer)
+
+  async function askTutor() {
+    const message = tutorQuestion.trim() || currentStep.title
+    setTutorLoading(true)
+    setTutorError("")
+    setTutorAnswer("")
+
+    try {
+      const data = await request("/api/rag/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          message: `Guide step: ${currentStep.title}\nStudent question: ${message}`,
+          context: `${item.title} - ${currentStep.title}`,
+        }),
+      })
+      setTutorAnswer(data.response || "")
+    } catch (error) {
+      setTutorError(error?.message || "Unable to contact tutor.")
+    } finally {
+      setTutorLoading(false)
+    }
+  }
 
   const handleNext = () => {
     if (!answerValid) {
@@ -290,10 +322,112 @@ export default function LabGuide({
             fontSize: "18px",
             color: "var(--text-1)",
             fontFamily: "var(--font-display)",
+            margin: 0,
           }}
         >
           {currentStep.title}
         </h2>
+
+        <div
+          style={{
+            border: "1px solid rgba(56,189,248,0.22)",
+            borderRadius: "8px",
+            background: "rgba(56,189,248,0.04)",
+            overflow: "hidden",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setTutorOpen((open) => !open)
+              if (!tutorQuestion) setTutorQuestion(currentStep.title)
+            }}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 14px",
+              border: "none",
+              background: "transparent",
+              color: "var(--blue)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              letterSpacing: "0.08em",
+              cursor: "pointer",
+            }}
+          >
+            <span>ASK TUTOR</span>
+            <span>{tutorOpen ? "HIDE" : "OPEN"}</span>
+          </button>
+
+          {tutorOpen && (
+            <div
+              style={{
+                borderTop: "1px solid rgba(56,189,248,0.16)",
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <textarea
+                value={tutorQuestion}
+                onChange={(event) => setTutorQuestion(event.target.value)}
+                rows={3}
+                style={{
+                  resize: "vertical",
+                  width: "100%",
+                  border: "1px solid var(--border-mid)",
+                  borderRadius: "6px",
+                  background: "var(--bg-base)",
+                  color: "var(--text-1)",
+                  padding: "10px 12px",
+                  fontSize: "12px",
+                  lineHeight: 1.5,
+                  outline: "none",
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={askTutor}
+                  disabled={tutorLoading}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(56,189,248,0.28)",
+                    background: tutorLoading ? "var(--bg-surface)" : "rgba(56,189,248,0.10)",
+                    color: "var(--blue)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    cursor: tutorLoading ? "wait" : "pointer",
+                  }}
+                >
+                  {tutorLoading ? "ASKING..." : "SEND"}
+                </button>
+              </div>
+              {tutorError && (
+                <div style={{ color: "var(--red)", fontSize: "12px" }}>
+                  {tutorError}
+                </div>
+              )}
+              {tutorAnswer && (
+                <div
+                  style={{
+                    color: "var(--text-2)",
+                    fontSize: "12px",
+                    lineHeight: 1.65,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {tutorAnswer}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div
           style={{
@@ -401,19 +535,31 @@ export default function LabGuide({
           </div>
 
           <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              value={currentAnswer}
-              onChange={(e) => {
-                setAnswerTouched(false)
-                onAnswerChange(currentStep.id, e.target.value)
-              }}
-              onBlur={() => {
-                if ((currentAnswer || "").trim()) {
-                  setAnswerTouched(true)
-                }
-              }}
-              placeholder={currentStep.placeholder}
+          <input
+            type="text"
+            value={currentAnswer}
+            onChange={(e) => {
+              setAnswerTouched(false)
+              onAnswerChange(currentStep.id, e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return
+
+              e.preventDefault()
+
+              if (!answerValid) {
+                setAnswerTouched(true)
+                return
+              }
+
+              handleNext()
+            }}
+            onBlur={() => {
+              if ((currentAnswer || "").trim()) {
+                setAnswerTouched(true)
+              }
+            }}
+            placeholder={currentStep.placeholder}
               style={{
                 width: "100%",
                 background: "var(--bg-base)",

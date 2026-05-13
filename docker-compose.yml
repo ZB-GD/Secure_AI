@@ -1,4 +1,31 @@
+x-lab-security: &lab-security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - SETUID
+    - SETGID
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /run
+    - /home/lab:rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755
+  user: "1000:1000"
+
 services:
+  model-init:
+    build:
+      context: .
+      dockerfile: backend/scripts/Dockerfile.trainer-init
+    container_name: seclabs-model-init
+    volumes:
+      - model-store:/models
+    networks:
+      - seclabs-network
+    restart: "no"
+
   sensor:
     build:
       context: .
@@ -46,6 +73,8 @@ services:
     ports:
       - "8003:8003"
     depends_on:
+      model-init:
+        condition: service_completed_successfully
       edge:
         condition: service_healthy
     environment:
@@ -71,6 +100,8 @@ services:
     ports:
       - "8004:8004"
     depends_on:
+      model-init:
+        condition: service_completed_successfully
       actuator:
         condition: service_healthy
     environment:
@@ -105,6 +136,9 @@ services:
       - RAG_SERVICE_URL=http://tutor-rag:8010
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       - API_KEY=${API_KEY:-}
+      - MAX_CONCURRENT_LABS=${MAX_CONCURRENT_LABS:-20}
+      - LAB_HEARTBEAT_TIMEOUT_SECONDS=${LAB_HEARTBEAT_TIMEOUT_SECONDS:-180}
+      - LAB_CLEANUP_INTERVAL_SECONDS=${LAB_CLEANUP_INTERVAL_SECONDS:-30}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -163,6 +197,7 @@ services:
     restart: unless-stopped
 
   lab-base-novnc:
+    <<: *lab-security
     profiles:
       - labs-build
     image: lab-base-novnc
@@ -172,6 +207,7 @@ services:
     command: ["true"]
 
   lab1:
+    <<: *lab-security
     profiles:
       - labs-build
     image: seclabs-lab1:vuln
