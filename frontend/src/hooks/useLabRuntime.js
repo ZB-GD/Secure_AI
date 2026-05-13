@@ -238,6 +238,19 @@ export function useLabRuntime(labId, options = {}) {
     return () => window.clearInterval(timer);
   }, [labId]);
 
+  // Browser-scoped runtime: closing or navigating away from the page discards
+  // the lab container instead of preserving progress for a later visit.
+  useEffect(() => {
+    if (!labId) return;
+
+    const stopRuntime = () => {
+      labService.stopLabById(labId, { keepalive: true }).catch(() => {});
+    };
+
+    window.addEventListener("pagehide", stopRuntime);
+    return () => window.removeEventListener("pagehide", stopRuntime);
+  }, [labId]);
+
   return {
     remoteUrl,
     remoteLoading,

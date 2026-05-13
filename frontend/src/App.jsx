@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
-import { getSessionId } from "./services/apiClient";
-
-const STORAGE_KEY = `seclabs-progress-${getSessionId()}`;
-const ACTIVE_ITEM_STORAGE_KEY = `${STORAGE_KEY}-active-item`;
 
 function bootJourney(items) {
-  const defaults = items.map((item) => ({
+  return items.map((item) => ({
     ...item,
     locked: false,
     completed: false,
@@ -20,22 +16,6 @@ function bootJourney(items) {
     answers: item.type === "lab" ? {} : null,
     showValidation: false,
   }));
-
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return defaults;
-
-  try {
-    const savedItems = JSON.parse(saved);
-    if (!Array.isArray(savedItems)) return defaults;
-
-    const savedById = new Map(savedItems.map((item) => [item.id, item]));
-    return defaults.map((item) => ({
-      ...item,
-      ...(savedById.get(item.id) || {}),
-    }));
-  } catch {
-    return defaults;
-  }
 }
 
 function isStepAnswerValid(step, answer) {
@@ -47,27 +27,9 @@ function isStepAnswerValid(step, answer) {
   );
 }
 
-function getLinkedLabId(itemId, items) {
-  const match = itemId.match(/^scenario-(\d+)$/);
-  if (!match) return null;
-
-  const linkedLabId = `lab-${match[1]}`;
-  return items.some((item) => item.id === linkedLabId) ? linkedLabId : null;
-}
-
 export default function App() {
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState(
-    () => localStorage.getItem(ACTIVE_ITEM_STORAGE_KEY) || "scenario-0",
-  );
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
-
-  useEffect(() => {
-    localStorage.setItem(ACTIVE_ITEM_STORAGE_KEY, activeItemId);
-  }, [activeItemId]);
+  const [activeItemId, setActiveItemId] = useState("scenario-0");
 
   const activeItem = useMemo(
     () =>

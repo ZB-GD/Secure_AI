@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import RagTutorWidget from "../workspace/RagTutorWidget";
 
-const LAST_LAB_STORAGE_KEY = "seclabs-last-lab-id";
-
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const labs = items.filter((i) => i.type === "lab");
 
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
-  const [lastLabId, setLastLabId] = useState(
-    () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
-  );
+  const [lastLabId, setLastLabId] = useState("");
 
   const investigationStarted = items.some(
     (item) => item.id === "scenario-0" && item.completed,
@@ -32,7 +28,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   useEffect(() => {
     if (activeItem?.type !== "lab") return;
     setLastLabId(activeItem.id);
-    localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
   }, [activeItem]);
 
   useEffect(() => {

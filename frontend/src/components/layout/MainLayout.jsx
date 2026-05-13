@@ -129,12 +129,7 @@ export default function MainLayout({
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
-    const saved = Number(
-      window.localStorage.getItem("seclabs-sidebar-width"),
-    );
-    return clampSidebarWidth(
-      Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH,
-    );
+    return clampSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
   });
   const isResizingRef = useRef(false);
   const isFullWidthBriefing = activeItem.id === "scenario-0";
@@ -185,14 +180,6 @@ export default function MainLayout({
       document.body.classList.remove("is-resizing-layout");
     };
   }, [resizeGuide, stopResize]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      "seclabs-sidebar-width",
-      String(sidebarWidth),
-    );
-  }, [sidebarWidth]);
 
   useEffect(() => {
     function handleWindowResize() {
