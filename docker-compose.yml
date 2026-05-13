@@ -1,3 +1,19 @@
+x-lab-security: &lab-security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - SETUID
+    - SETGID
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /run
+    - /home/lab:rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755
+  user: "1000:1000"
+
 services:
   model-init:
     build:
@@ -181,6 +197,7 @@ services:
     restart: unless-stopped
 
   lab-base-novnc:
+    <<: *lab-security
     profiles:
       - labs-build
     image: lab-base-novnc
@@ -190,6 +207,7 @@ services:
     command: ["true"]
 
   lab1:
+    <<: *lab-security
     profiles:
       - labs-build
     image: seclabs-lab1:vuln

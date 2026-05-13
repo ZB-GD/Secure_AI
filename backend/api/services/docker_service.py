@@ -13,6 +13,13 @@ from api.models.state import LABS, NOVNC_PORT, session_container_name
 MAX_CONCURRENT_LABS = int(os.getenv("MAX_CONCURRENT_LABS", "20"))
 LAB_HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("LAB_HEARTBEAT_TIMEOUT_SECONDS", "180"))
 LAB_CLEANUP_INTERVAL_SECONDS = int(os.getenv("LAB_CLEANUP_INTERVAL_SECONDS", "30"))
+LAB_RUNTIME_USER = "1000:1000"
+LAB_TMPFS = {
+    "/tmp": "",
+    "/run": "",
+    "/home/lab": "rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755",
+}
+LAB_CAPABILITIES = ["CHOWN", "SETUID", "SETGID"]
 
 _heartbeat_lock = threading.Lock()
 _last_seen_by_container: dict[str, float] = {}
@@ -292,6 +299,12 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
             detach=True,
             remove=True,
             ports={f"{NOVNC_PORT}/tcp": None},
+            security_opt=["no-new-privileges:true"],
+            cap_drop=["ALL"],
+            cap_add=LAB_CAPABILITIES,
+            read_only=True,
+            tmpfs=LAB_TMPFS,
+            user=LAB_RUNTIME_USER,
             mem_limit="768m",
             nano_cpus=1_000_000_000,
             pids_limit=200,
