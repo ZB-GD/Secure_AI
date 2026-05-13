@@ -535,19 +535,31 @@ export default function LabGuide({
           </div>
 
           <div style={{ position: "relative" }}>
-            <input
-              type="text"
-              value={currentAnswer}
-              onChange={(e) => {
-                setAnswerTouched(false)
-                onAnswerChange(currentStep.id, e.target.value)
-              }}
-              onBlur={() => {
-                if ((currentAnswer || "").trim()) {
-                  setAnswerTouched(true)
-                }
-              }}
-              placeholder={currentStep.placeholder}
+          <input
+            type="text"
+            value={currentAnswer}
+            onChange={(e) => {
+              setAnswerTouched(false)
+              onAnswerChange(currentStep.id, e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return
+
+              e.preventDefault()
+
+              if (!answerValid) {
+                setAnswerTouched(true)
+                return
+              }
+
+              handleNext()
+            }}
+            onBlur={() => {
+              if ((currentAnswer || "").trim()) {
+                setAnswerTouched(true)
+              }
+            }}
+            placeholder={currentStep.placeholder}
               style={{
                 width: "100%",
                 background: "var(--bg-base)",

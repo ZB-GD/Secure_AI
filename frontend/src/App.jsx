@@ -64,7 +64,7 @@ export default function App() {
   function handleSelectItem(itemId) {
     const investigationStarted = hasInvestigationStarted();
 
-    // Antes de pulsar INITIALIZE INVESTIGATION no se puede navegar.
+    // Before pressing INITIALIZE INVESTIGATION, navigation is blocked.
     if (!investigationStarted && itemId !== "scenario-0") {
       return;
     }
@@ -82,8 +82,8 @@ export default function App() {
     const target = items.find((item) => item.id === itemId);
     if (!target || target.locked) return;
 
-    // Los scenarios no se abren desde la navegación superior.
-    // El scenario del lab se abre solo desde el flujo del propio lab.
+    // Secondary scenarios are opened only from their own lab flow, not from
+    // the top navigation.
     if (target.type === "scenario" && target.id !== "scenario-0") {
       return;
     }
@@ -102,7 +102,7 @@ export default function App() {
       ),
     );
 
-    // Al completar la pantalla inicial, vamos directamente al dashboard.
+    // Completing the welcome screen takes us straight to the dashboard.
     if (currentId === "scenario-0") {
       setActiveItemId("dashboard");
     }
@@ -216,6 +216,11 @@ export default function App() {
       ? isStepAnswerValid(currentStep, currentAnswer)
       : false;
 
+  // showValidation lives in the item state — pass it down so the guide
+  // can highlight the invalid answer field without duplicating state.
+  const showValidation =
+    activeItem.type === "lab" ? activeItem.showValidation ?? false : false;
+
   return (
     <MainLayout
       items={items}
@@ -223,6 +228,7 @@ export default function App() {
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
+      showValidation={showValidation}
       onSelectItem={handleSelectItem}
       onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}
