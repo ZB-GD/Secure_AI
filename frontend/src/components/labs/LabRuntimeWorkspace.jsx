@@ -426,13 +426,13 @@ function QuizTab({ item, phase, onComplete }) {
   const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
 
   const answeredCount = quiz.filter((_, i) =>
-    Object.prototype.hasOwnProperty.call(answers, i)
+    Object.prototype.hasOwnProperty.call(answers, i),
   ).length;
 
   const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
 
   const correctCount = quiz.filter(
-    (q, i) => answers[i] === q.correctAnswerIndex
+    (q, i) => answers[i] === q.correctAnswerIndex,
   ).length;
 
   const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
@@ -953,9 +953,7 @@ function QuizTab({ item, phase, onComplete }) {
                         justifyContent: "center",
                         flexShrink: 0,
                         fontSize: "9px",
-                        color: isSelected
-                          ? "var(--orange)"
-                          : "var(--text-3)",
+                        color: isSelected ? "var(--orange)" : "var(--text-3)",
                       }}
                     >
                       {String.fromCharCode(65 + optionIndex)}
@@ -997,7 +995,6 @@ export default function LabRuntimeWorkspace({
   onPrevStep,
   onNextStep,
   onCompleteLabQuiz,
-  onViewScenario,
 }) {
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
@@ -1115,32 +1112,6 @@ export default function LabRuntimeWorkspace({
             overflow: "hidden",
           }}
         >
-          {onViewScenario && (
-            <button
-              onClick={onViewScenario}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "7px 14px",
-                border: "none",
-                borderBottom: "1px solid var(--border-dim)",
-                background: "rgba(56,189,248,0.05)",
-                color: "var(--blue)",
-                fontSize: "10px",
-                fontFamily: "var(--font-mono)",
-                letterSpacing: "0.08em",
-                cursor: "pointer",
-                width: "100%",
-                textAlign: "left",
-                flexShrink: 0,
-                transition: "background 0.15s",
-              }}
-            >
-              <span style={{ fontSize: "11px" }}>◆</span>
-              VIEW PIPELINE
-            </button>
-          )}
           <TabBar
             activeTab={activeTab}
             onSelect={setActiveTab}
