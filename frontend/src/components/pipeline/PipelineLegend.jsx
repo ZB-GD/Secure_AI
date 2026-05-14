@@ -27,7 +27,7 @@ export default function PipelineLegend() {
             style={{
               color: "var(--text-3)",
               fontSize: 10,
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               letterSpacing: "0.06em",
             }}
           >

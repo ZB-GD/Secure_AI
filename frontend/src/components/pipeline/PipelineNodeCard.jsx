@@ -130,7 +130,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
             color: cfg.color,
             fontSize: "9px",
             fontWeight: 700,
-            fontFamily: "var(--font-mono)",
+            fontFamily: "var(--font-display)",
             letterSpacing: "0.14em",
           }}
         >
@@ -167,7 +167,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         <span
           style={{
             fontSize: "9px",
-            fontFamily: "var(--font-mono)",
+            fontFamily: "var(--font-display)",
             letterSpacing: "0.12em",
             color: "var(--text-3)",
             fontWeight: 600,

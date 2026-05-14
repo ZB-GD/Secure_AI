@@ -153,7 +153,7 @@ const handleSendMessage = async (e) => {
           <div style={{ padding: "12px 16px", background: "var(--blue-dim)", borderBottom: "1px solid var(--blue)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ fontSize: "16px" }}>🤖</div>
-              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-mono)" }}>CITYFLOW TUTOR</div>
+              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-display)" }}>CITYFLOW TUTOR</div>
             </div>
             <button onClick={() => setIsOpen(false)} style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: "16px" }}>✕</button>
           </div>
@@ -232,7 +232,7 @@ const handleSendMessage = async (e) => {
           cursor: "pointer",
           fontSize: isTopbar ? "10px" : "24px",
           color: isOpen ? "var(--blue)" : "var(--text-2)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
           fontWeight: 700,
           letterSpacing: isTopbar ? "0.10em" : 0,
           transition: "transform 0.2s, border-color 0.15s, background 0.15s"

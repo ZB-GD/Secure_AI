@@ -22,7 +22,7 @@ export default function PipelineStatus({ threatStage }) {
               justifyContent: 'center',
               fontSize: '11px',
               fontWeight: '700',
-              fontFamily: 'var(--font-mono)',
+              fontFamily: 'var(--font-display)',
               border: isActive ? '1px solid var(--orange)' : '1px solid var(--border-dim)',
               background: isActive ? 'var(--orange-dim)' : 'rgba(255,255,255,0.02)',
               color: isActive ? 'var(--orange)' : 'var(--text-3)',

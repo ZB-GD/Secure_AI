@@ -72,7 +72,7 @@ export default function PipelineCanvas({
             color: "var(--text-3)",
             fontSize: 11,
             fontWeight: 600,
-            fontFamily: "var(--font-mono)",
+            fontFamily: "var(--font-display)",
             letterSpacing: "0.1em",
           }}
         >

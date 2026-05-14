@@ -156,7 +156,7 @@ export default function RuntimeLogsPanel({
               border: "1px solid var(--orange-border)",
               background: "rgba(15,23,42,0.94)",
               color: "var(--orange)",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               fontSize: "10px",
               fontWeight: 700,
               cursor: "pointer",
