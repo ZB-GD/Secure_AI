@@ -17,7 +17,7 @@ function InfoBlock({ label, children, accent = false }) {
           fontSize: "9px",
           letterSpacing: "0.14em",
           color: accent ? "var(--orange)" : "var(--text-3)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
           marginBottom: "8px",
         }}
       >
@@ -28,7 +28,7 @@ function InfoBlock({ label, children, accent = false }) {
           fontSize: "12px",
           lineHeight: "1.75",
           color: "var(--text-2)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
         }}
       >
         {children}
@@ -120,7 +120,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 fontSize: "9px",
                 letterSpacing: "0.14em",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 marginBottom: "8px",
               }}
             >
@@ -131,7 +131,7 @@ export default function ScenarioGuide({ item, onComplete }) {
               style={{
                 fontSize: "12px",
                 color: "var(--text-1)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 fontWeight: "500",
                 marginBottom: "10px",
                 lineHeight: "1.7",
@@ -163,7 +163,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                         : "var(--bg-base)",
                     color: "var(--text-1)",
                     fontSize: "11px",
-                    fontFamily: "var(--font-mono)",
+                    fontFamily: "var(--font-display)",
                     cursor: "pointer",
                     transition: "all 0.2s"
                   }}
@@ -201,7 +201,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                   borderRadius: "6px",
                   fontSize: "11px",
                   color: "var(--blue)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 {item.question.hint}
@@ -218,7 +218,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                   borderRadius: "6px",
                   fontSize: "11px",
                   color: "var(--red)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 {item.question.wrongFeedback}
@@ -235,7 +235,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                   borderRadius: "6px",
                   fontSize: "11px",
                   color: "var(--green)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>{item.question.correctFeedback}</div>
@@ -250,7 +250,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                     color: "#fff",
                     fontSize: "11px",
                     fontWeight: "bold",
-                    fontFamily: "var(--font-mono)",
+                    fontFamily: "var(--font-display)",
                     cursor: "pointer",
                     boxShadow: "0 0 10px rgba(34,197,94,0.3)"
                   }}
@@ -274,7 +274,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 fontSize: "9px",
                 letterSpacing: "0.14em",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 marginBottom: "8px",
               }}
             >
@@ -286,7 +286,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 fontSize: "12px",
                 lineHeight: "1.75",
                 color: "var(--text-2)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               Acknowledge the emergency briefing to gain access to the raw pipeline telemetry and commence the investigation.
@@ -304,7 +304,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                 color: "#fff",
                 fontSize: "11px",
                 fontWeight: "bold",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 cursor: "pointer",
                 boxShadow: "0 0 10px rgba(249,115,22,0.3)"
               }}

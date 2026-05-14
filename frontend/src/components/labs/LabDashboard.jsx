@@ -51,7 +51,7 @@ export default function LabDashboard({ items, onSelectItem }) {
             <div
               style={{
                 color: "var(--green)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 fontSize: "10px",
                 letterSpacing: "0.16em",
                 marginBottom: "8px",
@@ -94,7 +94,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <div
                     style={{
                       color: "var(--text-3)",
-                      fontFamily: "var(--font-mono)",
+                      fontFamily: "var(--font-display)",
                       fontSize: "9px",
                       letterSpacing: "0.12em",
                       marginBottom: "6px",
@@ -130,7 +130,7 @@ export default function LabDashboard({ items, onSelectItem }) {
               fontSize: "10px",
               color: "var(--orange)",
               letterSpacing: "0.18em",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               marginBottom: "8px",
             }}
           >
@@ -168,7 +168,7 @@ export default function LabDashboard({ items, onSelectItem }) {
             justifyContent: "space-between",
             marginBottom: "16px",
             color: "var(--text-3)",
-            fontFamily: "var(--font-mono)",
+            fontFamily: "var(--font-display)",
             fontSize: "11px",
             letterSpacing: "0.08em",
           }}
@@ -223,7 +223,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                     <span
                       style={{
                         color: "var(--orange)",
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: "var(--font-display)",
                         fontSize: "10px",
                         letterSpacing: "0.14em",
                       }}
@@ -245,7 +245,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                         borderRadius: "999px",
                         padding: "3px 8px",
                         fontSize: "9px",
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: "var(--font-display)",
                       }}
                     >
                       {lab.completed ? "COMPLETE" : available ? "READY" : "COMING SOON"}
@@ -279,7 +279,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <div
                     style={{
                       color: "var(--text-3)",
-                      fontFamily: "var(--font-mono)",
+                      fontFamily: "var(--font-display)",
                       fontSize: "9px",
                       letterSpacing: "0.12em",
                       marginBottom: "6px",

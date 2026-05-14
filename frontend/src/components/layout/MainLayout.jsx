@@ -64,7 +64,7 @@ function BreadcrumbStrip({ activeItem }) {
         borderBottom: "1px solid var(--border-dim)",
         background: "rgba(15,23,42,0.58)",
         color: "var(--text-3)",
-        fontFamily: "var(--font-mono)",
+        fontFamily: "var(--font-display)",
         fontSize: "10px",
         letterSpacing: "0.08em",
         whiteSpace: "nowrap",

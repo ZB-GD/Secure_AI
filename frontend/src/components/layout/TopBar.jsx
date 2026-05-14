@@ -141,7 +141,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 color: "var(--orange)",
                 fontSize: "10px",
                 fontWeight: "600",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               AI
@@ -165,7 +165,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               style={{
                 fontSize: "9px",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 letterSpacing: "0.12em",
               }}
             >
@@ -212,7 +212,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                       : "none",
                   background: isActive ? activeBg : "transparent",
                   color: isActive ? activeColor : "var(--text-3)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                   fontSize: "10px",
                   letterSpacing: "0.10em",
                   cursor: isDisabled ? "not-allowed" : "pointer",

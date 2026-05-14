@@ -49,7 +49,7 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                   : "var(--text-3)",
               fontSize: "10px",
               letterSpacing: "0.10em",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               cursor: locked ? "not-allowed" : "pointer",
               display: "flex",
               flexDirection: "column",
@@ -635,7 +635,7 @@ function QuizTab({ item, phase, onComplete }) {
               color: allAnswered ? "#fff" : "var(--text-3)",
               fontSize: "11px",
               fontWeight: 700,
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               cursor: allAnswered ? "pointer" : "not-allowed",
               whiteSpace: "nowrap",
             }}
@@ -653,7 +653,7 @@ function QuizTab({ item, phase, onComplete }) {
               background: "transparent",
               color: "var(--text-2)",
               fontSize: "11px",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
@@ -704,7 +704,7 @@ function QuizTab({ item, phase, onComplete }) {
                 fontSize: "11px",
                 fontWeight: 600,
                 color: "var(--text-1)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               TUTOR — Personalized feedback
@@ -715,7 +715,7 @@ function QuizTab({ item, phase, onComplete }) {
                 marginLeft: "auto",
                 fontSize: "10px",
                 color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               {Math.round(scoreRatio * 100)}% —{" "}
@@ -729,7 +729,7 @@ function QuizTab({ item, phase, onComplete }) {
                 style={{
                   color: "var(--text-3)",
                   fontSize: "12px",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 Analyzing your answers...
@@ -797,7 +797,7 @@ function QuizTab({ item, phase, onComplete }) {
                       color: "var(--blue)",
                       textDecoration: "none",
                       fontSize: "11px",
-                      fontFamily: "var(--font-mono)",
+                      fontFamily: "var(--font-display)",
                     }}
                   >
                     <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>

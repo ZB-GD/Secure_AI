@@ -66,7 +66,7 @@ export default function AttackControls({
                   padding: "8px",
                   borderRadius: "6px",
                   fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               />
             </div>
@@ -93,7 +93,7 @@ export default function AttackControls({
                   padding: "8px",
                   borderRadius: "6px",
                   fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                   textAlign: "center",
                   fontWeight: "bold",
                 }}

@@ -84,7 +84,7 @@ export default function WelcomePage({ item, onComplete, onSelectItem }) {
               borderRadius: "8px",
               border: "1px solid var(--border-mid)",
               minHeight: "160px",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               fontSize: "14px",
               lineHeight: "1.8",
               color: "var(--text-2)",
