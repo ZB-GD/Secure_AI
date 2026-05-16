@@ -106,7 +106,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                     style={{
                       color: "var(--text-1)",
                       fontFamily: "var(--font-display)",
-                      fontSize: "22px",
+                      fontSize: "20px",
                       fontWeight: 700,
                     }}
                   >
@@ -169,7 +169,7 @@ export default function LabDashboard({ items, onSelectItem }) {
             marginBottom: "16px",
             color: "var(--text-3)",
             fontFamily: "var(--font-display)",
-            fontSize: "11px",
+            fontSize: "10px",
             letterSpacing: "0.08em",
           }}
         >
@@ -257,7 +257,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                       margin: 0,
                       color: "var(--text-1)",
                       fontFamily: "var(--font-display)",
-                      fontSize: "19px",
+                      fontSize: "20px",
                       lineHeight: 1.25,
                     }}
                   >
@@ -266,7 +266,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <p
                     style={{
                       color: "var(--text-2)",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       lineHeight: 1.6,
                       margin: "10px 0 0",
                     }}
@@ -290,7 +290,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <div
                     style={{
                       color: "var(--text-1)",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       lineHeight: 1.5,
                     }}
                   >

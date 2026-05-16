@@ -151,7 +151,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           <div>
             <div
               style={{
-                fontSize: "13px",
+                fontSize: "14px",
                 fontWeight: "700",
                 fontFamily: "var(--font-display)",
                 color: "var(--text-1)",

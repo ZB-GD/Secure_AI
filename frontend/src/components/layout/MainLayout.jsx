@@ -3,9 +3,9 @@ import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
 
-const SIDEBAR_MIN_WIDTH = 280;
-const SIDEBAR_MAX_WIDTH = 620;
-const SIDEBAR_DEFAULT_WIDTH = 360;
+const SIDEBAR_MIN_WIDTH = 340;
+const SIDEBAR_MAX_WIDTH = 760;
+const SIDEBAR_DEFAULT_WIDTH = 480;
 
 function buildBreadcrumb(activeItem) {
   if (!activeItem) return ["Dashboard"];
@@ -107,7 +107,7 @@ function clampSidebarWidth(width) {
       ? SIDEBAR_MAX_WIDTH
       : Math.max(
           SIDEBAR_MIN_WIDTH,
-          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 420),
+          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 520),
         );
 
   return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), viewportMax);

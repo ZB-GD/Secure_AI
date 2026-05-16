@@ -20,7 +20,7 @@ export default function PipelineStatus({ threatStage }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: '700',
               fontFamily: 'var(--font-display)',
               border: isActive ? '1px solid var(--orange)' : '1px solid var(--border-dim)',

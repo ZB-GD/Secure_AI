@@ -112,7 +112,7 @@ export default function WelcomePage({ item, onComplete, onSelectItem }) {
               color: "white",
               border: "none",
               borderRadius: "4px",
-              fontSize: "13px",
+              fontSize: "14px",
               fontWeight: "700",
               letterSpacing: "0.1em",
               cursor: "pointer",
