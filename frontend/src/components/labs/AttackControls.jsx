@@ -65,7 +65,7 @@ export default function AttackControls({
                   color: "var(--text-3)",
                   padding: "8px",
                   borderRadius: "6px",
-                  fontSize: "11px",
+                  fontSize: "10px",
                   fontFamily: "var(--font-display)",
                 }}
               />
@@ -92,7 +92,7 @@ export default function AttackControls({
                   color: "var(--red)",
                   padding: "8px",
                   borderRadius: "6px",
-                  fontSize: "11px",
+                  fontSize: "10px",
                   fontFamily: "var(--font-display)",
                   textAlign: "center",
                   fontWeight: "bold",
@@ -132,7 +132,7 @@ export default function AttackControls({
         >
           <div
             style={{
-              fontSize: "11px",
+              fontSize: "10px",
               color: "var(--red)",
               fontWeight: "bold",
               marginBottom: "6px",

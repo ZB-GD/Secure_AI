@@ -35,7 +35,7 @@ export default function RemoteDesktopPanel({
         >
           <p
             style={{
-              fontSize: "11px",
+              fontSize: "10px",
               fontFamily: "var(--font-display)",
               textTransform: "uppercase",
               letterSpacing: "0.35em",
@@ -103,7 +103,7 @@ export default function RemoteDesktopPanel({
         >
           <p
             style={{
-              fontSize: "11px",
+              fontSize: "10px",
               fontFamily: "var(--font-display)",
               textTransform: "uppercase",
               letterSpacing: "0.35em",
@@ -179,7 +179,7 @@ export default function RemoteDesktopPanel({
       >
         <p
           style={{
-            fontSize: "11px",
+            fontSize: "10px",
             fontFamily: "var(--font-display)",
             textTransform: "uppercase",
             letterSpacing: "0.35em",

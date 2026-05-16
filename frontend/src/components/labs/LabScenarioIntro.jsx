@@ -3,9 +3,9 @@ import Sidebar from "../layout/Sidebar";
 import ScenarioWorkspace from "../scenarios/ScenarioWorkspace";
 import { journey } from "../../data/journey";
 
-const SIDEBAR_MIN = 260;
-const SIDEBAR_MAX = 620;
-const SIDEBAR_DEFAULT = 360;
+const SIDEBAR_MIN = 340;
+const SIDEBAR_MAX = 760;
+const SIDEBAR_DEFAULT = 480;
 
 export default function LabScenarioIntro({ item, onStartLab }) {
   const linkedId = item.id.replace("lab", "scenario");

@@ -59,7 +59,7 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
               opacity: locked ? 0.4 : 1,
             }}
           >
-            <span style={{ fontSize: "13px" }}>{tab.icon}</span>
+            <span style={{ fontSize: "14px" }}>{tab.icon}</span>
             {tab.label.toUpperCase()}
             {tab.id === "quiz" && !quizUnlocked && (
               <span style={{ fontSize: "9px", color: "var(--text-3)" }}>
@@ -248,7 +248,7 @@ function MetricsTab({ runtime, item }) {
           </div>
           <div
             style={{
-              fontSize: "13px",
+              fontSize: "14px",
               color: "var(--text-1)",
               lineHeight: 1.5,
             }}
@@ -311,7 +311,7 @@ function MetricsTab({ runtime, item }) {
             </div>
             <div
               style={{
-                fontSize: "30px",
+                fontSize: "28px",
                 color: metric.color,
                 fontWeight: 700,
                 fontFamily: "var(--font-display)",
@@ -322,7 +322,7 @@ function MetricsTab({ runtime, item }) {
             >
               {metric.value}
               {metric.suffix && (
-                <span style={{ fontSize: "15px" }}>{metric.suffix}</span>
+                <span style={{ fontSize: "16px" }}>{metric.suffix}</span>
               )}
             </div>
             <div
@@ -538,7 +538,7 @@ function QuizTab({ item, phase, onComplete }) {
           padding: "32px 20px",
           textAlign: "center",
           color: "var(--text-3)",
-          fontSize: "13px",
+          fontSize: "14px",
         }}
       >
         No questions are configured for this lab.
@@ -575,7 +575,7 @@ function QuizTab({ item, phase, onComplete }) {
         <div>
           <div
             style={{
-              fontSize: "22px",
+              fontSize: "20px",
               fontWeight: 700,
               color: "var(--text-1)",
               fontFamily: "var(--font-display)",
@@ -633,7 +633,7 @@ function QuizTab({ item, phase, onComplete }) {
               border: "none",
               background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
               color: allAnswered ? "#fff" : "var(--text-3)",
-              fontSize: "11px",
+              fontSize: "10px",
               fontWeight: 700,
               fontFamily: "var(--font-display)",
               cursor: allAnswered ? "pointer" : "not-allowed",
@@ -652,7 +652,7 @@ function QuizTab({ item, phase, onComplete }) {
               border: "1px solid var(--border-dim)",
               background: "transparent",
               color: "var(--text-2)",
-              fontSize: "11px",
+              fontSize: "10px",
               fontFamily: "var(--font-display)",
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -701,7 +701,7 @@ function QuizTab({ item, phase, onComplete }) {
 
             <span
               style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 fontWeight: 600,
                 color: "var(--text-1)",
                 fontFamily: "var(--font-display)",
@@ -751,7 +751,7 @@ function QuizTab({ item, phase, onComplete }) {
             {tutorFeedback && (
               <div
                 style={{
-                  fontSize: "13px",
+                  fontSize: "14px",
                   color: "var(--text-1)",
                   lineHeight: 1.75,
                   whiteSpace: "pre-wrap",
@@ -796,7 +796,7 @@ function QuizTab({ item, phase, onComplete }) {
                       border: "1px solid var(--border-dim)",
                       color: "var(--blue)",
                       textDecoration: "none",
-                      fontSize: "11px",
+                      fontSize: "10px",
                       fontFamily: "var(--font-display)",
                     }}
                   >
@@ -935,7 +935,7 @@ function QuizTab({ item, phase, onComplete }) {
                       border: `1px solid ${border}`,
                       background,
                       color,
-                      fontSize: "11px",
+                      fontSize: "10px",
                       lineHeight: 1.5,
                       cursor: submitted ? "default" : "pointer",
                     }}
@@ -971,7 +971,7 @@ function QuizTab({ item, phase, onComplete }) {
                   padding: "10px 14px",
                   borderTop: "1px solid var(--border-dim)",
                   background: "rgba(56,189,248,0.04)",
-                  fontSize: "11px",
+                  fontSize: "10px",
                   color: "var(--text-2)",
                   lineHeight: 1.6,
                 }}

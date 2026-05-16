@@ -145,7 +145,7 @@ function InstructionText({ text }) {
             key={index}
             style={{
               margin: 0,
-              fontSize: "13px",
+              fontSize: "14px",
               lineHeight: "1.7",
               color: "var(--text-2)",
             }}
@@ -319,7 +319,7 @@ export default function LabGuide({
       >
         <h2
           style={{
-            fontSize: "18px",
+            fontSize: "20px",
             color: "var(--text-1)",
             fontFamily: "var(--font-display)",
             margin: 0,
@@ -472,7 +472,7 @@ export default function LabGuide({
 
           <p
             style={{
-              fontSize: "13px",
+              fontSize: "14px",
               lineHeight: "1.7",
               color: "var(--text-2)",
             }}
@@ -525,9 +525,10 @@ export default function LabGuide({
         >
           <div
             style={{
-              fontSize: "12px",
+              fontSize: "14px",
               color: "var(--text-1)",
               fontWeight: "600",
+              lineHeight: "1.6",
               marginBottom: "12px",
             }}
           >
@@ -598,7 +599,7 @@ export default function LabGuide({
             <div
               style={{
                 marginTop: "8px",
-                fontSize: "11px",
+                fontSize: "10px",
                 color: "var(--red)",
               }}
             >

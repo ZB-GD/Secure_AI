@@ -183,7 +183,7 @@ const handleSendMessage = async (e) => {
                         <button 
                           key={optIdx}
                           onClick={() => handleQuizAnswer(idx, optIdx, msg.correctAnswerIndex, msg.explanation)}
-                          style={{ textAlign: "left", padding: "8px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "4px", color: "var(--text-2)", fontSize: "11px", cursor: "pointer", transition: "all 0.2s" }}
+                          style={{ textAlign: "left", padding: "8px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "4px", color: "var(--text-2)", fontSize: "10px", cursor: "pointer", transition: "all 0.2s" }}
                           onMouseOver={(e) => e.target.style.borderColor = "var(--orange)"}
                           onMouseOut={(e) => e.target.style.borderColor = "var(--border-dim)"}
                         >
@@ -195,7 +195,7 @@ const handleSendMessage = async (e) => {
                 )}
               </div>
             ))}
-            {loading && <div style={{ fontSize: "11px", color: "var(--text-3)", paddingLeft: "8px" }}>Escribiendo...</div>}
+            {loading && <div style={{ fontSize: "10px", color: "var(--text-3)", paddingLeft: "8px" }}>Escribiendo...</div>}
             <div ref={messagesEndRef} />
           </div>
 
