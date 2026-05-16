@@ -115,12 +115,20 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           gap: "16px",
         }}
       >
-        <div
+        <button
+          type="button"
+          onClick={() => onSelectItem("scenario-0")}
+          aria-label="Go to welcome page"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
             minWidth: "160px",
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
           }}
         >
           <div
@@ -172,7 +180,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               AI SECURITY TRAINING
             </div>
           </div>
-        </div>
+        </button>
 
         <div
           style={{
