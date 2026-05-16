@@ -171,7 +171,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "10px",
                 color: "var(--text-3)",
                 fontFamily: "var(--font-display)",
                 letterSpacing: "0.12em",
