@@ -128,11 +128,13 @@ function MetricsTab({ runtime, item }) {
   const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
   const protectedMode =
     runtime.statusLabel === "protected" || runtime.defenseEnabled;
+
   const statusColor = runtime.isCompromised
     ? "var(--red)"
     : protectedMode
       ? "var(--green)"
       : "var(--orange)";
+
   const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
   const attackCommands = item?.attackCommands || [];
 
@@ -153,6 +155,24 @@ function MetricsTab({ runtime, item }) {
     runtime.driftScore,
   ]);
 
+  useEffect(() => {
+    setHistory((prev) => {
+      const nextPoint = {
+        drift: Number(runtime.driftScore ?? 0),
+        trust: Number(runtime.accuracy ?? 0),
+        key: `${runtime.driftScore}-${runtime.accuracy}-${runtime.attackAttempts}-${runtime.defenseEnabled}`,
+      };
+
+      if (prev[prev.length - 1]?.key === nextPoint.key) return prev;
+
+      return [...prev, nextPoint].slice(-10);
+    });
+  }, [
+    runtime.accuracy,
+    runtime.attackAttempts,
+    runtime.defenseEnabled,
+    runtime.driftScore,
+  ]);
   const metricCards = [
     {
       label: "ATTACK ATTEMPTS",
@@ -335,17 +355,18 @@ function MetricsTab({ runtime, item }) {
               {metric.caption}
             </div>
             {metric.label === "DOWNSTREAM RISK" && (
-              <MetricSparkline
-                points={history.map((point) => point.drift)}
-                color={metric.color}
-              />
-            )}
-            {metric.label === "MODEL TRUST" && (
-              <MetricSparkline
-                points={history.map((point) => point.trust)}
-                color={metric.color}
-              />
-            )}
+          <MetricSparkline
+            points={history.map((point) => point.drift)}
+            color={metric.color}
+          />
+        )}
+
+        {metric.label === "MODEL TRUST" && (
+          <MetricSparkline
+            points={history.map((point) => point.trust)}
+            color={metric.color}
+          />
+        )}
           </div>
         ))}
       </div>
@@ -663,7 +684,7 @@ function QuizTab({ item, phase, onComplete }) {
         )}
       </div>
 
-      {/* ── Tutor feedback block: AHORA VA ARRIBA, no enterrado al final ── */}
+      {/* ── Tutor feedback block ── */}
       {submitted && (
         <div
           ref={feedbackRef}
@@ -1150,6 +1171,7 @@ export default function LabRuntimeWorkspace({
               <MetricsTab
                 item={item}
                 runtime={runtime}
+                item={item}
                 onAttack={triggerAttack}
                 attackLoading={attackLoading}
               />

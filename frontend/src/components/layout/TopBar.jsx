@@ -7,6 +7,12 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
   const [lastLabId, setLastLabId] = useState("");
 
+  const [lastLabId, setLastLabId] = useState(
+    () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
+  );
+
+  const [navView, setNavView] = useState("home");
+
   const investigationStarted = items.some(
     (item) => item.id === "scenario-0" && item.completed,
   );
@@ -22,16 +28,24 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     ? `${currentLab.shortTitle.toUpperCase()} - ${currentLab.phase}`
     : "LABS";
 
-  const isLabScenarioIntro =
-    activeItem?.type === "lab" &&
-    activeItem?.scenario &&
-    !activeItem?.scenarioViewed;
+  const currentLab =
+    activeItem?.type === "lab"
+      ? activeItem
+      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
 
-  const isLabRuntime =
-    activeItem?.type === "lab" &&
-    (!activeItem?.scenario || activeItem?.scenarioViewed);
+  const isActuallyInsideLab = activeItem?.type === "lab";
 
-  const [navView, setNavView] = useState("home");
+  const currentLabLabel =
+    isActuallyInsideLab && currentLab
+      ? `LAB - ${currentLab.shortTitle.replace(/^Lab\s*/i, "")} ${currentLab.title}`
+      : "LABS";
+
+  useEffect(() => {
+    if (activeItem?.type !== "lab") return;
+
+    setLastLabId(activeItem.id);
+    localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
+  }, [activeItem]);
 
   useEffect(() => {
     if (activeItem?.type !== "lab") return;
@@ -46,15 +60,20 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
       return;
     }
 
-    if (isLabRuntime) {
+    if (activeItem?.type === "lab") {
       setNavView("labs");
+      return;
+    }
+
+    if (activeItem?.type === "docs" || activeId === "docs") {
+      setNavView("docs");
       return;
     }
 
     if (activeId === "dashboard" || activeItem?.type === "welcome") {
       setNavView("home");
     }
-  }, [activeId, activeItem?.type, isLabScenarioIntro, isLabRuntime]);
+  }, [activeId, activeItem?.type]);
 
   const navTabs = [
     {
@@ -72,7 +91,23 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
       label: currentLabLabel,
       disabled: !investigationStarted || !hasUnlockedLabs,
     },
+    {
+      id: "docs",
+      label: "DOC",
+      disabled: !investigationStarted,
+    },
   ];
+
+  function goHome() {
+    if (investigationStarted) {
+      setNavView("home");
+      onSelectItem("dashboard");
+      return;
+    }
+
+    setNavView("home");
+    onSelectItem("scenario-0");
+  }
 
   function handleTabClick(tab) {
     if (tab.disabled) return;
@@ -84,17 +119,22 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     }
 
     if (tab.id === "labs") {
-      const targetLab = currentLab || lastUnlockedLab;
-      if (!targetLab) return;
+      if (!currentLab) return;
 
       setNavView("labs");
-      onSelectItem(targetLab.id);
+      onSelectItem(currentLab.id);
       return;
     }
 
     if (tab.id === "scenarios") {
       setNavView("scenarios");
       onSelectItem("pipeline");
+      return;
+    }
+
+    if (tab.id === "docs") {
+      setNavView("docs");
+      onSelectItem("docs");
     }
   }
 
@@ -108,22 +148,24 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     >
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          justifyContent: "space-between",
           padding: "10px 20px",
           gap: "16px",
         }}
       >
+        {/* Logo / Home button */}
         <button
           type="button"
-          onClick={() => onSelectItem("scenario-0")}
-          aria-label="Go to welcome page"
+          onClick={goHome}
+          title="Go to home"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            minWidth: "160px",
+            minWidth: "180px",
+            width: "fit-content",
             border: "none",
             background: "transparent",
             padding: 0,
@@ -142,6 +184,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               alignItems: "center",
               justifyContent: "center",
               boxShadow: "0 0 10px rgba(249,115,22,0.15)",
+              flexShrink: 0,
             }}
           >
             <span
@@ -182,28 +225,31 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           </div>
         </button>
 
-        <div
+        {/* Main navigation */}
+        <nav
+          aria-label="Main navigation"
           style={{
             display: "inline-flex",
             border: "1px solid var(--border-dim)",
             borderRadius: "8px",
             overflow: "hidden",
             background: "var(--bg-elevated)",
+            justifySelf: "center",
           }}
         >
           {navTabs.map((tab, index) => {
             const isActive = navView === tab.id;
             const isScenarioTab = tab.id === "scenarios";
+            const isDocsTab = tab.id === "docs";
             const isDisabled = Boolean(tab.disabled);
 
             const activeBg =
-              tab.id === "home"
+              tab.id === "home" || tab.id === "labs"
                 ? "var(--orange-dim)"
-                : isScenarioTab
-                  ? "rgba(56,189,248,0.10)"
-                  : "var(--orange-dim)";
+                : "rgba(56,189,248,0.10)";
 
-            const activeColor = isScenarioTab ? "var(--blue)" : "var(--text-1)";
+            const activeColor =
+              isScenarioTab || isDocsTab ? "var(--blue)" : "var(--text-1)";
 
             return (
               <button
@@ -234,17 +280,49 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 }}
               >
                 {tab.label}
+
+                {tab.badge !== undefined && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 6px",
+                      borderRadius: "999px",
+                      background: isActive
+                        ? isScenarioTab || isDocsTab
+                          ? "rgba(56,189,248,0.18)"
+                          : "rgba(249,115,22,0.18)"
+                        : "var(--bg-surface)",
+                      color: isActive
+                        ? isScenarioTab || isDocsTab
+                          ? "var(--blue)"
+                          : "var(--orange)"
+                        : "var(--text-3)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        <RagTutorWidget
-          labId={activeItem?.id}
-          phase={activeItem?.phase}
-          activeItem={activeItem}
-          placement="topbar"
-        />
+        {/* Tutor */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            minWidth: "180px",
+          }}
+        >
+          <RagTutorWidget
+            labId={activeItem?.id}
+            phase={activeItem?.phase}
+            activeItem={activeItem}
+            placement="topbar"
+          />
+        </div>
       </div>
     </header>
   );
