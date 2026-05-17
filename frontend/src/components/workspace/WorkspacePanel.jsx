@@ -4,6 +4,7 @@ import { ScenarioOnePipelineRuntime } from "../scenarios/ScenarioWorkspace";
 import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace";
 import LabDashboard from "../labs/LabDashboard";
 import LabScenarioIntro from "../labs/LabScenarioIntro";
+import DocsPage from "../../data/DocsPage";
 
 export default function WorkspacePanel({
   items,
@@ -90,6 +91,16 @@ export default function WorkspacePanel({
       />
     );
   }
+  // Docs page — se activa cuando item.type === "docs"
+// También acepta un docPath opcional para que el tutor RAG pueda
+// abrir directamente un documento concreto:
+//   onSelectItem({ id: "docs", type: "docs", docPath: "/docs/data-poisoning" })
+
+if (item.type === "docs") {
+  return (
+    <DocsPage initialDocPath={item.docPath || null} />
+  );
+}
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
