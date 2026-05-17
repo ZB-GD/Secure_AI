@@ -437,4 +437,13 @@ export const journey = [
     guide: { objective: "Coming soon.", steps: [] },
     quiz: [],
   },
+  {
+  id: "docs",
+  type: "docs",
+  shortTitle: "Docs",
+  title: "Security Reference",
+  phase: "Reference",
+  threatStage: null,
+},
+
 ];

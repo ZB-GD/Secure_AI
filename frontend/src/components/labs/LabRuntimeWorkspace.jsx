@@ -74,18 +74,92 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
 }
 
 // ─── Sub-component: MetricsTab ───────────────────────────────────────────────
-function MetricsTab({ runtime }) {
+function MetricSparkline({ points = [], color = "var(--orange)" }) {
+  const width = 120;
+  const height = 34;
+  const values = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = width / Math.max(values.length - 1, 1);
+
+  const d = values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - ((value - min) / range) * (height - 6) - 3;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+      style={{ width: "100%", height: "34px", display: "block" }}
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {values.map((value, index) => {
+        const x = index * step;
+        const y = height - ((value - min) / range) * (height - 6) - 3;
+
+        return (
+          <circle
+            key={`${value}-${index}`}
+            cx={x}
+            cy={y}
+            r={index === values.length - 1 ? 2.6 : 1.8}
+            fill={color}
+            opacity={index === values.length - 1 ? 1 : 0.55}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function MetricsTab({ runtime, item }) {
+  const [history, setHistory] = useState([]);
+
   const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
   const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
   const protectedMode =
     runtime.statusLabel === "protected" || runtime.defenseEnabled;
+
   const statusColor = runtime.isCompromised
     ? "var(--red)"
     : protectedMode
       ? "var(--green)"
       : "var(--orange)";
-  const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
 
+  const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
+  const attackCommands = item?.attackCommands || [];
+
+  useEffect(() => {
+    setHistory((prev) => {
+      const nextPoint = {
+        drift: Number(runtime.driftScore ?? 0),
+        trust: Number(runtime.accuracy ?? 0),
+        key: `${runtime.driftScore}-${runtime.accuracy}-${runtime.attackAttempts}-${runtime.defenseEnabled}`,
+      };
+
+      if (prev[prev.length - 1]?.key === nextPoint.key) return prev;
+
+      return [...prev, nextPoint].slice(-10);
+    });
+  }, [
+    runtime.accuracy,
+    runtime.attackAttempts,
+    runtime.defenseEnabled,
+    runtime.driftScore,
+  ]);
   const metricCards = [
     {
       label: "ATTACK ATTEMPTS",
@@ -267,6 +341,19 @@ function MetricsTab({ runtime }) {
             >
               {metric.caption}
             </div>
+            {metric.label === "DOWNSTREAM RISK" && (
+          <MetricSparkline
+            points={history.map((point) => point.drift)}
+            color={metric.color}
+          />
+        )}
+
+        {metric.label === "MODEL TRUST" && (
+          <MetricSparkline
+            points={history.map((point) => point.trust)}
+            color={metric.color}
+          />
+        )}
           </div>
         ))}
       </div>
@@ -913,7 +1000,6 @@ export default function LabRuntimeWorkspace({
   onPrevStep,
   onNextStep,
   onCompleteLabQuiz,
-  onViewScenario,
 }) {
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
@@ -1031,32 +1117,6 @@ export default function LabRuntimeWorkspace({
             overflow: "hidden",
           }}
         >
-          {onViewScenario && (
-            <button
-              onClick={onViewScenario}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "7px 14px",
-                border: "none",
-                borderBottom: "1px solid var(--border-dim)",
-                background: "rgba(56,189,248,0.05)",
-                color: "var(--blue)",
-                fontSize: "10px",
-                fontFamily: "var(--font-mono)",
-                letterSpacing: "0.08em",
-                cursor: "pointer",
-                width: "100%",
-                textAlign: "left",
-                flexShrink: 0,
-                transition: "background 0.15s",
-              }}
-            >
-              <span style={{ fontSize: "11px" }}>◆</span>
-              VIEW PIPELINE
-            </button>
-          )}
           <TabBar
             activeTab={activeTab}
             onSelect={setActiveTab}
@@ -1091,6 +1151,7 @@ export default function LabRuntimeWorkspace({
             {activeTab === "metrics" && (
               <MetricsTab
                 runtime={runtime}
+                item={item}
                 onAttack={triggerAttack}
                 attackLoading={attackLoading}
               />
