@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import RagTutorWidget from "../workspace/RagTutorWidget";
 
+const LAST_LAB_STORAGE_KEY = "seclabs-last-lab-id";
+
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const labs = items.filter((i) => i.type === "lab");
 
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
-  const [lastLabId, setLastLabId] = useState("");
 
   const [lastLabId, setLastLabId] = useState(
     () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
@@ -20,13 +21,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   const unlockedLabs = labs.filter((lab) => lab.scenarioViewed);
   const hasUnlockedLabs = unlockedLabs.length > 0;
   const lastUnlockedLab = unlockedLabs[unlockedLabs.length - 1] || null;
-  const currentLab =
-    activeItem?.type === "lab"
-      ? activeItem
-      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
-  const currentLabLabel = currentLab
-    ? `${currentLab.shortTitle.toUpperCase()} - ${currentLab.phase}`
-    : "LABS";
 
   const currentLab =
     activeItem?.type === "lab"
@@ -48,14 +42,9 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   }, [activeItem]);
 
   useEffect(() => {
-    if (activeItem?.type !== "lab") return;
-    setLastLabId(activeItem.id);
-  }, [activeItem]);
-
-  useEffect(() => {
     if (!activeId) return;
 
-    if (activeItem?.type === "pipeline" || isLabScenarioIntro) {
+    if (activeItem?.type === "pipeline") {
       setNavView("scenarios");
       return;
     }
@@ -155,7 +144,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           gap: "16px",
         }}
       >
-        {/* Logo / Home button */}
         <button
           type="button"
           onClick={goHome}
@@ -191,8 +179,8 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               style={{
                 color: "var(--orange)",
                 fontSize: "10px",
-                fontWeight: "600",
-                fontFamily: "var(--font-display)",
+                fontWeight: 600,
+                fontFamily: "var(--font-mono)",
               }}
             >
               AI
@@ -202,8 +190,8 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           <div>
             <div
               style={{
-                fontSize: "14px",
-                fontWeight: "700",
+                fontSize: "13px",
+                fontWeight: 700,
                 fontFamily: "var(--font-display)",
                 color: "var(--text-1)",
                 letterSpacing: "0.04em",
@@ -216,7 +204,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               style={{
                 fontSize: "9px",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-display)",
+                fontFamily: "var(--font-mono)",
                 letterSpacing: "0.12em",
               }}
             >
@@ -225,7 +213,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           </div>
         </button>
 
-        {/* Main navigation */}
         <nav
           aria-label="Main navigation"
           style={{
@@ -266,7 +253,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                       : "none",
                   background: isActive ? activeBg : "transparent",
                   color: isActive ? activeColor : "var(--text-3)",
-                  fontFamily: "var(--font-display)",
+                  fontFamily: "var(--font-mono)",
                   fontSize: "10px",
                   letterSpacing: "0.10em",
                   cursor: isDisabled ? "not-allowed" : "pointer",
@@ -280,35 +267,11 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 }}
               >
                 {tab.label}
-
-                {tab.badge !== undefined && (
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      padding: "1px 6px",
-                      borderRadius: "999px",
-                      background: isActive
-                        ? isScenarioTab || isDocsTab
-                          ? "rgba(56,189,248,0.18)"
-                          : "rgba(249,115,22,0.18)"
-                        : "var(--bg-surface)",
-                      color: isActive
-                        ? isScenarioTab || isDocsTab
-                          ? "var(--blue)"
-                          : "var(--orange)"
-                        : "var(--text-3)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
               </button>
             );
           })}
         </nav>
 
-        {/* Tutor */}
         <div
           style={{
             display: "flex",
