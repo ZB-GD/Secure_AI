@@ -1306,7 +1306,7 @@ export default function DocsPage({ initialDocPath }) {
             overflowX: "auto",
           }}
         >
-          {CATEGORIES.map((cat, i) => {
+          {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat;
             return (
               <button

@@ -10,7 +10,7 @@ export default function RemoteDesktopPanel({
   const [iframeKey, setIframeKey] = useState(0);
 
   useEffect(() => {
-    setIframeKey(0);
+    setIframeKey((k) => k + 1);
   }, [remoteUrl]);
 
   if (remoteLoading) {
@@ -224,11 +224,6 @@ export default function RemoteDesktopPanel({
               key={iframeKey}
               title={`Remote Interface ${item.id}`}
               src={remoteUrl}
-              onLoad={() => {
-                if (iframeKey === 0) {
-                  window.setTimeout(() => setIframeKey(1), 1200);
-                }
-              }}
               style={{ width: "100%", height: "100%", border: "none" }}
             />
           </div>
