@@ -22,8 +22,8 @@ def heartbeat_lab_by_node(node: str, session_id: str = Query(default="shared")):
 
 
 @router.get("/{node}/status")
-def get_lab_status(node: str, session_id: str = Query(default="shared")):
-    return docker_service.get_lab_status(node, session_id)
+def get_lab_status(node: str, request: Request, session_id: str = Query(default="shared")):
+    return docker_service.get_lab_status(node, request.url.hostname, session_id)
 
 
 @router.post("/{node}/attack")
