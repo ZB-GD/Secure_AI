@@ -579,7 +579,7 @@ function QuizTab({ item, phase, onComplete }) {
         )}
       </div>
 
-      {/* ── Tutor feedback block: AHORA VA ARRIBA, no enterrado al final ── */}
+      {/* ── Tutor feedback block ── */}
       {submitted && (
         <div
           ref={feedbackRef}
