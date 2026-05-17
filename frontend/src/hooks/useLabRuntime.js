@@ -130,6 +130,10 @@ export function useLabRuntime(labId, options = {}) {
       const payload = await labService.getStatusById(labId);
       if (!payload) return;
 
+      if (payload?.status === "not found") {
+        setRemoteUrl("");
+      }
+
       if (payload?.terminal_url) {
         setRemoteUrl(payload.terminal_url);
       }
@@ -200,6 +204,13 @@ export function useLabRuntime(labId, options = {}) {
     if (autoStart && labId) startRuntime();
   }, [labId, autoStart, startRuntime]);
 
+  // Recover when a redeploy or cleanup stops the disposable lab while the page
+  // remains open. Otherwise noVNC keeps reconnecting to a dead host port.
+  useEffect(() => {
+    if (!autoStart || !labId || remoteLoading || remoteError) return;
+    if (runtime.statusLabel === "not found") startRuntime();
+  }, [autoStart, labId, remoteLoading, remoteError, runtime.statusLabel, startRuntime]);
+
   // Poll isolated container logs.
   useEffect(() => {
     if (!labId) return;
@@ -213,6 +224,32 @@ export function useLabRuntime(labId, options = {}) {
     const timer = window.setInterval(refreshStatus, pollIntervalMs);
     return () => window.clearInterval(timer);
   }, [labId, pollIntervalMs, refreshStatus]);
+
+  // Keep disposable lab containers alive only while the browser session is active.
+  useEffect(() => {
+    if (!labId) return;
+
+    const sendHeartbeat = () => {
+      labService.heartbeatLabById(labId).catch(() => {});
+    };
+
+    sendHeartbeat();
+    const timer = window.setInterval(sendHeartbeat, 60_000);
+    return () => window.clearInterval(timer);
+  }, [labId]);
+
+  // Browser-scoped runtime: closing or navigating away from the page discards
+  // the lab container instead of preserving progress for a later visit.
+  useEffect(() => {
+    if (!labId) return;
+
+    const stopRuntime = () => {
+      labService.stopLabById(labId, { keepalive: true }).catch(() => {});
+    };
+
+    window.addEventListener("pagehide", stopRuntime);
+    return () => window.removeEventListener("pagehide", stopRuntime);
+  }, [labId]);
 
   return {
     remoteUrl,

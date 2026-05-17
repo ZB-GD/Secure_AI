@@ -31,6 +31,7 @@ SecLabs/
 ├── frontend/                        # User interface (React)
 ├── docker-compose.yml               # Root Compose file for the platform
 ├── setup.sh                         # Development environment setup (run inside the VM)
+├── deploy.sh                        # Build images and start the platform
 └── TROUBLESHOOTING.md               # Known issues and solutions
 ```
 
@@ -155,6 +156,16 @@ ssh <your_user>@<enp0s8_IP>
 VBoxManage controlvm "SecLabs-Lab" poweroff
 ```
 
+### 6. Run and stop SecLabs
+
+Inside the VM, from the repository root:
+
+````bash
+chmod +x deploy.sh
+
+# Build lab/platform images and start the platform
+./deploy.sh
+
 ---
 
 ## 🌿 Git workflow
@@ -168,7 +179,7 @@ main
 └── dev                           ← stable integration
     ├── feature/backend-glaira    ← backend and infrastructure
     └── feature/frontend-zineb    ← user interface
-```
+````
 
 - **`main`**: main/production branch. It only receives merges from `dev` when everything is stable.
 - **`dev`**: integration branch. Validated changes are merged here through Pull Requests.

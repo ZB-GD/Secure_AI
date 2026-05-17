@@ -574,9 +574,9 @@ export function ScenarioOnePipelineRuntime() {
                   <div
                     style={{
                       color: "var(--text-2)",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       lineHeight: 1.65,
-                      maxWidth: "780px",
+                      width: "100%",
                     }}
                   >
                     <div
