@@ -35,8 +35,8 @@ export default function RemoteDesktopPanel({
         >
           <p
             style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontFamily: "var(--font-display)",
               textTransform: "uppercase",
               letterSpacing: "0.35em",
               color: "var(--text-3)",
@@ -71,7 +71,7 @@ export default function RemoteDesktopPanel({
               fontSize: "14px",
               color: "var(--orange)",
               animation: "pulse-red 2s infinite",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
             }}
           >
             [!] Booting secure containers...
@@ -103,8 +103,8 @@ export default function RemoteDesktopPanel({
         >
           <p
             style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontFamily: "var(--font-display)",
               textTransform: "uppercase",
               letterSpacing: "0.35em",
               color: "var(--text-3)",
@@ -179,8 +179,8 @@ export default function RemoteDesktopPanel({
       >
         <p
           style={{
-            fontSize: "11px",
-            fontFamily: "var(--font-mono)",
+            fontSize: "10px",
+            fontFamily: "var(--font-display)",
             textTransform: "uppercase",
             letterSpacing: "0.35em",
             color: "var(--text-3)",
@@ -241,7 +241,7 @@ export default function RemoteDesktopPanel({
               alignItems: "center",
               justifyContent: "center",
               color: "var(--text-3)",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
             }}
           >
             No VM URL provided by backend.

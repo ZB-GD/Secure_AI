@@ -1,5 +1,54 @@
 import { useState } from "react"
 
+const KEY_TERMS = [
+  "Received",
+  "Logs",
+  "received payload",
+  "sensor payload",
+  "poisoned data",
+  "injected data point",
+  "impossible values",
+  "traffic_volume",
+  "temp",
+  "congestion_score",
+  "Sensor Data Node",
+  "Edge Pre-processing Node",
+  "Inference & Action Node",
+  "Trainer Node",
+  "Workspace",
+]
+
+function HighlightedText({ text }) {
+  if (typeof text !== "string") return text
+
+  const escapedTerms = KEY_TERMS
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  const pattern = new RegExp(`(${escapedTerms.join("|")})`, "gi")
+  const parts = text.split(pattern)
+
+  return parts.map((part, index) => {
+    const isKeyTerm = KEY_TERMS.some(
+      (term) => term.toLowerCase() === part.toLowerCase(),
+    )
+
+    if (!isKeyTerm) return part
+
+    return (
+      <strong
+        key={`${part}-${index}`}
+        style={{
+          color: "var(--text-1)",
+          fontWeight: 700,
+        }}
+      >
+        {part}
+      </strong>
+    )
+  })
+}
+
 function InfoBlock({ label, children, accent = false }) {
   return (
     <div
@@ -14,10 +63,10 @@ function InfoBlock({ label, children, accent = false }) {
     >
       <div
         style={{
-          fontSize: "9px",
+          fontSize: "10px",
           letterSpacing: "0.14em",
           color: accent ? "var(--orange)" : "var(--text-3)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
           marginBottom: "8px",
         }}
       >
@@ -25,13 +74,13 @@ function InfoBlock({ label, children, accent = false }) {
       </div>
       <div
         style={{
-          fontSize: "12px",
+          fontSize: "14px",
           lineHeight: "1.75",
           color: "var(--text-2)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
         }}
       >
-        {children}
+        <HighlightedText text={children} />
       </div>
     </div>
   )
@@ -58,12 +107,12 @@ export default function ScenarioGuide({ item, onComplete }) {
           borderBottom: "1px solid var(--border-dim)",
         }}
       >
-        <div style={{ fontSize: "9px", color: "var(--blue)", letterSpacing: "0.14em", marginBottom: "6px" }}>
+        <div style={{ fontSize: "10px", color: "var(--blue)", letterSpacing: "0.14em", marginBottom: "6px" }}>
           ◆ SCENARIO — {item.phase.toUpperCase()}
         </div>
         <div
           style={{
-            fontSize: "16px",
+            fontSize: "20px",
             fontWeight: "600",
             fontFamily: "var(--font-display)",
             color: "var(--text-1)",
@@ -72,7 +121,7 @@ export default function ScenarioGuide({ item, onComplete }) {
         >
           {item.title}
         </div>
-        <div style={{ fontSize: "11px", color: "var(--text-3)" }}>{item.subtitle}</div>
+        <div style={{ fontSize: "12px", color: "var(--text-3)" }}>{item.subtitle}</div>
       </div>
 
       <div
@@ -97,13 +146,46 @@ export default function ScenarioGuide({ item, onComplete }) {
           {item.story.mission}
         </InfoBlock>
 
-        <InfoBlock label="STANDARD OPERATING PROCEDURE (SOP)">
-          <ol style={{ margin: 0, paddingLeft: "18px", display: "flex", flexDirection: "column", gap: "6px", color: "var(--text-2)" }}>
-            <li>Review the incident context above.</li>
-            <li>Analyze the backend logs and payloads in your Workspace.</li>
-            <li>Identify the anomaly bypassing the security controls.</li>
-            <li>Use the dashboard to choose any lab when you are ready.</li>
-          </ol>
+        <InfoBlock label="INVESTIGATION CHECKLIST">
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {[
+              "Open NODE-1 in the pipeline view and check Received.",
+              "Open NODE-2 and compare Received with Logs.",
+              "Confirm where validation failed.",
+              "Answer the assessment, then continue into the lab.",
+            ].map((step, index) => (
+              <div
+                key={step}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "24px 1fr",
+                  gap: "10px",
+                  alignItems: "start",
+                }}
+              >
+                <span
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    background: "rgba(56,189,248,0.08)",
+                    border: "1px solid var(--blue-dim)",
+                    color: "var(--blue)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  {index + 1}
+                </span>
+                <span>
+                  <HighlightedText text={step} />
+                </span>
+              </div>
+            ))}
+          </div>
         </InfoBlock>
 
         {hasQuestion ? (
@@ -117,10 +199,10 @@ export default function ScenarioGuide({ item, onComplete }) {
           >
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "10px",
                 letterSpacing: "0.14em",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 marginBottom: "8px",
               }}
             >
@@ -129,9 +211,9 @@ export default function ScenarioGuide({ item, onComplete }) {
 
             <p
               style={{
-                fontSize: "12px",
+                fontSize: "14px",
                 color: "var(--text-1)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 fontWeight: "500",
                 marginBottom: "10px",
                 lineHeight: "1.7",
@@ -162,8 +244,8 @@ export default function ScenarioGuide({ item, onComplete }) {
                         ? "var(--red-dim)"
                         : "var(--bg-base)",
                     color: "var(--text-1)",
-                    fontSize: "11px",
-                    fontFamily: "var(--font-mono)",
+                    fontSize: "14px",
+                    fontFamily: "var(--font-display)",
                     cursor: "pointer",
                     transition: "all 0.2s"
                   }}
@@ -183,7 +265,7 @@ export default function ScenarioGuide({ item, onComplete }) {
                   border: "1px solid var(--border-dim)",
                   background: "transparent",
                   color: "var(--text-2)",
-                  fontSize: "11px",
+                  fontSize: "12px",
                   cursor: "pointer",
                 }}
               >
@@ -199,9 +281,9 @@ export default function ScenarioGuide({ item, onComplete }) {
                   background: "rgba(56,189,248,0.08)",
                   border: "1px solid var(--blue-dim)",
                   borderRadius: "6px",
-                  fontSize: "11px",
+                  fontSize: "14px",
                   color: "var(--blue)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 {item.question.hint}
@@ -216,9 +298,9 @@ export default function ScenarioGuide({ item, onComplete }) {
                   background: "var(--red-dim)",
                   border: "1px solid rgba(248,113,113,0.25)",
                   borderRadius: "6px",
-                  fontSize: "11px",
+                  fontSize: "14px",
                   color: "var(--red)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 {item.question.wrongFeedback}
@@ -233,9 +315,9 @@ export default function ScenarioGuide({ item, onComplete }) {
                   background: "var(--green-dim)",
                   border: "1px solid var(--green-border)",
                   borderRadius: "6px",
-                  fontSize: "11px",
+                  fontSize: "14px",
                   color: "var(--green)",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>{item.question.correctFeedback}</div>
@@ -248,9 +330,9 @@ export default function ScenarioGuide({ item, onComplete }) {
                     border: "none",
                     background: "var(--green)",
                     color: "#fff",
-                    fontSize: "11px",
+                    fontSize: "12px",
                     fontWeight: "bold",
-                    fontFamily: "var(--font-mono)",
+                    fontFamily: "var(--font-display)",
                     cursor: "pointer",
                     boxShadow: "0 0 10px rgba(34,197,94,0.3)"
                   }}
@@ -271,10 +353,10 @@ export default function ScenarioGuide({ item, onComplete }) {
           >
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "10px",
                 letterSpacing: "0.14em",
                 color: "var(--text-3)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 marginBottom: "8px",
               }}
             >
@@ -283,10 +365,10 @@ export default function ScenarioGuide({ item, onComplete }) {
 
             <p
               style={{
-                fontSize: "12px",
+                fontSize: "14px",
                 lineHeight: "1.75",
                 color: "var(--text-2)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               Acknowledge the emergency briefing to gain access to the raw pipeline telemetry and commence the investigation.
@@ -302,9 +384,9 @@ export default function ScenarioGuide({ item, onComplete }) {
                 border: "none",
                 background: "var(--orange)",
                 color: "#fff",
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: "bold",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
                 cursor: "pointer",
                 boxShadow: "0 0 10px rgba(249,115,22,0.3)"
               }}
