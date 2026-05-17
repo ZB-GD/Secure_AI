@@ -70,9 +70,9 @@ export default function PipelineCanvas({
         <div
           style={{
             color: "var(--text-3)",
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 600,
-            fontFamily: "var(--font-display)",
+            fontFamily: "var(--font-mono)",
             letterSpacing: "0.1em",
           }}
         >
