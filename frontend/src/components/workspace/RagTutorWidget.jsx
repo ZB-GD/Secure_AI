@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 // IMPORTANTE: Asegúrate de que esta ruta a tu apiClient es correcta
 import { request } from "../../services/apiClient";
 
-export default function RagTutorWidget({ labId, phase, activeItem, placement = "floating" }) {
+export default function RagTutorWidget({ phase, activeItem, placement = "floating" }) {
     
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -90,11 +90,6 @@ const handleSendMessage = async (e) => {
       { role: "user", type: "text", content: `He seleccionado la opción ${String.fromCharCode(65 + selectedOptionIndex)}` },
       { role: "assistant", type: "text", content: isCorrect ? `✅ ¡Correcto! ${feedbackExp}` : `❌ Incorrecto. ${feedbackExp}`, isHighlight: isCorrect }
     ]);
-  };
-
-  // Función para inyectar una pregunta de test desde fuera (útil para el futuro)
-  const injectQuiz = (questionObj) => {
-    setMessages((prev) => [...prev, { role: "assistant", type: "quiz", ...questionObj }]);
   };
 
   const isTopbar = placement === "topbar";

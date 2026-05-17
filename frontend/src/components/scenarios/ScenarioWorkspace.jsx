@@ -540,6 +540,11 @@ export function ScenarioOnePipelineRuntime() {
         </div>
 
         <div className="scenario-window-main">
+          {pipelineError && (
+            <div className="scenario-window-error" role="alert">
+              {pipelineError}
+            </div>
+          )}
           <PipelineCanvas
             phases={phases}
             activeNodeId={activePhase?.id}

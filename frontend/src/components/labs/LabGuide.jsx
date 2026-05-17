@@ -181,7 +181,7 @@ export default function LabGuide({
     setTutorQuestion(currentStep?.title || "")
     setTutorAnswer("")
     setTutorError("")
-  }, [currentStep?.id])
+  }, [currentStep?.id, currentStep?.title])
 
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
