@@ -8,6 +8,9 @@ function bootJourney(items) {
     locked: false,
     completed: false,
     guideCompleted: false,
+    quizScore: null,
+    startedAt: null,
+    completedAt: null,
     scenarioViewed: item.type !== "lab",
     currentStepIndex: item.type === "lab" ? 0 : null,
     answers: item.type === "lab" ? {} : null,
@@ -40,6 +43,16 @@ export default function App() {
             subtitle: "Choose a lab to begin.",
             threatStage: "E",
           }
+        : activeItemId === "pipeline"
+          ? {
+              id: "pipeline",
+              type: "pipeline",
+              shortTitle: "Pipeline",
+              phase: "General Pipeline",
+              title: "CityFlow AI Pipeline",
+              subtitle: "Inspect how telemetry moves through each AI node.",
+              threatStage: "P",
+            }
         : items.find((item) => item.id === activeItemId) || items[0],
     [items, activeItemId],
   );
@@ -58,6 +71,11 @@ export default function App() {
 
     if (itemId === "dashboard") {
       setActiveItemId("dashboard");
+      return;
+    }
+
+    if (itemId === "pipeline") {
+      setActiveItemId("pipeline");
       return;
     }
 
@@ -152,10 +170,17 @@ export default function App() {
     });
   }
 
-  function handleCompleteLabQuiz(itemId) {
+  function handleCompleteLabQuiz(itemId, result = {}) {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, completed: true } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              completed: true,
+              quizScore: result.score ?? item.quizScore ?? null,
+              completedAt: new Date().toISOString(),
+            }
+          : item,
       ),
     );
   }
@@ -163,7 +188,13 @@ export default function App() {
   function handleStartLab(itemId) {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, scenarioViewed: true } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              scenarioViewed: true,
+              startedAt: item.startedAt || new Date().toISOString(),
+            }
+          : item,
       ),
     );
 

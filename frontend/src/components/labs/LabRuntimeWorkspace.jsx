@@ -49,7 +49,7 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                   : "var(--text-3)",
               fontSize: "10px",
               letterSpacing: "0.10em",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               cursor: locked ? "not-allowed" : "pointer",
               display: "flex",
               flexDirection: "column",
@@ -59,7 +59,7 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
               opacity: locked ? 0.4 : 1,
             }}
           >
-            <span style={{ fontSize: "13px" }}>{tab.icon}</span>
+            <span style={{ fontSize: "14px" }}>{tab.icon}</span>
             {tab.label.toUpperCase()}
             {tab.id === "quiz" && !quizUnlocked && (
               <span style={{ fontSize: "9px", color: "var(--text-3)" }}>
@@ -82,7 +82,6 @@ function MetricSparkline({ points = [], color = "var(--orange)" }) {
   const max = Math.max(...values);
   const range = max - min || 1;
   const step = width / Math.max(values.length - 1, 1);
-
   const d = values
     .map((value, index) => {
       const x = index * step;
@@ -105,11 +104,9 @@ function MetricSparkline({ points = [], color = "var(--orange)" }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-
       {values.map((value, index) => {
         const x = index * step;
         const y = height - ((value - min) / range) * (height - 6) - 3;
-
         return (
           <circle
             key={`${value}-${index}`}
@@ -127,7 +124,6 @@ function MetricSparkline({ points = [], color = "var(--orange)" }) {
 
 function MetricsTab({ runtime, item }) {
   const [history, setHistory] = useState([]);
-
   const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
   const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
   const protectedMode =
@@ -141,6 +137,23 @@ function MetricsTab({ runtime, item }) {
 
   const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
   const attackCommands = item?.attackCommands || [];
+
+  useEffect(() => {
+    setHistory((prev) => {
+      const nextPoint = {
+        drift: Number(runtime.driftScore ?? 0),
+        trust: Number(runtime.accuracy ?? 0),
+        key: `${runtime.driftScore}-${runtime.accuracy}-${runtime.attackAttempts}-${runtime.defenseEnabled}`,
+      };
+      if (prev[prev.length - 1]?.key === nextPoint.key) return prev;
+      return [...prev, nextPoint].slice(-10);
+    });
+  }, [
+    runtime.accuracy,
+    runtime.attackAttempts,
+    runtime.defenseEnabled,
+    runtime.driftScore,
+  ]);
 
   useEffect(() => {
     setHistory((prev) => {
@@ -255,7 +268,7 @@ function MetricsTab({ runtime, item }) {
           </div>
           <div
             style={{
-              fontSize: "13px",
+              fontSize: "14px",
               color: "var(--text-1)",
               lineHeight: 1.5,
             }}
@@ -318,7 +331,7 @@ function MetricsTab({ runtime, item }) {
             </div>
             <div
               style={{
-                fontSize: "30px",
+                fontSize: "28px",
                 color: metric.color,
                 fontWeight: 700,
                 fontFamily: "var(--font-display)",
@@ -329,7 +342,7 @@ function MetricsTab({ runtime, item }) {
             >
               {metric.value}
               {metric.suffix && (
-                <span style={{ fontSize: "15px" }}>{metric.suffix}</span>
+                <span style={{ fontSize: "16px" }}>{metric.suffix}</span>
               )}
             </div>
             <div
@@ -412,10 +425,9 @@ function MetricsTab({ runtime, item }) {
             fontFamily: "var(--font-mono)",
           }}
         >
-          curl http://127.0.0.1:5000/health{"\n"}
-          python3 /home/lab/Desktop/Lab1/poison_data.py{"\n"}
-          python3 /home/lab/Desktop/Lab1/enable_defense.py{"\n"}
-          python3 /home/lab/Desktop/Lab1/poison_data.py
+          {attackCommands.length > 0
+            ? attackCommands.join("\n")
+            : "No attack commands are configured for this lab yet."}
         </div>
       </div>
     </div>
@@ -435,13 +447,13 @@ function QuizTab({ item, phase, onComplete }) {
   const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
 
   const answeredCount = quiz.filter((_, i) =>
-    Object.prototype.hasOwnProperty.call(answers, i)
+    Object.prototype.hasOwnProperty.call(answers, i),
   ).length;
 
   const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
 
   const correctCount = quiz.filter(
-    (q, i) => answers[i] === q.correctAnswerIndex
+    (q, i) => answers[i] === q.correctAnswerIndex,
   ).length;
 
   const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
@@ -464,7 +476,13 @@ function QuizTab({ item, phase, onComplete }) {
     setSubmitted(true);
 
     if (scoreRatio >= 0.75) {
-      onComplete?.(item.id);
+      onComplete?.(item.id, {
+        score: {
+          correct: correctCount,
+          total: quiz.length,
+          percent: Math.round(scoreRatio * 100),
+        },
+      });
     }
 
     setTutorLoading(true);
@@ -541,7 +559,7 @@ function QuizTab({ item, phase, onComplete }) {
           padding: "32px 20px",
           textAlign: "center",
           color: "var(--text-3)",
-          fontSize: "13px",
+          fontSize: "14px",
         }}
       >
         No questions are configured for this lab.
@@ -578,7 +596,7 @@ function QuizTab({ item, phase, onComplete }) {
         <div>
           <div
             style={{
-              fontSize: "22px",
+              fontSize: "20px",
               fontWeight: 700,
               color: "var(--text-1)",
               fontFamily: "var(--font-display)",
@@ -636,9 +654,9 @@ function QuizTab({ item, phase, onComplete }) {
               border: "none",
               background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
               color: allAnswered ? "#fff" : "var(--text-3)",
-              fontSize: "11px",
+              fontSize: "10px",
               fontWeight: 700,
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               cursor: allAnswered ? "pointer" : "not-allowed",
               whiteSpace: "nowrap",
             }}
@@ -655,8 +673,8 @@ function QuizTab({ item, phase, onComplete }) {
               border: "1px solid var(--border-dim)",
               background: "transparent",
               color: "var(--text-2)",
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontFamily: "var(--font-display)",
               cursor: "pointer",
               whiteSpace: "nowrap",
             }}
@@ -704,10 +722,10 @@ function QuizTab({ item, phase, onComplete }) {
 
             <span
               style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 fontWeight: 600,
                 color: "var(--text-1)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               TUTOR — Personalized feedback
@@ -718,7 +736,7 @@ function QuizTab({ item, phase, onComplete }) {
                 marginLeft: "auto",
                 fontSize: "10px",
                 color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-display)",
               }}
             >
               {Math.round(scoreRatio * 100)}% —{" "}
@@ -732,7 +750,7 @@ function QuizTab({ item, phase, onComplete }) {
                 style={{
                   color: "var(--text-3)",
                   fontSize: "12px",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 Analyzing your answers...
@@ -754,7 +772,7 @@ function QuizTab({ item, phase, onComplete }) {
             {tutorFeedback && (
               <div
                 style={{
-                  fontSize: "13px",
+                  fontSize: "14px",
                   color: "var(--text-1)",
                   lineHeight: 1.75,
                   whiteSpace: "pre-wrap",
@@ -799,8 +817,8 @@ function QuizTab({ item, phase, onComplete }) {
                       border: "1px solid var(--border-dim)",
                       color: "var(--blue)",
                       textDecoration: "none",
-                      fontSize: "11px",
-                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      fontFamily: "var(--font-display)",
                     }}
                   >
                     <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
@@ -938,7 +956,7 @@ function QuizTab({ item, phase, onComplete }) {
                       border: `1px solid ${border}`,
                       background,
                       color,
-                      fontSize: "11px",
+                      fontSize: "10px",
                       lineHeight: 1.5,
                       cursor: submitted ? "default" : "pointer",
                     }}
@@ -956,9 +974,7 @@ function QuizTab({ item, phase, onComplete }) {
                         justifyContent: "center",
                         flexShrink: 0,
                         fontSize: "9px",
-                        color: isSelected
-                          ? "var(--orange)"
-                          : "var(--text-3)",
+                        color: isSelected ? "var(--orange)" : "var(--text-3)",
                       }}
                     >
                       {String.fromCharCode(65 + optionIndex)}
@@ -976,7 +992,7 @@ function QuizTab({ item, phase, onComplete }) {
                   padding: "10px 14px",
                   borderTop: "1px solid var(--border-dim)",
                   background: "rgba(56,189,248,0.04)",
-                  fontSize: "11px",
+                  fontSize: "10px",
                   color: "var(--text-2)",
                   lineHeight: 1.6,
                 }}
@@ -1150,6 +1166,7 @@ export default function LabRuntimeWorkspace({
             )}
             {activeTab === "metrics" && (
               <MetricsTab
+                item={item}
                 runtime={runtime}
                 item={item}
                 onAttack={triggerAttack}

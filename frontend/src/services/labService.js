@@ -61,13 +61,16 @@ export const labService = {
     return normalizePayload(payload, baseUrl);
   },
 
-  async stopLabById(labId) {
+  async stopLabById(labId, options = {}) {
     const stage = getStageForLabId(labId);
     if (!stage) throw new Error(`No stage configured for ${labId}`);
 
     const [baseUrl, payload] = await Promise.all([
       getApiBaseUrl(),
-      request(`/labs/${stage}/stop?${sessionParam()}`, { method: "POST" }),
+      request(`/labs/${stage}/stop?${sessionParam()}`, {
+        method: "POST",
+        ...options,
+      }),
     ]);
 
     return normalizePayload(payload, baseUrl);
@@ -83,6 +86,16 @@ export const labService = {
     ]);
 
     return normalizePayload(payload, baseUrl);
+  },
+
+  async heartbeatLabById(labId) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    return request(`/labs/${stage}/heartbeat?${sessionParam()}`, {
+      method: "POST",
+      cache: "no-store",
+    });
   },
 
   async triggerAttackById(labId) {

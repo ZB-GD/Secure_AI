@@ -12,6 +12,7 @@ CLAUDE.md
 # VS Code local workspace files
 .vscode/
 .codex/
+.codex
 
 # Environment files (keep secrets out of git)
 backend/.env
