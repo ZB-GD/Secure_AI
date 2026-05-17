@@ -44,7 +44,7 @@ export default function LabMetrics({
 
           <div
             style={{
-              fontSize: "32px",
+              fontSize: "28px",
               color: colorDrift,
               fontWeight: "bold",
               fontFamily: "var(--font-display)",
@@ -91,7 +91,7 @@ export default function LabMetrics({
 
           <div
             style={{
-              fontSize: "32px",
+              fontSize: "28px",
               color: colorAccuracy,
               fontWeight: "bold",
               fontFamily: "var(--font-display)",

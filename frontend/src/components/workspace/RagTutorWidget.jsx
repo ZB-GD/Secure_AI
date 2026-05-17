@@ -153,7 +153,7 @@ const handleSendMessage = async (e) => {
           <div style={{ padding: "12px 16px", background: "var(--blue-dim)", borderBottom: "1px solid var(--blue)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ fontSize: "16px" }}>🤖</div>
-              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-mono)" }}>CITYFLOW TUTOR</div>
+              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-display)" }}>CITYFLOW TUTOR</div>
             </div>
             <button onClick={() => setIsOpen(false)} style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: "16px" }}>✕</button>
           </div>
@@ -183,7 +183,7 @@ const handleSendMessage = async (e) => {
                         <button 
                           key={optIdx}
                           onClick={() => handleQuizAnswer(idx, optIdx, msg.correctAnswerIndex, msg.explanation)}
-                          style={{ textAlign: "left", padding: "8px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "4px", color: "var(--text-2)", fontSize: "11px", cursor: "pointer", transition: "all 0.2s" }}
+                          style={{ textAlign: "left", padding: "8px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "4px", color: "var(--text-2)", fontSize: "10px", cursor: "pointer", transition: "all 0.2s" }}
                           onMouseOver={(e) => e.target.style.borderColor = "var(--orange)"}
                           onMouseOut={(e) => e.target.style.borderColor = "var(--border-dim)"}
                         >
@@ -195,7 +195,7 @@ const handleSendMessage = async (e) => {
                 )}
               </div>
             ))}
-            {loading && <div style={{ fontSize: "11px", color: "var(--text-3)", paddingLeft: "8px" }}>Escribiendo...</div>}
+            {loading && <div style={{ fontSize: "10px", color: "var(--text-3)", paddingLeft: "8px" }}>Escribiendo...</div>}
             <div ref={messagesEndRef} />
           </div>
 
@@ -232,7 +232,7 @@ const handleSendMessage = async (e) => {
           cursor: "pointer",
           fontSize: isTopbar ? "10px" : "24px",
           color: isOpen ? "var(--blue)" : "var(--text-2)",
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--font-display)",
           fontWeight: 700,
           letterSpacing: isTopbar ? "0.10em" : 0,
           transition: "transform 0.2s, border-color 0.15s, background 0.15s"

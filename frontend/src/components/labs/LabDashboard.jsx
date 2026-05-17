@@ -1,6 +1,32 @@
 export default function LabDashboard({ items, onSelectItem }) {
   const labs = (items || []).filter((item) => item.type === "lab");
+  const completableLabs = labs.filter((lab) => lab.guide?.steps?.length > 0);
   const completed = labs.filter((lab) => lab.completed).length;
+  const allCompletableComplete =
+    completableLabs.length > 0 &&
+    completableLabs.every((lab) => lab.completed);
+  const quizScores = completableLabs
+    .map((lab) => lab.quizScore)
+    .filter((score) => score?.total);
+  const averageScore =
+    quizScores.length > 0
+      ? Math.round(
+          quizScores.reduce((sum, score) => sum + score.percent, 0) /
+            quizScores.length,
+        )
+      : null;
+  const startedTimes = completableLabs
+    .map((lab) => (lab.startedAt ? new Date(lab.startedAt).getTime() : null))
+    .filter(Number.isFinite);
+  const completedTimes = completableLabs
+    .map((lab) => (lab.completedAt ? new Date(lab.completedAt).getTime() : null))
+    .filter(Number.isFinite);
+  const elapsedMs =
+    startedTimes.length > 0 && completedTimes.length > 0
+      ? Math.max(...completedTimes) - Math.min(...startedTimes)
+      : null;
+  const elapsedMinutes =
+    elapsedMs && elapsedMs > 0 ? Math.max(1, Math.round(elapsedMs / 60000)) : null;
 
   return (
     <section
@@ -12,6 +38,86 @@ export default function LabDashboard({ items, onSelectItem }) {
       }}
     >
       <div style={{ maxWidth: "1180px", margin: "0 auto" }}>
+        {allCompletableComplete && (
+          <section
+            style={{
+              marginBottom: "24px",
+              border: "1px solid var(--green-border)",
+              borderRadius: "10px",
+              background: "var(--green-dim)",
+              padding: "22px",
+            }}
+          >
+            <div
+              style={{
+                color: "var(--green)",
+                fontFamily: "var(--font-display)",
+                fontSize: "10px",
+                letterSpacing: "0.16em",
+                marginBottom: "8px",
+              }}
+            >
+              TRAINING COMPLETE
+            </div>
+            <h1
+              style={{
+                margin: "0 0 10px",
+                color: "var(--text-1)",
+                fontFamily: "var(--font-display)",
+                fontSize: "28px",
+              }}
+            >
+              CityFlow investigation closed
+            </h1>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "12px",
+                marginTop: "16px",
+              }}
+            >
+              {[
+                ["Labs completed", `${completableLabs.length}/${completableLabs.length}`],
+                ["Average quiz score", averageScore == null ? "n/a" : `${averageScore}%`],
+                ["Time spent", elapsedMinutes == null ? "n/a" : `${elapsedMinutes} min`],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    border: "1px solid rgba(34,197,94,0.20)",
+                    borderRadius: "8px",
+                    background: "rgba(15,23,42,0.45)",
+                    padding: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "var(--text-3)",
+                      fontFamily: "var(--font-display)",
+                      fontSize: "9px",
+                      letterSpacing: "0.12em",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    {label.toUpperCase()}
+                  </div>
+                  <div
+                    style={{
+                      color: "var(--text-1)",
+                      fontFamily: "var(--font-display)",
+                      fontSize: "20px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <header
           style={{
             marginBottom: "24px",
@@ -24,7 +130,7 @@ export default function LabDashboard({ items, onSelectItem }) {
               fontSize: "10px",
               color: "var(--orange)",
               letterSpacing: "0.18em",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-display)",
               marginBottom: "8px",
             }}
           >
@@ -62,8 +168,8 @@ export default function LabDashboard({ items, onSelectItem }) {
             justifyContent: "space-between",
             marginBottom: "16px",
             color: "var(--text-3)",
-            fontFamily: "var(--font-mono)",
-            fontSize: "11px",
+            fontFamily: "var(--font-display)",
+            fontSize: "10px",
             letterSpacing: "0.08em",
           }}
         >
@@ -117,7 +223,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                     <span
                       style={{
                         color: "var(--orange)",
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: "var(--font-display)",
                         fontSize: "10px",
                         letterSpacing: "0.14em",
                       }}
@@ -139,7 +245,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                         borderRadius: "999px",
                         padding: "3px 8px",
                         fontSize: "9px",
-                        fontFamily: "var(--font-mono)",
+                        fontFamily: "var(--font-display)",
                       }}
                     >
                       {lab.completed ? "COMPLETE" : available ? "READY" : "COMING SOON"}
@@ -151,7 +257,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                       margin: 0,
                       color: "var(--text-1)",
                       fontFamily: "var(--font-display)",
-                      fontSize: "19px",
+                      fontSize: "20px",
                       lineHeight: 1.25,
                     }}
                   >
@@ -160,7 +266,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <p
                     style={{
                       color: "var(--text-2)",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       lineHeight: 1.6,
                       margin: "10px 0 0",
                     }}
@@ -173,7 +279,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <div
                     style={{
                       color: "var(--text-3)",
-                      fontFamily: "var(--font-mono)",
+                      fontFamily: "var(--font-display)",
                       fontSize: "9px",
                       letterSpacing: "0.12em",
                       marginBottom: "6px",
@@ -184,7 +290,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   <div
                     style={{
                       color: "var(--text-1)",
-                      fontSize: "13px",
+                      fontSize: "14px",
                       lineHeight: 1.5,
                     }}
                   >
