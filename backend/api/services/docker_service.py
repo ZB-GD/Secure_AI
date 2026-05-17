@@ -39,15 +39,23 @@ def _get_host_port_or_500(container):
     return ports[0]["HostPort"]
 
 
-def _wait_for_novnc(container, timeout_seconds: int = 20) -> None:
+def _wait_for_novnc(container, timeout_seconds: int = 45) -> None:
     deadline = time.monotonic() + timeout_seconds
-    command = [
+    # Two-stage check: first confirm websockify is serving HTTP, then confirm
+    # the VNC backend (x11vnc on port 5900) is accepting TCP connections.
+    # Checking only HTTP is not enough — websockify starts before x11vnc is ready.
+    http_check = [
         "python3",
         "-c",
         (
-            "import sys, urllib.request; "
+            "import urllib.request; "
             f"urllib.request.urlopen('http://127.0.0.1:{NOVNC_PORT}/vnc.html', timeout=2).read(1)"
         ),
+    ]
+    vnc_check = [
+        "python3",
+        "-c",
+        "import socket; s=socket.create_connection(('localhost',5900),timeout=2); s.close()",
     ]
 
     while time.monotonic() < deadline:
@@ -55,10 +63,9 @@ def _wait_for_novnc(container, timeout_seconds: int = 20) -> None:
         if container.status != "running":
             raise HTTPException(status_code=500, detail="Lab container stopped before noVNC became ready.")
 
-        result = container.exec_run(command)
-        if result.exit_code == 0:
+        if container.exec_run(http_check).exit_code == 0 and container.exec_run(vnc_check).exit_code == 0:
             return
-        time.sleep(0.5)
+        time.sleep(1)
 
     raise HTTPException(status_code=504, detail="Timed out waiting for noVNC to become ready.")
 

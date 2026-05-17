@@ -202,7 +202,10 @@ export function useLabRuntime(labId, options = {}) {
     setRuntime(DEFAULT_RUNTIME);
 
     if (autoStart && labId) startRuntime();
-  }, [labId, autoStart, startRuntime]);
+    // startRuntime identity changes whenever labId changes (same trigger), so
+    // listing it would double-fire the effect. labId + autoStart are sufficient.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labId, autoStart]);
 
   // Recover when a redeploy or cleanup stops the disposable lab while the page
   // remains open. Otherwise noVNC keeps reconnecting to a dead host port.
