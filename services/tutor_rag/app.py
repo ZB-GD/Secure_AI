@@ -88,9 +88,12 @@ def health_check():
 @app.post("/chat")
 async def chat_with_tutor(request: ChatRequest):
     documents = _read_knowledge_base()
+    # MEJORA: Instrucciones estrictas de brevedad para el chat libre.
     system_instruction = (
         "You are the CityFlow AI Security Tutor. "
         "Help learners understand cybersecurity concepts in AI pipelines. "
+        "CRITICAL RULE: Be extremely concise, direct, and engaging. Avoid long, boring lectures. "
+        "Keep your responses to 2-3 short sentences if possible. Get straight to the point.\n"
         f"Lab context: {request.context}\n\n"
         "NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
         f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
@@ -100,8 +103,6 @@ async def chat_with_tutor(request: ChatRequest):
             model=MODEL_NAME,
             contents=f"{system_instruction}\n\nUser: {request.message}",
         )
-        # Resolve doc links from both the user message and the model response
-        # so the frontend can offer direct links to relevant documentation.
         doc_links = _resolve_doc_links(request.message + " " + response.text)
         return {
             "response": response.text,
@@ -121,30 +122,30 @@ async def quiz_feedback(request: QuizFeedbackRequest):
         lines = []
         for i, w in enumerate(request.wrong_answers, 1):
             lines.append(
-                f'{i}. Question: "{w.question}"\n'
-                f'   Student answered: "{w.student_answer}"\n'
-                f'   Correct answer:   "{w.correct_answer}"\n'
-                + (f'   Hint: {w.explanation}\n' if w.explanation else "")
+                f'{i}. Q: "{w.question}" | Correct: "{w.correct_answer}"'
             )
-        wrong_section = "INCORRECT ANSWERS:\n" + "\n".join(lines)
+        wrong_section = "INCORRECT ANSWERS SUMMARY:\n" + "\n".join(lines)
     else:
         wrong_section = "The student answered all questions correctly."
 
+    # MEJORA: Rediseño total del prompt de evaluación para evitar muros de texto.
     prompt = (
         f"You are the CityFlow AI Security Tutor reviewing a quiz result.\n\n"
         f"Lab: {request.lab_id}\nPhase: {request.phase}\n"
         f"Score: {request.score}/{request.total} ({score_pct}%)\n\n"
         f"{wrong_section}\n\n"
-        f"Write a concise educational response (max 200 words):\n"
-        f"1. Acknowledge the score with one short encouraging sentence.\n"
-        f"2. For each incorrect answer, explain the concept in 2-3 sentences connecting it to the AI pipeline stage.\n"
-        f"3. End with one concrete action the student can take.\n"
-        f"Write in plain paragraphs, no bullet points or markdown headers. Respond in English."
+        f"CRITICAL INSTRUCTIONS FOR FEEDBACK:\n"
+        f"- Provide a HIGHLY CONCISE and engaging review (maximum 3-4 short sentences total).\n"
+        f"- 1. Acknowledge the score in ONE short sentence.\n"
+        f"- 2. If there are mistakes, DO NOT explain every single error. Group them into ONE punchy core takeaway about the pipeline stage.\n"
+        f"- 3. End with ONE short, actionable next step.\n"
+        f"- Do not write a wall of text. Prevent student fatigue. Respond in English."
     )
 
     documents = _read_knowledge_base()
     system_instruction = (
         "You are the CityFlow AI Security Tutor giving educational feedback after a quiz. "
+        "Your feedback must be short, punchy, and highly readable. "
         "NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
         f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
     )

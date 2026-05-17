@@ -1052,6 +1052,18 @@ export default function LabRuntimeWorkspace({
 
   const quizUnlocked = Boolean(item?.guideCompleted);
 
+  const previousGuideCompleted = useRef(Boolean(item?.guideCompleted));
+
+useEffect(() => {
+  const isNowCompleted = Boolean(item?.guideCompleted);
+
+  if (!previousGuideCompleted.current && isNowCompleted) {
+    setActiveTab("quiz");
+  }
+
+  previousGuideCompleted.current = isNowCompleted;
+}, [item?.guideCompleted]);
+
   return (
     <div
       style={{
@@ -1168,7 +1180,6 @@ export default function LabRuntimeWorkspace({
               <MetricsTab
                 item={item}
                 runtime={runtime}
-                item={item}
                 onAttack={triggerAttack}
                 attackLoading={attackLoading}
               />
