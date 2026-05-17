@@ -136,6 +136,9 @@ export function ScenarioOnePipelineRuntime() {
         name: "Sensor Data Node",
         status: "compromised",
         summary: "Accepted a physically impossible sensor reading.",
+        statusReason: "Entry point accepted poisoned telemetry.",
+        about:
+          "Collects raw telemetry from street sensors and camera feeds. This is the first trust boundary: it should authenticate devices, verify signatures, and reject physically impossible readings before anything reaches the AI pipeline.",
         receives:
           '{\n  "sensor_id": "cam_north_01",\n  "timestamp": "08:14:58",\n  "traffic_volume": -5000,\n  "avg_speed": 0,\n  "source": "telemetry_csv",\n  "signed": false\n}',
         emits:
@@ -160,6 +163,9 @@ export function ScenarioOnePipelineRuntime() {
         name: "Edge Pre-processing Node",
         status: "warning",
         summary: "Converted the poisoned reading into an invalid feature.",
+        statusReason: "Poisoned data produced an anomalous feature.",
+        about:
+          "Cleans, normalizes, and converts raw readings into model features. It should preserve data lineage and quarantine out-of-range features instead of forwarding suspicious values.",
         receives:
           '{\n  "input_readings": [\n    {\n      "sensor_id": "cam_north_01",\n      "traffic_volume": -5000\n    }\n  ]\n}',
         emits:
@@ -179,6 +185,9 @@ export function ScenarioOnePipelineRuntime() {
         name: "Inference & Action Node",
         status: "warning",
         summary: "Turned the invalid feature into a traffic-control action.",
+        statusReason: "Actions were generated from risky model input.",
+        about:
+          "Runs the traffic model and converts predictions into operational decisions. This node needs model integrity checks and action guardrails because its output can affect the physical city.",
         receives:
           '{\n  "model_version": "v2.1",\n  "features": [\n    {\n      "congestion_score": -0.625,\n      "anomaly": true\n    }\n  ]\n}',
         emits:
@@ -198,6 +207,9 @@ export function ScenarioOnePipelineRuntime() {
         name: "Trainer Node",
         status: "warning",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
+        statusReason: "Retraining risk exists because poisoned features reached storage.",
+        about:
+          "Stores features for future training and decides whether model retraining should run. It must monitor drift and pause retraining when incoming data looks poisoned or distribution-shifted.",
         receives:
           '{\n  "stored_features": [\n    {\n      "sensor_id": "cam_north_01",\n      "congestion_score": -0.625\n    }\n  ],\n  "trigger_drift": 0.279\n}',
         emits:
@@ -216,7 +228,7 @@ export function ScenarioOnePipelineRuntime() {
   );
 
   const [activePhaseId, setActivePhaseId] = useState("edge");
-  const [activeTab, setActiveTab] = useState("received");
+  const [activeTab, setActiveTab] = useState("about");
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
@@ -278,6 +290,18 @@ export function ScenarioOnePipelineRuntime() {
         )
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
+    const n3Status =
+      n3.integrity_ok === false || n3.halted
+        ? "compromised"
+        : n3.integrity_ok === null || n3.integrity_ok === undefined
+          ? "warning"
+          : "healthy";
+    const n4Status =
+      n4.store_error || n4.retrain_error
+        ? "compromised"
+        : n4.retrain_triggered
+          ? "warning"
+          : "healthy";
 
     return [
       {
@@ -286,6 +310,11 @@ export function ScenarioOnePipelineRuntime() {
         name: "Sensor Data Node",
         status: n1Poisoned ? "compromised" : "healthy",
         summary: `Forwarded ${n1.readings?.length || 0} readings. Dropped ${n1.dropped?.length || 0}.`,
+        statusReason: n1Poisoned
+          ? "Entry point accepted poisoned telemetry."
+          : "Sensor readings passed ingestion checks.",
+        about:
+          "Collects raw telemetry from street sensors and camera feeds. This is the first trust boundary: it should authenticate devices, verify signatures, and reject physically impossible readings before anything reaches the AI pipeline.",
         receives: JSON.stringify(
           { mode: n1.mode, n_readings: n1.readings?.length || 0 },
           null,
@@ -315,6 +344,11 @@ export function ScenarioOnePipelineRuntime() {
         name: "Edge Pre-processing Node",
         status: n2Anomalous ? "warning" : "healthy",
         summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
+        statusReason: n2Anomalous
+          ? "Poisoned data produced an anomalous feature."
+          : "Generated features are within expected ranges.",
+        about:
+          "Cleans, normalizes, and converts raw readings into model features. It should preserve data lineage and quarantine out-of-range features instead of forwarding suspicious values.",
         receives: JSON.stringify(
           {
             input_readings: n1.readings?.length || 0,
@@ -345,8 +379,18 @@ export function ScenarioOnePipelineRuntime() {
         id: "actuator",
         code: "NODE-3",
         name: "Actuator Node",
-        status: n3IntegrityOk ? "healthy" : "warning",
+        status: n3Status,
         summary: `Predictions: ${n3.predictions?.length || 0}. Actions: ${n3.actions?.length || 0}.`,
+        statusReason:
+          n3.integrity_ok === false
+            ? "Model integrity check failed."
+            : n3.halted
+              ? "Action guardrails halted downstream decisions."
+              : n3.integrity_ok === null || n3.integrity_ok === undefined
+                ? "Model integrity verification was skipped in vulnerable mode."
+                : "Model integrity verified and decisions completed.",
+        about:
+          "Runs the traffic model and converts predictions into operational decisions. This node needs model integrity checks and action guardrails because its output can affect the physical city.",
         receives: JSON.stringify(
           {
             input_features: n2.features?.length || 0,
@@ -386,10 +430,18 @@ export function ScenarioOnePipelineRuntime() {
         id: "trainer",
         code: "NODE-4",
         name: "Trainer Node",
-        status: n4.retrain_triggered ? "warning" : "healthy",
+        status: n4Status,
         summary: n4.retrain_triggered
           ? `Store: ${n4.store ? "ok" : "failed"}. Retrain: ${n4.retrain ? "triggered" : "failed"}.`
           : `Store: ${n4.store ? "ok" : "failed"}. Retrain not triggered.`,
+        statusReason:
+          n4.store_error || n4.retrain_error
+            ? "Training store or retraining failed."
+            : n4.retrain_triggered
+              ? "Drift threshold triggered retraining review."
+              : "Stored features did not cross retraining threshold.",
+        about:
+          "Stores features for future training and decides whether model retraining should run. It must monitor drift and pause retraining when incoming data looks poisoned or distribution-shifted.",
         receives: JSON.stringify(
           {
             stored_features: n2.features?.length || 0,
@@ -457,32 +509,32 @@ export function ScenarioOnePipelineRuntime() {
 
   return (
     <section className="scenario-workspace">
-      <div className="scenario-header">
-        <div className="scenario-header__main">
+      <div className="scenario-unified-window">
+        <div className="scenario-window-header">
           <div className="scenario-eyebrow scenario-eyebrow--blue">
-            Scenario 1 / Distributed AI Pipeline Investigation
+            CityFlow AI / Distributed Pipeline
           </div>
-          <div className="scenario-title">Trace the Data Poisoning Attack</div>
+          <div className="scenario-title">General Pipeline View</div>
           <p className="scenario-subtitle">
-            Follow the same record through each node, then decide where the
-            security control should have stopped it.
+            Inspect what each node receives, emits, and logs as telemetry moves through the AI traffic-control system.
           </p>
         </div>
-      </div>
 
-      <div className="scenario-unified-window">
         <div className="scenario-window-topbar">
           <div className="scenario-window-toolbar">
-            <span className="scenario-window-risk">
-              {compromisedCount} nodes need attention
-            </span>
+            {compromisedCount > 0 && (
+              <span className="scenario-window-risk">
+                <span className="scenario-window-risk__dot" />
+                {compromisedCount} node{compromisedCount !== 1 ? "s" : ""} need attention
+              </span>
+            )}
             <button
               type="button"
               onClick={runBackendPipeline}
               disabled={pipelineLoading}
               className="scenario-refresh-button"
             >
-              {pipelineLoading ? "Running..." : "Refresh Pipeline"}
+              {pipelineLoading ? "Running…" : "↺ Refresh Pipeline"}
             </button>
           </div>
         </div>
@@ -493,20 +545,6 @@ export function ScenarioOnePipelineRuntime() {
             activeNodeId={activePhase?.id}
             onNodeClick={(id) => setActivePhaseId(id)}
           />
-          <div className="scenario-window-status-row">
-            <span className="scenario-run-state">
-              {pipelineResult
-                ? "Live backend data loaded."
-                : pipelineError
-                  ? "Fallback: showing mockup data."
-                  : "Loading live backend data..."}
-            </span>
-            {pipelineError ? (
-              <span className="scenario-run-state scenario-run-state--error">
-                {pipelineError}
-              </span>
-            ) : null}
-          </div>
 
           <div className="scenario-metrics-band scenario-metrics-band--inside">
             <ScenarioMetricsPanel metrics={pipelineMetrics} />
@@ -514,7 +552,7 @@ export function ScenarioOnePipelineRuntime() {
 
           <div className="scenario-connected-card__body">
             <div className="scenario-tabs" role="tablist">
-              {["received", "emitted", "logs"].map((tab) => (
+              {["about", "received", "emitted", "logs"].map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -530,6 +568,29 @@ export function ScenarioOnePipelineRuntime() {
               <div className="scenario-detail-panel__body">
                 {activeTab === "received" && (
                   <CodeBlock color="var(--blue)" value={activePhase.receives} />
+                )}
+
+                {activeTab === "about" && (
+                  <div
+                    style={{
+                      color: "var(--text-2)",
+                      fontSize: "13px",
+                      lineHeight: 1.65,
+                      maxWidth: "780px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "var(--text-1)",
+                        fontFamily: "var(--font-display)",
+                        fontSize: "16px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {activePhase.code} · {activePhase.name}
+                    </div>
+                    {activePhase.about}
+                  </div>
                 )}
 
                 {activeTab === "emitted" && (

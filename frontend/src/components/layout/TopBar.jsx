@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
+import RagTutorWidget from "../workspace/RagTutorWidget";
+
+const LAST_LAB_STORAGE_KEY = "seclabs-last-lab-id";
 
 export default function TopBar({ items, activeItem, onSelectItem }) {
-  const scenarios = items.filter((i) => i.type === "scenario");
   const labs = items.filter((i) => i.type === "lab");
 
-  const completedCount = labs.filter((i) => i.completed).length;
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
+
+  const [lastLabId, setLastLabId] = useState(
+    () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
+  );
+
+  const [navView, setNavView] = useState("home");
 
   const investigationStarted = items.some(
     (item) => item.id === "scenario-0" && item.completed,
@@ -15,38 +22,47 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   const hasUnlockedLabs = unlockedLabs.length > 0;
   const lastUnlockedLab = unlockedLabs[unlockedLabs.length - 1] || null;
 
-  const isLabScenarioIntro =
-    activeItem?.type === "lab" &&
-    activeItem?.scenario &&
-    !activeItem?.scenarioViewed;
+  const currentLab =
+    activeItem?.type === "lab"
+      ? activeItem
+      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
 
-  const isLabRuntime =
-    activeItem?.type === "lab" &&
-    (!activeItem?.scenario || activeItem?.scenarioViewed);
+  const isActuallyInsideLab = activeItem?.type === "lab";
 
-  const activeScenarioId = isLabScenarioIntro
-    ? activeId.replace("lab", "scenario")
-    : activeId;
+  const currentLabLabel =
+    isActuallyInsideLab && currentLab
+      ? `LAB - ${currentLab.shortTitle.replace(/^Lab\s*/i, "")} ${currentLab.title}`
+      : "LABS";
 
-  const [navView, setNavView] = useState("home");
+  useEffect(() => {
+    if (activeItem?.type !== "lab") return;
+
+    setLastLabId(activeItem.id);
+    localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
+  }, [activeItem]);
 
   useEffect(() => {
     if (!activeId) return;
 
-    if (isLabScenarioIntro) {
+    if (activeItem?.type === "pipeline") {
       setNavView("scenarios");
       return;
     }
 
-    if (isLabRuntime) {
+    if (activeItem?.type === "lab") {
       setNavView("labs");
+      return;
+    }
+
+    if (activeItem?.type === "docs" || activeId === "docs") {
+      setNavView("docs");
       return;
     }
 
     if (activeId === "dashboard" || activeItem?.type === "welcome") {
       setNavView("home");
     }
-  }, [activeId, activeItem?.type, isLabScenarioIntro, isLabRuntime]);
+  }, [activeId, activeItem?.type]);
 
   const navTabs = [
     {
@@ -56,35 +72,60 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     },
     {
       id: "scenarios",
-      label: "SCENARIOS",
-      badge: `${scenarios.filter((s) => s.completed).length}/${scenarios.length}`,
-      disabled: true,
+      label: "PIPELINE",
+      disabled: !investigationStarted,
     },
     {
       id: "labs",
-      label: "LABS",
-      badge: `${completedCount}/${labs.length}`,
+      label: currentLabLabel,
       disabled: !investigationStarted || !hasUnlockedLabs,
+    },
+    {
+      id: "docs",
+      label: "DOC",
+      disabled: !investigationStarted,
     },
   ];
 
-  function handleTabClick(tab) {
-  if (tab.disabled) return;
+  function goHome() {
+    if (investigationStarted) {
+      setNavView("home");
+      onSelectItem("dashboard");
+      return;
+    }
 
-  if (tab.id === "home") {
     setNavView("home");
-    onSelectItem("dashboard");
-    return;
+    onSelectItem("scenario-0");
   }
 
-  if (tab.id === "labs") {
-    if (!lastUnlockedLab) return;
+  function handleTabClick(tab) {
+    if (tab.disabled) return;
 
-    setNavView("labs");
-    onSelectItem(lastUnlockedLab.id);
-    return;
+    if (tab.id === "home") {
+      setNavView("home");
+      onSelectItem("dashboard");
+      return;
+    }
+
+    if (tab.id === "labs") {
+      if (!currentLab) return;
+
+      setNavView("labs");
+      onSelectItem(currentLab.id);
+      return;
+    }
+
+    if (tab.id === "scenarios") {
+      setNavView("scenarios");
+      onSelectItem("pipeline");
+      return;
+    }
+
+    if (tab.id === "docs") {
+      setNavView("docs");
+      onSelectItem("docs");
+    }
   }
-}
 
   return (
     <header
@@ -96,19 +137,29 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     >
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          justifyContent: "space-between",
           padding: "10px 20px",
           gap: "16px",
         }}
       >
-        <div
+        {/* Logo / Home button */}
+        <button
+          type="button"
+          onClick={goHome}
+          title="Go to home"
           style={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            minWidth: "160px",
+            minWidth: "180px",
+            width: "fit-content",
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
           }}
         >
           <div
@@ -122,13 +173,14 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               alignItems: "center",
               justifyContent: "center",
               boxShadow: "0 0 10px rgba(249,115,22,0.15)",
+              flexShrink: 0,
             }}
           >
             <span
               style={{
                 color: "var(--orange)",
                 fontSize: "10px",
-                fontWeight: "600",
+                fontWeight: 600,
                 fontFamily: "var(--font-mono)",
               }}
             >
@@ -140,7 +192,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             <div
               style={{
                 fontSize: "13px",
-                fontWeight: "700",
+                fontWeight: 700,
                 fontFamily: "var(--font-display)",
                 color: "var(--text-1)",
                 letterSpacing: "0.04em",
@@ -160,31 +212,33 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               AI SECURITY TRAINING
             </div>
           </div>
-        </div>
+        </button>
 
-        <div
+        {/* Main navigation */}
+        <nav
+          aria-label="Main navigation"
           style={{
             display: "inline-flex",
             border: "1px solid var(--border-dim)",
             borderRadius: "8px",
             overflow: "hidden",
             background: "var(--bg-elevated)",
+            justifySelf: "center",
           }}
         >
           {navTabs.map((tab, index) => {
             const isActive = navView === tab.id;
             const isScenarioTab = tab.id === "scenarios";
+            const isDocsTab = tab.id === "docs";
             const isDisabled = Boolean(tab.disabled);
 
             const activeBg =
-              tab.id === "home"
+              tab.id === "home" || tab.id === "labs"
                 ? "var(--orange-dim)"
-                : isScenarioTab
-                  ? "rgba(56,189,248,0.10)"
-                  : "var(--orange-dim)";
+                : "rgba(56,189,248,0.10)";
 
             const activeColor =
-              isScenarioTab ? "var(--blue)" : "var(--text-1)";
+              isScenarioTab || isDocsTab ? "var(--blue)" : "var(--text-1)";
 
             return (
               <button
@@ -207,6 +261,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                   cursor: isDisabled ? "not-allowed" : "pointer",
                   opacity: isDisabled && !isActive ? 0.35 : 1,
                   whiteSpace: "nowrap",
+                  maxWidth: tab.id === "labs" ? "320px" : "none",
                   display: "flex",
                   alignItems: "center",
                   gap: "7px",
@@ -222,12 +277,12 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                       padding: "1px 6px",
                       borderRadius: "999px",
                       background: isActive
-                        ? isScenarioTab
+                        ? isScenarioTab || isDocsTab
                           ? "rgba(56,189,248,0.18)"
                           : "rgba(249,115,22,0.18)"
                         : "var(--bg-surface)",
                       color: isActive
-                        ? isScenarioTab
+                        ? isScenarioTab || isDocsTab
                           ? "var(--blue)"
                           : "var(--orange)"
                         : "var(--text-3)",
@@ -240,217 +295,24 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        <div style={{ minWidth: "120px", textAlign: "right" }}>
-          <div
-            style={{
-              fontSize: "9px",
-              color: "var(--text-3)",
-              letterSpacing: "0.12em",
-              marginBottom: "4px",
-            }}
-          >
-            PROGRESS
-          </div>
-
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {completedCount}
-            <span style={{ color: "var(--text-3)", fontSize: "13px" }}>
-              /{labs.length}
-            </span>
-          </div>
+        {/* Tutor */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            minWidth: "180px",
+          }}
+        >
+          <RagTutorWidget
+            labId={activeItem?.id}
+            phase={activeItem?.phase}
+            activeItem={activeItem}
+            placement="topbar"
+          />
         </div>
       </div>
-
-      {navView === "scenarios" && investigationStarted && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 20px 8px",
-            borderTop: "1px solid var(--border-dim)",
-            overflowX: "auto",
-          }}
-        >
-          {scenarios.map((item) => {
-            const isActive = activeScenarioId === item.id;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  border: isActive
-                    ? "1px solid rgba(56,189,248,0.35)"
-                    : "1px solid var(--border-dim)",
-                  background: isActive
-                    ? "rgba(56,189,248,0.10)"
-                    : "transparent",
-                  opacity: isActive ? 1 : 0.35,
-                  cursor: "not-allowed",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                <span
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: isActive ? "var(--blue)" : "var(--text-3)",
-                    flexShrink: 0,
-                  }}
-                />
-
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontFamily: "var(--font-mono)",
-                    letterSpacing: "0.08em",
-                    color: isActive ? "var(--blue)" : "var(--text-3)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {item.shortTitle}
-                </span>
-
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: isActive ? "var(--text-2)" : "var(--text-3)",
-                    fontFamily: "var(--font-display)",
-                    maxWidth: "180px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {item.phase}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {navView === "labs" && investigationStarted && hasUnlockedLabs && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 20px 8px",
-            borderTop: "1px solid var(--border-dim)",
-            overflowX: "auto",
-          }}
-        >
-          {labs.map((item) => {
-            const isActive = activeId === item.id;
-            const unlocked = Boolean(item.scenarioViewed);
-            const available =
-              unlocked && (item.guide?.steps?.length ?? 0) > 0;
-
-            const borderColor = isActive
-              ? "var(--orange-border)"
-              : item.completed
-                ? "rgba(34,197,94,0.20)"
-                : "var(--border-dim)";
-
-            const bgColor = isActive
-              ? "var(--orange-dim)"
-              : item.completed
-                ? "rgba(34,197,94,0.05)"
-                : "transparent";
-
-            const dotColor = isActive
-              ? "var(--orange)"
-              : item.completed
-                ? "var(--green)"
-                : unlocked
-                  ? "var(--orange)"
-                  : "var(--text-3)";
-
-            const labelColor = isActive
-              ? "var(--text-1)"
-              : item.completed
-                ? "var(--green)"
-                : unlocked
-                  ? "var(--text-2)"
-                  : "var(--text-3)";
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => available && onSelectItem(item.id)}
-                disabled={!available}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  border: `1px solid ${borderColor}`,
-                  background: bgColor,
-                  opacity: available ? 1 : 0.35,
-                  cursor: available ? "pointer" : "not-allowed",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                <span
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: dotColor,
-                    flexShrink: 0,
-                  }}
-                />
-
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontFamily: "var(--font-mono)",
-                    letterSpacing: "0.08em",
-                    color: labelColor,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {item.shortTitle}
-                </span>
-
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: isActive ? "var(--text-2)" : "var(--text-3)",
-                    fontFamily: "var(--font-display)",
-                    maxWidth: "160px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {item.phase}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </header>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 // IMPORTANTE: Asegúrate de que esta ruta a tu apiClient es correcta
 import { request } from "../../services/apiClient";
 
-export default function RagTutorWidget({ labId, phase, activeItem }) {
+export default function RagTutorWidget({ labId, phase, activeItem, placement = "floating" }) {
     
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -97,10 +97,57 @@ const handleSendMessage = async (e) => {
     setMessages((prev) => [...prev, { role: "assistant", type: "quiz", ...questionObj }]);
   };
 
+  const isTopbar = placement === "topbar";
+  const shellStyle = isTopbar
+    ? {
+        position: "relative",
+        zIndex: 50,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        minWidth: "120px",
+      }
+    : {
+        position: "fixed",
+        bottom: "20px",
+        right: "20px",
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+      };
+  const panelStyle = isTopbar
+    ? {
+        position: "absolute",
+        top: "44px",
+        right: 0,
+        width: "360px",
+        height: "460px",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border-dim)",
+        borderRadius: "12px",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
+        overflow: "hidden",
+      }
+    : {
+        width: "350px",
+        height: "450px",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border-dim)",
+        borderRadius: "12px",
+        marginBottom: "12px",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+        overflow: "hidden",
+      };
+
   return (
-    <div style={{ position: "fixed", bottom: "20px", right: "20px", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+    <div style={shellStyle}>
       {isOpen && (
-        <div style={{ width: "350px", height: "450px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "12px", marginBottom: "12px", display: "flex", flexDirection: "column", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", overflow: "hidden" }}>
+        <div style={panelStyle}>
           
           {/* Header */}
           <div style={{ padding: "12px 16px", background: "var(--blue-dim)", borderBottom: "1px solid var(--blue)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -172,14 +219,28 @@ const handleSendMessage = async (e) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          width: "60px", height: "60px", borderRadius: "50%", background: "var(--blue)", border: "2px solid rgba(255,255,255,0.2)",
-          boxShadow: "0 4px 20px rgba(56,189,248,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", fontSize: "24px", transition: "transform 0.2s"
+          width: isTopbar ? "120px" : "60px",
+          height: isTopbar ? "36px" : "60px",
+          borderRadius: isTopbar ? "8px" : "50%",
+          background: isOpen ? "rgba(56,189,248,0.16)" : "var(--bg-elevated)",
+          border: isOpen ? "1px solid var(--blue)" : "1px solid var(--border-dim)",
+          boxShadow: isTopbar ? "none" : "0 4px 20px rgba(56,189,248,0.4)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          cursor: "pointer",
+          fontSize: isTopbar ? "10px" : "24px",
+          color: isOpen ? "var(--blue)" : "var(--text-2)",
+          fontFamily: "var(--font-mono)",
+          fontWeight: 700,
+          letterSpacing: isTopbar ? "0.10em" : 0,
+          transition: "transform 0.2s, border-color 0.15s, background 0.15s"
         }}
         onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
         onMouseOut={(e) => e.target.style.transform = "scale(1)"}
       >
-        {isOpen ? "✕" : "🤖"}
+        {isTopbar ? (isOpen ? "CLOSE TUTOR" : "ASK TUTOR") : isOpen ? "✕" : "🤖"}
       </button>
     </div>
   );
