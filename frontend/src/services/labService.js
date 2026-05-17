@@ -18,7 +18,15 @@ function sessionParam() {
 function toAbsoluteUrl(url, baseUrl) {
   if (!url) return "";
   try {
-    return new URL(url, baseUrl).toString();
+    const parsed = new URL(url, baseUrl);
+    const pageHost = window.location.hostname;
+    const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+    if (pageHost && !localHosts.has(pageHost) && localHosts.has(parsed.hostname)) {
+      parsed.hostname = pageHost;
+    }
+
+    return parsed.toString();
   } catch {
     return url;
   }

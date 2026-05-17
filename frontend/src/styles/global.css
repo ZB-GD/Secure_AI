@@ -601,6 +601,16 @@ body,
   overflow-x: hidden;
 }
 
+.scenario-window-error {
+  margin: 10px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 6px;
+  background: rgba(127, 29, 29, 0.18);
+  color: var(--red);
+  font-size: 12px;
+}
+
 .scenario-window-status-row {
   display: flex;
   align-items: center;

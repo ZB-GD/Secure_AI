@@ -360,7 +360,7 @@ def record_lab_heartbeat(node: str, session_id: str = "shared"):
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error while recording heartbeat: {e}")
 
-def get_lab_status(node: str, session_id: str = "shared"):
+def get_lab_status(node: str, request_host: str | None = None, session_id: str = "shared"):
     lab = _get_lab_or_404(node)
     container_name = session_container_name(lab["container_name"], session_id)
     client = _client()
@@ -369,7 +369,7 @@ def get_lab_status(node: str, session_id: str = "shared"):
         container = client.containers.get(container_name)
         payload = {"status": container.status}
         if container.status == "running":
-            payload["terminal_url"] = _build_novnc_url(_get_host_port_or_500(container))
+            payload["terminal_url"] = _build_novnc_url(_get_host_port_or_500(container), request_host)
             metrics = _get_local_lab_metrics(container, lab)
             if metrics:
                 payload["status"] = metrics.get("status", payload["status"])

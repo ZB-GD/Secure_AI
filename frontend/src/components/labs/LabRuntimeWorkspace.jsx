@@ -1168,7 +1168,6 @@ export default function LabRuntimeWorkspace({
               <MetricsTab
                 item={item}
                 runtime={runtime}
-                item={item}
                 onAttack={triggerAttack}
                 attackLoading={attackLoading}
               />

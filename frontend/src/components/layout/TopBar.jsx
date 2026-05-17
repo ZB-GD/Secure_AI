@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import RagTutorWidget from "../workspace/RagTutorWidget";
 
+const LAST_LAB_STORAGE_KEY = "seclabs:last-lab-id";
+
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const labs = items.filter((i) => i.type === "lab");
 
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
-  const [lastLabId, setLastLabId] = useState("");
+  const isLabScenarioIntro =
+    activeItem?.type === "lab" && activeItem?.scenario && !activeItem?.scenarioViewed;
 
   const [lastLabId, setLastLabId] = useState(
     () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
@@ -20,13 +23,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   const unlockedLabs = labs.filter((lab) => lab.scenarioViewed);
   const hasUnlockedLabs = unlockedLabs.length > 0;
   const lastUnlockedLab = unlockedLabs[unlockedLabs.length - 1] || null;
-  const currentLab =
-    activeItem?.type === "lab"
-      ? activeItem
-      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
-  const currentLabLabel = currentLab
-    ? `${currentLab.shortTitle.toUpperCase()} - ${currentLab.phase}`
-    : "LABS";
 
   const currentLab =
     activeItem?.type === "lab"
@@ -45,11 +41,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
     setLastLabId(activeItem.id);
     localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
-  }, [activeItem]);
-
-  useEffect(() => {
-    if (activeItem?.type !== "lab") return;
-    setLastLabId(activeItem.id);
   }, [activeItem]);
 
   useEffect(() => {
@@ -73,7 +64,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     if (activeId === "dashboard" || activeItem?.type === "welcome") {
       setNavView("home");
     }
-  }, [activeId, activeItem?.type]);
+  }, [activeId, activeItem?.type, isLabScenarioIntro]);
 
   const navTabs = [
     {
