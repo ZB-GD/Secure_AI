@@ -100,7 +100,13 @@ async def chat_with_tutor(request: ChatRequest):
             model=MODEL_NAME,
             contents=f"{system_instruction}\n\nUser: {request.message}",
         )
-        return {"response": response.text}
+        # Resolve doc links from both the user message and the model response
+        # so the frontend can offer direct links to relevant documentation.
+        doc_links = _resolve_doc_links(request.message + " " + response.text)
+        return {
+            "response": response.text,
+            "doc_links": doc_links,
+        }
     except HTTPException:
         raise
     except Exception as exc:
