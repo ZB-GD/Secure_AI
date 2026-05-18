@@ -108,7 +108,7 @@ export default function RuntimeLogsPanel({
             overflowY: "auto",
             padding: "14px 16px",
             fontFamily: "var(--font-mono)",
-            fontSize: "11px",
+            fontSize: "12px",
             lineHeight: "1.7",
             color: "var(--text-2)",
             whiteSpace: "pre-wrap",
