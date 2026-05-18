@@ -219,9 +219,9 @@ function PipelineRuntime() {
         id: "preprocessing",
         code: "NODE-2",
         name: "Edge Pre-processing Node",
-        status: "warning",
+        status: "compromised",
         summary: "Converted the poisoned reading into an invalid feature.",
-        statusReason: "Poisoned data produced an anomalous feature.",
+        statusReason: "Anomalous feature forwarded downstream without quarantine.",
         about:
           "NODE-2 transforms raw sensor readings into the feature vector the ML model expects. Its key computation is congestion_score = traffic_volume / 8000. When traffic_volume = -5000 arrives, the result is congestion_score = -0.625, a physically impossible value. The node flags it as anomalous but still forwards it instead of quarantining it, so the poisoned feature reaches inference unchanged.",
         receives:
@@ -241,9 +241,9 @@ function PipelineRuntime() {
         id: "actuator",
         code: "NODE-3",
         name: "Inference & Action Node",
-        status: "warning",
+        status: "compromised",
         summary: "Turned the invalid feature into a traffic-control action.",
-        statusReason: "Actions were generated from risky model input.",
+        statusReason: "Model integrity check skipped; actions generated from poisoned input.",
         about:
           "NODE-3 runs ML inference on the feature vector from NODE-2 and translates the prediction into a real-world action, such as holding a traffic light red or rerouting vehicles. Because its output directly controls physical infrastructure, it must verify model integrity and refuse to act on anomalous input. In vulnerable mode it generates actions even when the input feature was already flagged as anomalous.",
         receives:
@@ -263,7 +263,7 @@ function PipelineRuntime() {
         id: "trainer",
         code: "NODE-4",
         name: "Trainer Node",
-        status: "warning",
+        status: "compromised",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
         statusReason: "Retraining risk exists because poisoned features reached storage.",
         about:
@@ -349,17 +349,13 @@ function PipelineRuntime() {
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
     const n3Status =
-      n3.integrity_ok === false || n3.halted
+      n3.integrity_ok === false || n3.halted || n3.integrity_ok === null || n3.integrity_ok === undefined
         ? "compromised"
-        : n3.integrity_ok === null || n3.integrity_ok === undefined
-          ? "warning"
-          : "healthy";
+        : "healthy";
     const n4Status =
-      n4.store_error || n4.retrain_error
+      n4.store_error || n4.retrain_error || n4.retrain_triggered
         ? "compromised"
-        : n4.retrain_triggered
-          ? "warning"
-          : "healthy";
+        : "healthy";
 
     return [
       {
@@ -400,7 +396,7 @@ function PipelineRuntime() {
         id: "preprocessing",
         code: "NODE-2",
         name: "Edge Pre-processing Node",
-        status: n2Anomalous ? "warning" : "healthy",
+        status: n2Anomalous ? "compromised" : "healthy",
         summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
         statusReason: n2Anomalous
           ? "Poisoned data produced an anomalous feature."
