@@ -134,7 +134,7 @@ export const journey = [
         {
           id: "step-1-1",
           title: "Inspect the Local Target",
-          body: "Open a terminal in the VM (Ctrl+Alt+T or click the terminal icon in the taskbar). First confirm the vulnerable app is alive:\n\n  curl http://127.0.0.1:5000/health\n\nThen read the two files that matter:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nThe vulnerable app is the local target. The attack script sends traffic_volume = -5000 to http://127.0.0.1:5000/ingest.",
+          body: "Open a terminal (Ctrl+Alt+T) and confirm the target is running:\n\n  curl http://127.0.0.1:5000/health\n\nThen read the two key files:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nvulnerable_app.py is a Flask app on port 5000, its POST /ingest endpoint accepts any JSON with no auth and no validation.\npoison_data.py is the attack script, it POSTs traffic_volume=-5000 directly to that endpoint.\n\nTo reset the lab at any point:\n\n  python3 /home/lab/Desktop/Lab1/reset_lab.py",
           observation:
             "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
@@ -153,7 +153,7 @@ export const journey = [
         {
           id: "step-1-2",
           title: "Execute the Attack",
-          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nThe script injects traffic_volume = -5000 into the local vulnerable node at 127.0.0.1:5000. Watch the output — it shows how the isolated node accepts and propagates the poisoned data.",
+          body: "Run the attack script from the VM terminal:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nThe script injects traffic_volume = -5000 into the local vulnerable node at 127.0.0.1:5000. Watch the output, it shows how the isolated node accepts and propagates the poisoned data.",
           observation:
             "After running the script, switch to LOGS and METRICS. LOGS show the event chain; METRICS summarize the impact: accepted poisoned readings, negative congestion_score, drift risk, and model trust.",
           question:
@@ -165,7 +165,7 @@ export const journey = [
         {
           id: "step-1-3",
           title: "Defense Layer 1: Sanity Checks",
-          body: "Open the defense script in the VM text editor:\n\n  gedit /home/lab/Desktop/Lab1/validate_defense.py\n\nFind validate_reading() and implement the TODO block. This is the first gate: reject impossible raw readings before feature engineering. A road cannot have a negative number of cars, temperature cannot be 0K in this dataset, rain cannot be negative, and cloud percentage must stay between 0 and 100.\n\nTest your implementation:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Open the defense script:\n\n  gedit /home/lab/Desktop/Lab1/validate_defense.py\n\nYou will implement three functions here, one per defense layer:\n\n- validate_reading(): reject impossible raw values\n\n- detect_anomaly(): flag statistical outliers\n\n- evaluate_drift(): halt retraining if drift is too high\n\nStart with validate_reading(). Reject any reading where traffic_volume < 0, temp = 0K, rain < 0, or cloud cover is outside 0–100.\n\nThen test it:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "The variable traffic_volume represents the number of cars per hour on a road segment. What is the absolute physical minimum?",
           question:
@@ -177,13 +177,13 @@ export const journey = [
         {
           id: "step-1-4",
           title: "Defense Layer 2: Statistical Anomaly Detection",
-          body: "Still in validate_defense.py, implement detect_anomaly(). This is the second gate: catch values that may be physically possible but statistically suspicious.\n\nUse the Z-Score formula already shown in the TODO comments:\n\n  z = |( x - mean ) / std |\n\nIf z > Z_THRESHOLD, return QUARANTINE so the value does not reach inference.\n\nRun again to verify:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Still in validate_defense.py, implement detect_anomaly(). This is the second gate: catch values that may be physically possible but statistically suspicious.\n\nUse the Z-Score formula already shown in the TODO comments, so the value does not reach inference.\n\nRun again to verify:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
-            "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value — far outside normal range.",
+            "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value, far outside normal range.",
           question:
             "If a data point is flagged as highly anomalous by the Z-Score, what action should the pipeline take instead of forwarding it to NODE-3?",
           placeholder: "e.g., Quarantine it, Drop it...",
-          hint: "We should isolate it for human review — not delete it, not forward it.",
+          hint: "We should isolate it for human review, not delete it, not forward it.",
           expectedKeywords: [
             "quarantine",
             "drop",
@@ -197,7 +197,7 @@ export const journey = [
         {
           id: "step-1-5",
           title: "Defense Layer 3: Drift Monitoring",
-          body: "Implement evaluate_drift() in validate_defense.py. This is the third gate: protect retraining. If poisoned data shifts the incoming distribution too much, the system should pause retraining instead of promoting a model trained on bad data.\n\nThe safety threshold is DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
+          body: "Implement evaluate_drift() in validate_defense.py. This is the third gate: protect retraining. If poisoned data shifts the incoming distribution too much, the system should pause retraining instead of promoting a model trained on bad data.\nThe safety threshold is DRIFT_THRESHOLD = 0.25 (25%).\n\nFinal run:\n\n  python3 /home/lab/Desktop/Lab1/validate_defense.py",
           observation:
             "When the script reports ✅ for all 3 steps, your defense logic is ready. Next you will enable it in the local target and rerun the same attack.",
           question:
@@ -217,7 +217,7 @@ export const journey = [
         {
           id: "step-1-6",
           title: "Enable Defense and Rerun",
-          body: "Now switch the local target from vulnerable mode to protected mode:\n\n  python3 /home/lab/Desktop/Lab1/enable_defense.py\n\nThen rerun the exact same attack:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nGo to LOGS and METRICS. The same traffic_volume = -5000 should now be rejected instead of accepted.",
+          body: "Switch the target to protected mode:\n\n  python3 /home/lab/Desktop/Lab1/enable_defense.py\n\nThis activates your validate_defense.py as a live gate, every /ingest request now runs through your three functions before being accepted.\n\nRerun the same attack:\n\n  python3 /home/lab/Desktop/Lab1/poison_data.py\n\nCheck LOGS and METRICS. The same traffic_volume=-5000 should now be rejected instead of accepted.",
           observation:
             "This closes the loop: the first run demonstrates the vulnerability, and the second run proves that your validation gate blocks the poisoned input before it reaches feature engineering.",
           question:
@@ -279,11 +279,7 @@ export const journey = [
       {
         question:
           "By injecting manipulated data during the collection phase, what type of Machine Learning attack is being executed?",
-        options: [
-          "Model Evasion.",
-          "Prompt Injection.",
-          "Data Poisoning.",
-        ],
+        options: ["Model Evasion.", "Prompt Injection.", "Data Poisoning."],
         correctAnswerIndex: 2,
         explanation:
           "Data Poisoning attacks contaminate the training dataset to maliciously alter the model's future behavior.",
@@ -446,12 +442,11 @@ export const journey = [
     quiz: [],
   },
   {
-  id: "docs",
-  type: "docs",
-  shortTitle: "Docs",
-  title: "Security Reference",
-  phase: "Reference",
-  threatStage: null,
-},
-
+    id: "docs",
+    type: "docs",
+    shortTitle: "Docs",
+    title: "Security Reference",
+    phase: "Reference",
+    threatStage: null,
+  },
 ];

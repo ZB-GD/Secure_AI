@@ -80,7 +80,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
       downstreamRisk: "reduced",
       congestionScore: congestionMatch?.[1] || previous.congestionScore || "-0.625",
       poisonedValue: "traffic_volume=-5000",
-      lastEvent: "Protected mode blocked the poisoned reading.",
     };
   }
 
@@ -88,7 +87,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
     return {
       ...previous,
       statusLabel: previous.statusLabel === "not found" ? "not found" : "running",
-      lastEvent: previous.lastEvent || DEFAULT_RUNTIME.lastEvent,
     };
   }
 
@@ -104,7 +102,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
     downstreamRisk: "high",
     congestionScore: congestionMatch?.[1] || "-0.625",
     poisonedValue: "traffic_volume=-5000",
-    lastEvent: "The local vulnerable node accepted an impossible traffic reading.",
   };
 }
 
