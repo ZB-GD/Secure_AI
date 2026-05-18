@@ -1,28 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
 import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
-import PipelineCanvas from "../pipeline/PipelineCanvas";
+import PipelineCanvas from "./PipelineCanvas";
 import WelcomePage from "./WelcomePage";
-
-// --- SCENARIO 1: PIPELINE INVESTIGATION ---
-function PhaseNode({ phase, isActive, onClick }) {
-  const statusClass = `scenario-phase--${phase.status}`;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`scenario-phase ${statusClass} ${isActive ? "is-active" : ""}`}
-    >
-      <div className="scenario-phase__topline">
-        <span className="scenario-phase__code">{phase.code}</span>
-        <span className="scenario-phase__status">{phase.status}</span>
-      </div>
-      <div className="scenario-phase__name">{phase.name}</div>
-      <div className="scenario-phase__summary">{phase.summary}</div>
-    </button>
-  );
-}
 
 function CodeBlock({ value, color = "var(--text-2)" }) {
   return (
@@ -127,7 +107,7 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   return [];
 }
 
-export function ScenarioOnePipelineRuntime() {
+function PipelineRuntime() {
   const fallbackPhases = useMemo(
     () => [
       {
@@ -614,7 +594,6 @@ export function ScenarioOnePipelineRuntime() {
   );
 }
 
-// MAIN EXPORT
 export default function ScenarioWorkspace({
   item,
   onCompleteScenario,
@@ -628,7 +607,7 @@ export default function ScenarioWorkspace({
         onSelectItem={onSelectItem}
       />
     );
-  if (item.id === "scenario-1") return <ScenarioOnePipelineRuntime />;
+  if (item.id === "scenario-1") return <PipelineRuntime />;
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
