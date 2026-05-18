@@ -156,15 +156,125 @@ ssh <your_user>@<enp0s8_IP>
 VBoxManage controlvm "SecLabs-Lab" poweroff
 ```
 
-### 6. Run and stop SecLabs
+### 6. Run SecLabs
 
-Inside the VM, from the repository root:
+From the repository root:
 
-````bash
+```bash
 chmod +x deploy.sh
-
-# Build lab/platform images and start the platform
 ./deploy.sh
+```
+
+The deployment exposes the student UI on port `3000`. The backend port `8000`
+is intentionally bound to `127.0.0.1` in Docker Compose, so remote browsers
+should reach the backend through the frontend/nginx container, not directly.
+
+### 7. Choose the correct testing setup
+
+#### Real university VM deployment
+
+Use this when the platform runs on the university machine and students access it
+from another browser/device.
+
+`.env` should keep API base URLs empty:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://<university-vm-ip>:3000
+```
+
+Open:
+
+```text
+http://<university-vm-ip>:3000
+```
+
+Health check:
+
+```bash
+curl http://<university-vm-ip>:3000/health
+```
+
+Do not use `http://<university-vm-ip>:8000` unless you deliberately expose the
+backend port.
+
+#### Local Docker deployment
+
+Use this when Docker runs on the same machine where the browser is open.
+
+`.env` should also keep API base URLs empty:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Health check:
+
+```bash
+curl http://localhost:3000/health
+```
+
+#### Tailscale VM deployment
+
+Use this when Docker runs on a machine reachable through Tailscale, for example
+`100.111.250.126`.
+
+`.env` should still keep API base URLs empty, because the browser must call the
+same origin on port `3000` and let nginx proxy backend requests internally:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://<tailscale-ip>:3000
+```
+
+Open:
+
+```text
+http://<tailscale-ip>:3000
+```
+
+Health check:
+
+```bash
+curl http://<tailscale-ip>:3000/health
+```
+
+Expected to fail unless the backend is intentionally exposed:
+
+```bash
+curl http://<tailscale-ip>:8000/health
+```
+
+#### Vite development server
+
+Use this only when running the React dev server directly with `npm run dev`.
+In that setup, the browser is served by Vite, not nginx, so either expose the
+backend deliberately or use a Vite proxy.
+
+Example only:
+
+```env
+VITE_API_BASE_URL=http://<backend-host>:8000
+VITE_API_BASE_URL_FALLBACK=http://localhost:8000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+After changing any `VITE_*` value, rebuild the frontend because Vite bakes these
+values into the JS bundle:
+
+```bash
+TARGET=frontend NO_CACHE=1 ./deploy.sh
+```
 
 ---
 
@@ -179,7 +289,7 @@ main
 └── dev                           ← stable integration
     ├── feature/backend-glaira    ← backend and infrastructure
     └── feature/frontend-zineb    ← user interface
-````
+```
 
 - **`main`**: main/production branch. It only receives merges from `dev` when everything is stable.
 - **`dev`**: integration branch. Validated changes are merged here through Pull Requests.
