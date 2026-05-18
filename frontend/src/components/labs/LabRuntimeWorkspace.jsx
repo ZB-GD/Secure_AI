@@ -122,6 +122,107 @@ function MetricSparkline({ points = [], color = "var(--orange)" }) {
   );
 }
 
+function MetricCard({ metric, history }) {
+  const [showHelp, setShowHelp] = useState(false);
+
+  return (
+    <div
+      style={{
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border-dim)",
+        borderRadius: "8px",
+        padding: "10px 12px",
+        minHeight: "90px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: showHelp ? "flex-start" : "space-between",
+        gap: showHelp ? "8px" : 0,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--text-3)",
+            letterSpacing: "0.08em",
+            lineHeight: 1.4,
+          }}
+        >
+          {metric.label}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowHelp((v) => !v)}
+          style={{
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            border: `1px solid ${showHelp ? "var(--orange)" : "var(--border-mid)"}`,
+            background: showHelp ? "rgba(249,115,22,0.15)" : "transparent",
+            color: showHelp ? "var(--orange)" : "var(--text-3)",
+            fontSize: "10px",
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            marginLeft: "6px",
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          {showHelp ? "×" : "?"}
+        </button>
+      </div>
+
+      {showHelp ? (
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--text-2)",
+            lineHeight: 1.65,
+            flex: 1,
+          }}
+        >
+          {metric.caption}
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              fontSize: "28px",
+              color: metric.color,
+              fontWeight: 700,
+              fontFamily: "var(--font-display)",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "4px",
+            }}
+          >
+            {metric.value}
+            {metric.suffix && (
+              <span style={{ fontSize: "16px" }}>{metric.suffix}</span>
+            )}
+          </div>
+          {metric.label === "DOWNSTREAM RISK" && (
+            <MetricSparkline
+              points={history.map((p) => p.drift)}
+              color={metric.color}
+            />
+          )}
+          {metric.label === "MODEL TRUST" && (
+            <MetricSparkline
+              points={history.map((p) => p.trust)}
+              color={metric.color}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function MetricsTab({ runtime, item }) {
   const [history, setHistory] = useState([]);
   const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
@@ -136,7 +237,6 @@ function MetricsTab({ runtime, item }) {
       : "var(--orange)";
 
   const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
-  const attackCommands = item?.attackCommands || [];
 
   useEffect(() => {
     setHistory((prev) => {
@@ -155,31 +255,14 @@ function MetricsTab({ runtime, item }) {
     runtime.driftScore,
   ]);
 
-  useEffect(() => {
-    setHistory((prev) => {
-      const nextPoint = {
-        drift: Number(runtime.driftScore ?? 0),
-        trust: Number(runtime.accuracy ?? 0),
-        key: `${runtime.driftScore}-${runtime.accuracy}-${runtime.attackAttempts}-${runtime.defenseEnabled}`,
-      };
-
-      if (prev[prev.length - 1]?.key === nextPoint.key) return prev;
-
-      return [...prev, nextPoint].slice(-10);
-    });
-  }, [
-    runtime.accuracy,
-    runtime.attackAttempts,
-    runtime.defenseEnabled,
-    runtime.driftScore,
-  ]);
   const metricCards = [
     {
       label: "ATTACK ATTEMPTS",
       value: runtime.attackAttempts ?? 0,
       suffix: "",
       color: "var(--text-1)",
-      caption: "How many poisoned submissions were sent to the local target.",
+      caption:
+        "Each run of poison_data.py sends traffic_volume=-5000 to the local /ingest endpoint — an impossible negative reading. In a real attack, an adversary injects out-of-bounds values to corrupt the data the AI pipeline trains on, degrading model behaviour without triggering obvious errors.",
     },
     {
       label: "ACCEPTED / REJECTED",
@@ -187,10 +270,10 @@ function MetricsTab({ runtime, item }) {
       suffix: "",
       color: runtime.isCompromised ? "var(--red)" : "var(--green)",
       caption: runtime.isCompromised
-        ? "Accepted poison means the first gate failed."
+        ? "The vulnerable node accepted the poisoned reading with no validation, passing traffic_volume=-5000 downstream to feature engineering. In production this reading would enter the training loop and corrupt future predictions — accepted poisoned inputs are the root cause of model drift."
         : protectedMode
-          ? "Rejected poison means the defense gate is working."
-          : "No poisoned reading has been accepted yet.",
+          ? "Your validate_defense.py caught the poisoned reading before it entered the pipeline. At least one defense layer — input sanity check, anomaly detection, or drift gate — identified the impossible value and blocked it, keeping the training data clean."
+          : "Run poison_data.py from the Desktop to send a poisoned reading. This counter will show how many submissions were accepted (bypassed all defenses) vs. rejected (blocked by your defense script).",
     },
     {
       label: "CONGESTION SCORE",
@@ -198,15 +281,16 @@ function MetricsTab({ runtime, item }) {
       suffix: "",
       color: scoreColor,
       caption: runtime.isCompromised
-        ? "Negative traffic produces a negative model feature."
-        : "Run the attack to generate the feature.",
+        ? "Edge Node 2 computes congestion_score = traffic_volume / 8000. With traffic_volume=-5000 the score becomes -0.625 — a physically impossible value. This corrupted feature is what the ML model uses for inference and retraining, skewing its understanding of traffic state across the whole network."
+        : "Edge Node 2 computes congestion_score = traffic_volume / 8000. Legitimate scores fall between 0 and 1. Once you run the attack, this will show the anomalous feature value produced by the poisoned input — the same feature that causes the model to predict free flow during a congested rush hour.",
     },
     {
       label: "DEFENSE COVERAGE",
       value: `${runtime.defenseCoverage ?? 0}/3`,
       suffix: "",
       color: protectedMode ? "var(--green)" : "var(--orange)",
-      caption: "Layers covered: sanity checks, anomaly detection, drift gate.",
+      caption:
+        "validate_defense.py implements 3 defense layers: (1) validate_reading() checks input bounds and rejects physically impossible values like negative traffic volumes; (2) detect_anomaly() applies Z-score analysis to flag statistical outliers in the feature space; (3) evaluate_drift() monitors model drift and halts retraining if it exceeds the safety threshold. A score of 3/3 means all layers are active and the attack was fully contained.",
     },
     {
       label: "DOWNSTREAM RISK",
@@ -214,10 +298,10 @@ function MetricsTab({ runtime, item }) {
       suffix: "%",
       color: driftColor,
       caption: runtime.isCompromised
-        ? "Above the 25% safety threshold used in this lab."
+        ? "Once poisoned data enters the pipeline the model drift score rises above 25% — the safety threshold used in this lab. At that point a real system should halt retraining to prevent the model from learning corrupted traffic patterns and issuing wrong signals to city infrastructure."
         : protectedMode
-          ? "Risk drops once poisoned data is rejected."
-          : "Below the safety threshold before the attack.",
+          ? "Your defense blocked the poisoned input before it reached the model trainer. With no corrupted data entering the training loop, drift stays low and the model continues to predict traffic states accurately."
+          : "Before any attack the model drift score is low — only clean sensor data has been seen. Run poison_data.py to see how injecting traffic_volume=-5000 pushes this score above the 25% threshold and what that means for the downstream ML pipeline.",
     },
     {
       label: "MODEL TRUST",
@@ -225,20 +309,18 @@ function MetricsTab({ runtime, item }) {
       suffix: "%",
       color: accuracyColor,
       caption: runtime.isCompromised
-        ? "Trust drops because poisoned data reached downstream logic."
-        : "Baseline trust before poisoned input is accepted.",
+        ? "After the vulnerable node accepted the poisoned reading it was forwarded to feature engineering and would trigger a corrupted retraining cycle. Accuracy drops from ~98% to ~61%, simulating how poisoned training data causes the model to misclassify congestion — setting all lights to green during rush hour."
+        : "Before any attack the model has only been trained on clean traffic data and classifies congestion states with ~98% accuracy. Run the attack to see how a single poisoned feature can degrade model trust, causing wrong predictions that could ripple across the entire city network.",
     },
   ];
 
   return (
     <div
       style={{
-        overflowY: "auto",
-        height: "100%",
-        padding: "16px",
+        padding: "12px 14px",
         display: "flex",
         flexDirection: "column",
-        gap: "14px",
+        gap: "10px",
       }}
     >
       {/* Estado general */}
@@ -306,130 +388,10 @@ function MetricsTab({ runtime, item }) {
         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
       >
         {metricCards.map((metric) => (
-          <div
-            key={metric.label}
-            style={{
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-dim)",
-              borderRadius: "8px",
-              padding: "15px",
-              minHeight: "132px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "10px",
-                color: "var(--text-3)",
-                letterSpacing: "0.08em",
-                lineHeight: 1.4,
-              }}
-            >
-              {metric.label}
-            </div>
-            <div
-              style={{
-                fontSize: "28px",
-                color: metric.color,
-                fontWeight: 700,
-                fontFamily: "var(--font-display)",
-                display: "flex",
-                alignItems: "baseline",
-                gap: "4px",
-              }}
-            >
-              {metric.value}
-              {metric.suffix && (
-                <span style={{ fontSize: "16px" }}>{metric.suffix}</span>
-              )}
-            </div>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "var(--text-3)",
-                lineHeight: 1.5,
-              }}
-            >
-              {metric.caption}
-            </div>
-            {metric.label === "DOWNSTREAM RISK" && (
-          <MetricSparkline
-            points={history.map((point) => point.drift)}
-            color={metric.color}
-          />
-        )}
-
-        {metric.label === "MODEL TRUST" && (
-          <MetricSparkline
-            points={history.map((point) => point.trust)}
-            color={metric.color}
-          />
-        )}
-          </div>
+          <MetricCard key={metric.label} metric={metric} history={history} />
         ))}
       </div>
 
-      <div
-        style={{
-          padding: "14px 16px",
-          borderRadius: "8px",
-          border: "1px solid var(--border-dim)",
-          background: "var(--bg-elevated)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "10px",
-            color: "var(--text-3)",
-            letterSpacing: "0.1em",
-            marginBottom: "8px",
-          }}
-        >
-          WHAT THESE METRICS MEAN
-        </div>
-        <div
-          style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.7 }}
-        >
-          These are lab indicators, not production telemetry. They show whether
-          the local app accepted or rejected poisoned data. The target starts in
-          vulnerable mode, then switches to protected mode after
-          enable_defense.py.
-        </div>
-      </div>
-
-      <div
-        style={{
-          padding: "14px 16px",
-          borderRadius: "8px",
-          border: "1px solid var(--orange-border)",
-          background: "rgba(249,115,22,0.06)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "10px",
-            color: "var(--orange)",
-            letterSpacing: "0.1em",
-            marginBottom: "8px",
-          }}
-        >
-          ATTACK COMMAND
-        </div>
-        <div
-          style={{
-            fontSize: "12px",
-            color: "var(--text-2)",
-            lineHeight: 1.7,
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          {attackCommands.length > 0
-            ? attackCommands.join("\n")
-            : "No attack commands are configured for this lab yet."}
-        </div>
-      </div>
     </div>
   );
 }
