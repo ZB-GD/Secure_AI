@@ -47,7 +47,7 @@ export default function AttackControls({
             <div style={{ flex: 1 }}>
               <label
                 style={{
-                  fontSize: "9px",
+                  fontSize: "10px",
                   color: "var(--text-3)",
                   marginBottom: "4px",
                   display: "block",
@@ -74,7 +74,7 @@ export default function AttackControls({
             <div style={{ width: "140px" }}>
               <label
                 style={{
-                  fontSize: "9px",
+                  fontSize: "10px",
                   color: "var(--text-3)",
                   marginBottom: "4px",
                   display: "block",

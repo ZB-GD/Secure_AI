@@ -95,7 +95,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                     style={{
                       color: "var(--text-3)",
                       fontFamily: "var(--font-display)",
-                      fontSize: "9px",
+                      fontSize: "10px",
                       letterSpacing: "0.12em",
                       marginBottom: "6px",
                     }}
@@ -186,7 +186,6 @@ export default function LabDashboard({ items, onSelectItem }) {
         >
           {labs.map((lab) => {
             const available = lab.guide?.steps?.length > 0;
-            const scenarioTitle = lab.scenario?.title || "Scenario included";
 
             return (
               <button
@@ -196,7 +195,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                 disabled={!available}
                 style={{
                   textAlign: "left",
-                  minHeight: "230px",
+                  minHeight: "190px",
                   borderRadius: "8px",
                   border: lab.completed
                     ? "1px solid var(--green-border)"
@@ -207,8 +206,8 @@ export default function LabDashboard({ items, onSelectItem }) {
                   opacity: available ? 1 : 0.55,
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: "space-between",
-                  gap: "18px",
+                  justifyContent: "flex-start",
+                  gap: "14px",
                 }}
               >
                 <div>
@@ -244,7 +243,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                         }`,
                         borderRadius: "999px",
                         padding: "3px 8px",
-                        fontSize: "9px",
+                        fontSize: "10px",
                         fontFamily: "var(--font-display)",
                       }}
                     >
@@ -275,28 +274,6 @@ export default function LabDashboard({ items, onSelectItem }) {
                   </p>
                 </div>
 
-                <div>
-                  <div
-                    style={{
-                      color: "var(--text-3)",
-                      fontFamily: "var(--font-display)",
-                      fontSize: "9px",
-                      letterSpacing: "0.12em",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    INCLUDED SCENARIO
-                  </div>
-                  <div
-                    style={{
-                      color: "var(--text-1)",
-                      fontSize: "14px",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {scenarioTitle}
-                  </div>
-                </div>
               </button>
             );
           })}

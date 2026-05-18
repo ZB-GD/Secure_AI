@@ -62,7 +62,7 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
             <span style={{ fontSize: "14px" }}>{tab.icon}</span>
             {tab.label.toUpperCase()}
             {tab.id === "quiz" && !quizUnlocked && (
-              <span style={{ fontSize: "9px", color: "var(--text-3)" }}>
+              <span style={{ fontSize: "10px", color: "var(--text-3)" }}>
                 LOCKED
               </span>
             )}
@@ -749,7 +749,7 @@ function QuizTab({ item, phase, onComplete }) {
               <div
                 style={{
                   color: "var(--text-3)",
-                  fontSize: "12px",
+                  fontSize: "14px",
                   fontFamily: "var(--font-display)",
                 }}
               >
@@ -761,7 +761,7 @@ function QuizTab({ item, phase, onComplete }) {
               <div
                 style={{
                   color: "var(--red)",
-                  fontSize: "12px",
+                  fontSize: "14px",
                   lineHeight: 1.6,
                 }}
               >
@@ -787,7 +787,7 @@ function QuizTab({ item, phase, onComplete }) {
             <div style={{ padding: "0 16px 14px" }}>
               <div
                 style={{
-                  fontSize: "9px",
+                  fontSize: "10px",
                   color: "var(--text-3)",
                   letterSpacing: "0.12em",
                   marginBottom: "8px",
@@ -826,7 +826,7 @@ function QuizTab({ item, phase, onComplete }) {
                     <span
                       style={{
                         marginLeft: "auto",
-                        fontSize: "9px",
+                        fontSize: "10px",
                         color: "var(--text-3)",
                       }}
                     >
@@ -867,10 +867,11 @@ function QuizTab({ item, phase, onComplete }) {
             >
               <div
                 style={{
-                  fontSize: "12px",
+                  fontSize: "14px",
                   color: "var(--text-1)",
-                  lineHeight: 1.5,
+                  lineHeight: 1.6,
                   fontWeight: 600,
+                  fontFamily: "var(--font-display)",
                 }}
               >
                 {questionIndex + 1}. {question.question}
@@ -879,7 +880,7 @@ function QuizTab({ item, phase, onComplete }) {
               {submitted && (
                 <span
                   style={{
-                    fontSize: "9px",
+                    fontSize: "10px",
                     fontWeight: 700,
                     padding: "4px 10px",
                     borderRadius: "12px",
@@ -956,8 +957,9 @@ function QuizTab({ item, phase, onComplete }) {
                       border: `1px solid ${border}`,
                       background,
                       color,
-                      fontSize: "10px",
-                      lineHeight: 1.5,
+                      fontSize: "14px",
+                      lineHeight: 1.55,
+                      fontFamily: "var(--font-display)",
                       cursor: submitted ? "default" : "pointer",
                     }}
                   >
@@ -973,7 +975,7 @@ function QuizTab({ item, phase, onComplete }) {
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        fontSize: "9px",
+                        fontSize: "10px",
                         color: isSelected ? "var(--orange)" : "var(--text-3)",
                       }}
                     >
@@ -992,9 +994,9 @@ function QuizTab({ item, phase, onComplete }) {
                   padding: "10px 14px",
                   borderTop: "1px solid var(--border-dim)",
                   background: "rgba(56,189,248,0.04)",
-                  fontSize: "10px",
+                  fontSize: "14px",
                   color: "var(--text-2)",
-                  lineHeight: 1.6,
+                  lineHeight: 1.65,
                 }}
               >
                 {question.explanation}
@@ -1051,6 +1053,18 @@ export default function LabRuntimeWorkspace({
   });
 
   const quizUnlocked = Boolean(item?.guideCompleted);
+
+  const previousGuideCompleted = useRef(Boolean(item?.guideCompleted));
+
+useEffect(() => {
+  const isNowCompleted = Boolean(item?.guideCompleted);
+
+  if (!previousGuideCompleted.current && isNowCompleted) {
+    setActiveTab("quiz");
+  }
+
+  previousGuideCompleted.current = isNowCompleted;
+}, [item?.guideCompleted]);
 
   return (
     <div
@@ -1156,6 +1170,7 @@ export default function LabRuntimeWorkspace({
                 onAnswerChange={onAnswerChange}
                 onPrevStep={onPrevStep}
                 onNextStep={onNextStep}
+                onUnlockQuiz={() => setActiveTab("quiz")}
               />
             )}
             {activeTab === "logs" && (
