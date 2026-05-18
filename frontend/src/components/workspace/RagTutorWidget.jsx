@@ -9,12 +9,17 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
     {
       role: "assistant",
       type: "text",
-      content: "¡Hola! Soy CityFlow AI Tutor. Estoy aquí para ayudarte a entender la investigación. ¿Tienes alguna duda sobre el laboratorio?",
+      content: "¡Hola! Soy el CityFlow AI Tutor. Estoy aquí para ayudarte a entender la investigación. ¿Tienes alguna duda sobre el laboratorio?",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // CHIVATO PARA LA CONSOLA (Para comprobar que estás editando el archivo correcto)
+  useEffect(() => {
+    console.log("🚀 El nuevo RagTutorWidget sin emojis se ha cargado correctamente.");
+  }, []);
 
   // Auto-scroll al final del chat
   useEffect(() => {
@@ -23,14 +28,10 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
 
   // Manejo de los Quizzes automáticos
   useEffect(() => {
-    // Solo disparamos el quiz si el chat está abierto y hay preguntas
     if (isOpen && activeItem?.quizzes?.length > 0) {
       const hasQuizBeenSent = messages.some(m => m.type === "quiz");
-      
       if (!hasQuizBeenSent) {
-        // Elegimos la primera pregunta de la lista de 10
         const firstQuiz = activeItem.quizzes[0]; 
-        
         setMessages(prev => [
           ...prev,
           {
@@ -45,112 +46,79 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
       }
     }
   }, [isOpen, activeItem, messages]);
-const handleSendMessage = async (e) => {
-  e.preventDefault();
-  if (!input.trim()) return;
 
-  const userMsg = input.trim();
-  setMessages((prev) => [...prev, { role: "user", type: "text", content: userMsg }]);
-  setInput("");
-  setLoading(true);
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
 
-  try {
-    const data = await request("/api/rag/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        message: userMsg,
-        context: phase || "Laboratorio general",
-      }),
-    });
+    const userMsg = input.trim();
+    setMessages((prev) => [...prev, { role: "user", type: "text", content: userMsg }]);
+    setInput("");
+    setLoading(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", type: "text", content: data.response },
-    ]);
-  } catch (error) {
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        type: "text",
-        content: `Error: ${error.message}`,  // así ves el error real en el chat
-      },
-    ]);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const data = await request("/api/rag/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          message: userMsg,
+          context: phase || "Laboratorio general",
+        }),
+      });
 
-  // Función para manejar los tests (Quizzes)
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", type: "text", content: data.response },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          type: "text",
+          content: `Error: ${error.message}`, 
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleQuizAnswer = (messageIndex, selectedOptionIndex, correctOptionIndex, feedbackExp) => {
     const isCorrect = selectedOptionIndex === correctOptionIndex;
-    
     setMessages((prev) => [
       ...prev,
       { role: "user", type: "text", content: `He seleccionado la opción ${String.fromCharCode(65 + selectedOptionIndex)}` },
-      { role: "assistant", type: "text", content: isCorrect ? `✅ ¡Correcto! ${feedbackExp}` : `❌ Incorrecto. ${feedbackExp}`, isHighlight: isCorrect }
+      { role: "assistant", type: "text", content: isCorrect ? `Correcto. ${feedbackExp}` : `Incorrecto. ${feedbackExp}`, isHighlight: isCorrect }
     ]);
   };
 
   const isTopbar = placement === "topbar";
   const shellStyle = isTopbar
-    ? {
-        position: "relative",
-        zIndex: 50,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        minWidth: "120px",
-      }
-    : {
-        position: "fixed",
-        bottom: "20px",
-        right: "20px",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-      };
-  const panelStyle = isTopbar
-    ? {
-        position: "absolute",
-        top: "44px",
-        right: 0,
-        width: "360px",
-        height: "460px",
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-dim)",
-        borderRadius: "12px",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
-        overflow: "hidden",
-      }
-    : {
-        width: "350px",
-        height: "450px",
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-dim)",
-        borderRadius: "12px",
-        marginBottom: "12px",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-        overflow: "hidden",
-      };
-
+    ? { position: "relative", zIndex: 50, display: "flex", flexDirection: "column", alignItems: "flex-end", minWidth: "120px" }
+    : { position: "fixed", bottom: "20px", right: "20px", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "flex-end" };
+const panelStyle = isTopbar
+    ? { position: "absolute", top: "44px", right: 0, width: "450px", height: "650px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "12px", display: "flex", flexDirection: "column", boxShadow: "0 18px 50px rgba(0,0,0,0.55)", overflow: "hidden" }
+    : { width: "420px", height: "600px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "12px", marginBottom: "12px", display: "flex", flexDirection: "column", boxShadow: "0 10px 40px rgba(0,0,0,0.5)", overflow: "hidden" };
   return (
     <div style={shellStyle}>
       {isOpen && (
         <div style={panelStyle}>
           
-          {/* Header */}
+          {/* Header - SIN EMOJIS, CON ICONO SVG */}
           <div style={{ padding: "12px 16px", background: "var(--blue-dim)", borderBottom: "1px solid var(--blue)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ fontSize: "16px" }}>🤖</div>
-              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-display)" }}>CITYFLOW TUTOR</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--blue)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--blue)", fontFamily: "var(--font-mono)" }}>CITYFLOW TUTOR</div>
             </div>
-            <button onClick={() => setIsOpen(false)} style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: "16px" }}>✕</button>
+            <button onClick={() => setIsOpen(false)} style={{ background: "transparent", border: "none", color: "var(--text-3)", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            </button>
           </div>
 
           {/* Mensajes */}
@@ -194,7 +162,7 @@ const handleSendMessage = async (e) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
+          {/* Input Area - SIN EMOJI, CON ICONO SVG */}
           <form onSubmit={handleSendMessage} style={{ padding: "12px", borderTop: "1px solid var(--border-dim)", display: "flex", gap: "8px", background: "var(--bg-panel)" }}>
             <input
               value={input}
@@ -203,39 +171,84 @@ const handleSendMessage = async (e) => {
               disabled={loading}
               style={{ flex: 1, background: "var(--bg-base)", border: "1px solid var(--border-dim)", color: "var(--text-1)", padding: "10px", borderRadius: "6px", fontSize: "12px", outline: "none" }}
             />
-            <button type="submit" disabled={loading || !input.trim()} style={{ padding: "0 16px", background: "var(--blue)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: loading || !input.trim() ? "not-allowed" : "pointer", opacity: loading || !input.trim() ? 0.5 : 1 }}>
-              ➤
+            <button type="submit" disabled={loading || !input.trim()} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "var(--blue)", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: loading || !input.trim() ? "not-allowed" : "pointer", opacity: loading || !input.trim() ? 0.5 : 1 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
             </button>
           </form>
         </div>
       )}
 
-      {/* Botón Flotante */}
+      {/* Animación de pulso */}
+      <style>
+        {`
+          @keyframes ai-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(56,189,248,0.5); }
+            70% { box-shadow: 0 0 0 12px rgba(56,189,248,0); }
+            100% { box-shadow: 0 0 0 0 rgba(56,189,248,0); }
+          }
+        `}
+      </style>
+
+      {/* Tutor button - SVG en vez de EMOJI */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        title={isTopbar ? "Ask the AI tutor" : "Open AI tutor"}
         style={{
-          width: isTopbar ? "120px" : "60px",
-          height: isTopbar ? "36px" : "60px",
-          borderRadius: isTopbar ? "8px" : "50%",
-          background: isOpen ? "rgba(56,189,248,0.16)" : "var(--bg-elevated)",
-          border: isOpen ? "1px solid var(--blue)" : "1px solid var(--border-dim)",
-          boxShadow: isTopbar ? "none" : "0 4px 20px rgba(56,189,248,0.4)",
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: "8px",
-          cursor: "pointer",
+          gap: isTopbar ? "9px" : "0",
+          minWidth: isTopbar ? "142px" : "60px",
+          width: isTopbar ? "142px" : "60px",
+          height: isTopbar ? "38px" : "60px",
+          padding: isTopbar ? "9px 14px" : 0,
+          borderRadius: isTopbar ? "10px" : "50%",
+          border: isOpen ? "1px solid rgba(56,189,248,0.65)" : "1px solid rgba(56,189,248,0.4)",
+          background: isOpen
+            ? "linear-gradient(135deg, rgba(56,189,248,0.22), rgba(249,115,22,0.12))"
+            : "linear-gradient(135deg, rgba(56,189,248,0.15), rgba(15,23,42,0.95))",
+          color: isOpen ? "var(--blue)" : "var(--text-1)",
+          fontFamily: "var(--font-mono)",
           fontSize: isTopbar ? "10px" : "24px",
-          color: isOpen ? "var(--blue)" : "var(--text-2)",
-          fontFamily: "var(--font-display)",
           fontWeight: 700,
-          letterSpacing: isTopbar ? "0.10em" : 0,
-          transition: "transform 0.2s, border-color 0.15s, background 0.15s"
+          letterSpacing: isTopbar ? "0.12em" : 0,
+          cursor: "pointer",
+          animation: !isOpen && !isTopbar ? "ai-pulse 2.5s infinite" : "none",
+          boxShadow: isTopbar
+            ? (isOpen ? "0 0 22px rgba(56,189,248,0.28)" : "0 0 14px rgba(56,189,248,0.15)")
+            : (isOpen ? "0 4px 24px rgba(56,189,248,0.35)" : "none"),
+          transition: "transform 0.18s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease",
         }}
-        onMouseOver={(e) => e.target.style.transform = "scale(1.1)"}
-        onMouseOut={(e) => e.target.style.transform = "scale(1)"}
+        onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px) scale(1.05)"}
+        onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0) scale(1)"}
       >
-        {isTopbar ? (isOpen ? "CLOSE TUTOR" : "ASK TUTOR") : isOpen ? "✕" : "🤖"}
+        {isTopbar ? (
+          <>
+            <span style={{ width: "20px", height: "20px", borderRadius: "999px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(56,189,248,0.16)", border: "1px solid rgba(56,189,248,0.35)", boxShadow: "0 0 10px rgba(56,189,248,0.25)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+              </svg>
+            </span>
+            <span>{isOpen ? "TUTOR OPEN" : "ASK TUTOR"}</span>
+            <span style={{ width: "7px", height: "7px", borderRadius: "999px", background: "var(--green)", boxShadow: "0 0 8px var(--green)" }} />
+          </>
+        ) : (
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {isOpen ? (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+              </svg>
+            ) : (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+                <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+              </svg>
+            )}
+          </span>
+        )}
       </button>
     </div>
   );

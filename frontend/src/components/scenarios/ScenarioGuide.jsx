@@ -1,401 +1,234 @@
-import { useState } from "react"
+import { useState, useEffect } from "react";
 
-const KEY_TERMS = [
-  "Received",
-  "Logs",
-  "received payload",
-  "sensor payload",
-  "poisoned data",
-  "injected data point",
-  "impossible values",
-  "traffic_volume",
-  "temp",
-  "congestion_score",
-  "Sensor Data Node",
-  "Edge Pre-processing Node",
-  "Inference & Action Node",
-  "Trainer Node",
-  "Workspace",
-]
-
-function HighlightedText({ text }) {
-  if (typeof text !== "string") return text
-
-  const escapedTerms = KEY_TERMS
-    .slice()
-    .sort((a, b) => b.length - a.length)
-    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-  const pattern = new RegExp(`(${escapedTerms.join("|")})`, "gi")
-  const parts = text.split(pattern)
-
-  return parts.map((part, index) => {
-    const isKeyTerm = KEY_TERMS.some(
-      (term) => term.toLowerCase() === part.toLowerCase(),
-    )
-
-    if (!isKeyTerm) return part
-
-    return (
-      <strong
-        key={`${part}-${index}`}
-        style={{
-          color: "var(--text-1)",
-          fontWeight: 700,
-        }}
-      >
-        {part}
-      </strong>
-    )
-  })
-}
-
-function InfoBlock({ label, children, accent = false }) {
-  return (
-    <div
-      style={{
-        background: accent ? "rgba(249,115,22,0.06)" : "var(--bg-elevated)",
-        border: accent
-          ? "1px solid var(--orange-border)"
-          : "1px solid var(--border-dim)",
-        borderRadius: "8px",
-        padding: "14px 16px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "10px",
-          letterSpacing: "0.14em",
-          color: accent ? "var(--orange)" : "var(--text-3)",
-          fontFamily: "var(--font-display)",
-          marginBottom: "8px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "14px",
-          lineHeight: "1.75",
-          color: "var(--text-2)",
-          fontFamily: "var(--font-display)",
-        }}
-      >
-        <HighlightedText text={children} />
-      </div>
-    </div>
-  )
-}
+// --- ACADEMIC THEORETICAL FOUNDATIONS ---
+// This dictionary injects the specific theory for each scenario phase dynamically.
+const THEORETICAL_BASES = {
+  "scenario-0": {
+    topic: "Cyber-Physical Systems (CPS)",
+    concept: "CPS integrate digital AI processing with physical infrastructure. A logical failure or cyber attack in the AI pipeline directly causes physical world consequences, such as traffic gridlocks.",
+    reference: "NIST SP 800-82"
+  },
+  "scenario-1": {
+    topic: "Data Poisoning Attacks",
+    concept: "The injection of malicious or physically impossible data into the ingestion pipeline. If unvalidated, the AI model learns or predicts based on corrupted reality, bypassing traditional firewalls.",
+    reference: "OWASP ML02:2023"
+  },
+  // Default fallback for future scenarios
+  "default": {
+    topic: "AI Pipeline Security",
+    concept: "AI systems must implement defense-in-depth across the entire pipeline: from data ingestion and input handling, to model training and output serving.",
+    reference: "MITRE ATLAS"
+  }
+};
 
 export default function ScenarioGuide({ item, onComplete }) {
-  const [selected, setSelected] = useState(null)
-  const [status, setStatus] = useState("idle")
-  const [showHint, setShowHint] = useState(false)
+  // "briefing" shows the story & theory. "assessment" shows the question.
+  const [view, setView] = useState("briefing"); 
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [isCorrect, setIsCorrect] = useState(null);
+  
+  // Reset state when the scenario item changes
+  useEffect(() => {
+    setView("briefing");
+    setSelectedOption(null);
+    setIsCorrect(null);
+  }, [item.id]);
 
-  const hasQuestion = !!item.question?.options?.length
+  const theory = THEORETICAL_BASES[item.id] || THEORETICAL_BASES["default"];
+  const hasQuestion = !!item.question?.options?.length;
 
-  function handleOption(option) {
-    setSelected(option.id)
-    setStatus(option.correct ? "correct" : "wrong")
-  }
+  const handleEvaluate = () => {
+    if (!selectedOption) return;
+    const option = item.question.options.find(o => o.id === selectedOption);
+    if (option) {
+      setIsCorrect(option.correct);
+    }
+  };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg-panel)" }}>
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "16px 20px 12px",
-          borderBottom: "1px solid var(--border-dim)",
-        }}
-      >
-        <div style={{ fontSize: "10px", color: "var(--blue)", letterSpacing: "0.14em", marginBottom: "6px" }}>
-          ◆ SCENARIO — {item.phase.toUpperCase()}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: "var(--bg-panel)",
+      overflow: "hidden" // COMPLETELY DISABLES GLOBAL SCROLL
+    }}>
+      
+      {/* --- HEADER (Always visible) --- */}
+      <div style={{ padding: "24px 20px 16px", borderBottom: "1px solid var(--border-dim)", flexShrink: 0 }}>
+        <div style={{ fontSize: "10px", fontWeight: 800, color: "var(--blue)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "8px" }}>
+          {item.phase || "Investigation Phase"}
         </div>
-        <div
-          style={{
-            fontSize: "20px",
-            fontWeight: "600",
-            fontFamily: "var(--font-display)",
-            color: "var(--text-1)",
-            marginBottom: "3px",
-          }}
-        >
+        <h2 style={{ margin: "0 0 6px 0", fontSize: "20px", color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
           {item.title}
-        </div>
-        <div style={{ fontSize: "12px", color: "var(--text-3)" }}>{item.subtitle}</div>
+        </h2>
+        <p style={{ margin: 0, fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)", lineHeight: 1.5 }}>
+          {item.subtitle}
+        </p>
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        <InfoBlock label="BACKGROUND">
-          {item.story.intro}
-        </InfoBlock>
+      {/* --- MAIN CONTENT AREA (Scrolls internally ONLY if needed) --- */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        
+        {view === "briefing" ? (
+          // === VIEW 1: BRIEFING & THEORY ===
+          <>
+            {/* SITUATION REPORT */}
+            <div style={{ background: "var(--bg-base)", border: "1px solid var(--border-dim)", borderRadius: "10px", padding: "16px", borderLeft: "3px solid var(--blue)" }}>
+              <h3 style={{ margin: "0 0 8px 0", fontSize: "10px", color: "var(--text-3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Situation Report
+              </h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-1)", lineHeight: 1.6 }}>
+                {item.story?.intro}
+              </p>
+              {item.story?.context && (
+                <div style={{ marginTop: "12px", padding: "10px", background: "rgba(255,255,255,0.03)", borderRadius: "6px", fontSize: "12px", color: "var(--text-2)", fontFamily: "var(--font-mono)", whiteSpace: "pre-wrap" }}>
+                  {item.story.context}
+                </div>
+              )}
+            </div>
 
-        <InfoBlock label="SITUATION">
-          {item.story.context}
-        </InfoBlock>
-
-        <InfoBlock label="YOUR ROLE" accent>
-          {item.story.mission}
-        </InfoBlock>
-
-        <InfoBlock label="INVESTIGATION CHECKLIST">
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {[
-              "Open NODE-1 in the pipeline view and check Received.",
-              "Open NODE-2 and compare Received with Logs.",
-              "Confirm where validation failed.",
-              "Answer the assessment, then continue into the lab.",
-            ].map((step, index) => (
-              <div
-                key={step}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "24px 1fr",
-                  gap: "10px",
-                  alignItems: "start",
-                }}
-              >
-                <span
-                  style={{
-                    display: "grid",
-                    placeItems: "center",
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "50%",
-                    background: "rgba(56,189,248,0.08)",
-                    border: "1px solid var(--blue-dim)",
-                    color: "var(--blue)",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}
-                >
-                  {index + 1}
-                </span>
-                <span>
-                  <HighlightedText text={step} />
+            {/* THEORETICAL FOUNDATION */}
+            <div style={{ background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "10px", padding: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                <h3 style={{ margin: 0, fontSize: "10px", color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>📚</span> Theoretical Foundation
+                </h3>
+                <span style={{ fontSize: "9px", background: "rgba(167,139,250,0.15)", color: "#a78bfa", padding: "3px 8px", borderRadius: "10px", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                  {theory.reference}
                 </span>
               </div>
-            ))}
-          </div>
-        </InfoBlock>
-
-        {hasQuestion ? (
-          <div
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-dim)",
-              borderRadius: "8px",
-              padding: "14px 16px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "10px",
-                letterSpacing: "0.14em",
-                color: "var(--text-3)",
-                fontFamily: "var(--font-display)",
-                marginBottom: "8px",
-              }}
-            >
-              FINAL ASSESSMENT
+              <strong style={{ display: "block", fontSize: "13px", color: "var(--text-1)", marginBottom: "6px" }}>
+                {theory.topic}
+              </strong>
+              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-2)", lineHeight: 1.5 }}>
+                {theory.concept}
+              </p>
             </div>
 
-            <p
-              style={{
-                fontSize: "14px",
-                color: "var(--text-1)",
-                fontFamily: "var(--font-display)",
-                fontWeight: "500",
-                marginBottom: "10px",
-                lineHeight: "1.7",
-              }}
-            >
-              {item.question.text}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {item.question.options.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleOption(option)}
-                  style={{
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    borderRadius: "6px",
-                    border:
-                      status === "correct" && option.correct
-                        ? "1px solid var(--green-border)"
-                        : status === "wrong" && selected === option.id
-                        ? "1px solid rgba(248,113,113,0.25)"
-                        : "1px solid var(--border-dim)",
-                    background:
-                      status === "correct" && option.correct
-                        ? "var(--green-dim)"
-                        : status === "wrong" && selected === option.id
-                        ? "var(--red-dim)"
-                        : "var(--bg-base)",
-                    color: "var(--text-1)",
-                    fontSize: "14px",
-                    fontFamily: "var(--font-display)",
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  <div style={{ fontWeight: "600", marginBottom: "4px" }}>{option.label}</div>
-                  <div style={{ color: "var(--text-3)", lineHeight: "1.5" }}>{option.description}</div>
-                </button>
-              ))}
-            </div>
-
-            <div style={{ marginTop: "10px", display: "flex", gap: "8px" }}>
-              <button
-                onClick={() => setShowHint((v) => !v)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid var(--border-dim)",
-                  background: "transparent",
-                  color: "var(--text-2)",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                }}
-              >
-                {showHint ? "Hide hint" : "Show hint"}
-              </button>
-            </div>
-
-            {showHint && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  padding: "8px 12px",
-                  background: "rgba(56,189,248,0.08)",
-                  border: "1px solid var(--blue-dim)",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  color: "var(--blue)",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                {item.question.hint}
+            {/* MISSION OBJECTIVE */}
+            {item.story?.mission && (
+              <div style={{ background: "rgba(249,115,22,0.05)", border: "1px solid var(--orange-border)", borderRadius: "10px", padding: "16px" }}>
+                <h3 style={{ margin: "0 0 8px 0", fontSize: "10px", color: "var(--orange)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  Mission Objective
+                </h3>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--orange)", fontWeight: 500, lineHeight: 1.5 }}>
+                  {item.story.mission}
+                </p>
               </div>
             )}
-
-            {status === "wrong" && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  padding: "8px 12px",
-                  background: "var(--red-dim)",
-                  border: "1px solid rgba(248,113,113,0.25)",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  color: "var(--red)",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                {item.question.wrongFeedback}
-              </div>
-            )}
-
-            {status === "correct" && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  padding: "12px",
-                  background: "var(--green-dim)",
-                  border: "1px solid var(--green-border)",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  color: "var(--green)",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>{item.question.correctFeedback}</div>
-                <button
-                  onClick={onComplete}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    borderRadius: "6px",
-                    border: "none",
-                    background: "var(--green)",
-                    color: "#fff",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    fontFamily: "var(--font-display)",
-                    cursor: "pointer",
-                    boxShadow: "0 0 10px rgba(34,197,94,0.3)"
-                  }}
-                >
-                  PROCEED TO LAB →
-                </button>
-              </div>
-            )}
-          </div>
+          </>
         ) : (
-          <div
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-dim)",
-              borderRadius: "8px",
-              padding: "14px 16px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "10px",
-                letterSpacing: "0.14em",
-                color: "var(--text-3)",
-                fontFamily: "var(--font-display)",
-                marginBottom: "8px",
-              }}
-            >
-              SYSTEM READY
+          // === VIEW 2: ASSESSMENT ===
+          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <div style={{ background: "var(--bg-base)", border: "1px solid var(--border-dim)", borderRadius: "10px", padding: "20px", flex: 1 }}>
+              <h3 style={{ margin: "0 0 20px 0", fontSize: "14px", color: "var(--text-1)", lineHeight: 1.6 }}>
+                {item.question?.text || "Based on the briefing, what is your initial assessment?"}
+              </h3>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {item.question?.options?.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      if (isCorrect !== null) return; // Prevent changing answer after evaluation
+                      setSelectedOption(opt.id);
+                    }}
+                    style={{
+                      textAlign: "left",
+                      padding: "14px 16px",
+                      background: selectedOption === opt.id ? "rgba(56,189,248,0.1)" : "var(--bg-panel)",
+                      border: `1px solid ${selectedOption === opt.id ? "var(--blue)" : "var(--border-dim)"}`,
+                      borderRadius: "8px",
+                      color: "var(--text-2)",
+                      fontSize: "12px",
+                      cursor: isCorrect !== null ? "default" : "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <strong style={{ color: "var(--text-1)", display: "block", marginBottom: "6px" }}>
+                      {opt.label}
+                    </strong>
+                    <span style={{ lineHeight: 1.5, display: "block" }}>
+                      {opt.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* FEEDBACK BLOCK */}
+              {isCorrect !== null && (
+                <div style={{ 
+                  marginTop: "24px", 
+                  padding: "16px", 
+                  borderRadius: "8px", 
+                  background: isCorrect ? "var(--green-dim)" : "var(--red-dim)",
+                  border: `1px solid ${isCorrect ? "var(--green-border)" : "rgba(248,113,113,0.3)"}` 
+                }}>
+                  <strong style={{ color: isCorrect ? "var(--green)" : "var(--red)", fontSize: "13px", display: "block", marginBottom: "8px" }}>
+                    {isCorrect ? "✅ Correct Assessment" : "❌ Incorrect Assessment"}
+                  </strong>
+                  <span style={{ color: "var(--text-1)", fontSize: "12px", lineHeight: 1.6 }}>
+                    {isCorrect ? item.question?.correctFeedback : item.question?.wrongFeedback}
+                  </span>
+                </div>
+              )}
             </div>
+          </div>
+        )}
+        
+      </div>
 
-            <p
-              style={{
-                fontSize: "14px",
-                lineHeight: "1.75",
-                color: "var(--text-2)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              Acknowledge the emergency briefing to gain access to the raw pipeline telemetry and commence the investigation.
-            </p>
-
-            <button
-              onClick={onComplete}
-              style={{
-                marginTop: "12px",
-                width: "100%",
-                padding: "10px 14px",
-                borderRadius: "6px",
-                border: "none",
-                background: "var(--orange)",
-                color: "#fff",
-                fontSize: "12px",
-                fontWeight: "bold",
-                fontFamily: "var(--font-display)",
-                cursor: "pointer",
-                boxShadow: "0 0 10px rgba(249,115,22,0.3)"
-              }}
-            >
-              COMMENCE INVESTIGATION →
-            </button>
+      {/* --- BOTTOM ACTION BAR (Sticky at the bottom) --- */}
+      <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border-dim)", background: "var(--bg-panel)", flexShrink: 0 }}>
+        {view === "briefing" ? (
+          <button
+            onClick={() => hasQuestion ? setView("assessment") : onComplete()}
+            style={{
+              width: "100%", padding: "16px", borderRadius: "8px", border: "none",
+              background: "var(--orange)", color: "#fff", fontSize: "12px", fontWeight: 700,
+              cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px",
+              boxShadow: "0 4px 15px rgba(249,115,22,0.2)", textTransform: "uppercase", transition: "transform 0.1s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+          >
+            <span>{hasQuestion ? "Proceed to Assessment" : "Commence Investigation"}</span>
+            <span style={{ fontSize: "16px" }}>→</span>
+          </button>
+        ) : (
+          <div style={{ display: "flex", gap: "12px" }}>
+            {isCorrect === null ? (
+              <button
+                onClick={handleEvaluate}
+                disabled={!selectedOption}
+                style={{
+                  flex: 1, padding: "16px", borderRadius: "8px", border: "none",
+                  background: selectedOption ? "var(--blue)" : "var(--bg-surface)", 
+                  color: selectedOption ? "#fff" : "var(--text-3)", 
+                  fontSize: "12px", fontWeight: 700, cursor: selectedOption ? "pointer" : "not-allowed",
+                  textTransform: "uppercase", transition: "background 0.2s"
+                }}
+              >
+                Submit Assessment
+              </button>
+            ) : (
+              <button
+                onClick={onComplete}
+                style={{
+                  flex: 1, padding: "16px", borderRadius: "8px", border: "none",
+                  background: "var(--green)", color: "#fff", fontSize: "12px", fontWeight: 700,
+                  cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px",
+                  textTransform: "uppercase", boxShadow: "0 4px 15px rgba(74,222,128,0.2)"
+                }}
+              >
+                <span>{isCorrect ? "Complete Phase" : "Acknowledge & Continue"}</span>
+                <span style={{ fontSize: "16px" }}>→</span>
+              </button>
+            )}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }

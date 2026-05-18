@@ -147,7 +147,7 @@ export default function WelcomePage({ item, onComplete, onSelectItem }) {
             <div
               style={{
                 position: "absolute",
-                fontSize: "9px",
+                fontSize: "10px",
                 color: "var(--red)",
                 fontWeight: "700",
               }}

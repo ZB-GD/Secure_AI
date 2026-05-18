@@ -128,7 +128,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
             border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.6 : 0.3})`,
             background: `rgba(${cfg.colorRaw}, ${lit ? 0.15 : 0.07})`,
             color: cfg.color,
-            fontSize: "9px",
+            fontSize: "10px",
             fontWeight: 700,
             fontFamily: "var(--font-display)",
             letterSpacing: "0.14em",
@@ -166,7 +166,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         />
         <span
           style={{
-            fontSize: "9px",
+            fontSize: "10px",
             fontFamily: "var(--font-display)",
             letterSpacing: "0.12em",
             color: "var(--text-3)",
