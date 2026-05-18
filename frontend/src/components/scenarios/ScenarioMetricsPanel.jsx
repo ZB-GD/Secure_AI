@@ -25,8 +25,6 @@ export default function ScenarioMetricsPanel({ metrics }) {
       : "failed"
     : "no";
 
-  const predictions = Number(metrics?.predictions_generated ?? 0);
-  const actions = Number(metrics?.actions_generated ?? 0);
   const riskTone = riskLevel === "high" ? "danger" : riskLevel === "normal" ? "good" : "neutral";
 
   return (
@@ -41,11 +39,6 @@ export default function ScenarioMetricsPanel({ metrics }) {
         label="ANOMALIES"
         value={metrics?.anomalous_features ?? 0}
         tone={(metrics?.anomalous_features || 0) > 0 ? "warning" : "good"}
-      />
-      <MetricCard
-        label="OUTPUT"
-        value={`${predictions}/${actions}`}
-        subtitle="predictions / actions"
       />
       <MetricCard
         label="RISK"
