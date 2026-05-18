@@ -43,16 +43,6 @@ export default function App() {
             subtitle: "Choose a lab to begin.",
             threatStage: "E",
           }
-        : activeItemId === "pipeline"
-          ? {
-              id: "pipeline",
-              type: "pipeline",
-              shortTitle: "Pipeline",
-              phase: "General Pipeline",
-              title: "CityFlow AI Pipeline",
-              subtitle: "Inspect how telemetry moves through each AI node.",
-              threatStage: "P",
-            }
         : items.find((item) => item.id === activeItemId) || items[0],
     [items, activeItemId],
   );
@@ -74,17 +64,16 @@ export default function App() {
       return;
     }
 
-    if (itemId === "pipeline") {
-      setActiveItemId("pipeline");
-      return;
-    }
-
     const target = items.find((item) => item.id === itemId);
     if (!target || target.locked) return;
 
-    // Secondary scenarios are opened only from their own lab flow, not from
-    // the top navigation.
-    if (target.type === "scenario" && target.id !== "scenario-0") {
+    // Secondary scenarios (except scenario-1/pipeline) are opened only from
+    // their own lab flow, not from the top navigation.
+    if (
+      target.type === "scenario" &&
+      target.id !== "scenario-0" &&
+      target.id !== "scenario-1"
+    ) {
       return;
     }
 

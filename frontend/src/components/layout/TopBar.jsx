@@ -44,7 +44,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   useEffect(() => {
     if (!activeId) return;
 
-    if (activeItem?.type === "pipeline") {
+    if (activeItem?.id === "scenario-1") {
       setNavView("scenarios");
       return;
     }
@@ -117,7 +117,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
     if (tab.id === "scenarios") {
       setNavView("scenarios");
-      onSelectItem("pipeline");
+      onSelectItem("scenario-1");
       return;
     }
 
