@@ -9,17 +9,12 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
     {
       role: "assistant",
       type: "text",
-      content: "¡Hola! Soy el CityFlow AI Tutor. Estoy aquí para ayudarte a entender la investigación. ¿Tienes alguna duda sobre el laboratorio?",
+      content: "Hello! I am the CityFlow AI Tutor. I'm here to help you understand the investigation. Do you have any questions about the lab?",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-
-  // CHIVATO PARA LA CONSOLA (Para comprobar que estás editando el archivo correcto)
-  useEffect(() => {
-    console.log("🚀 El nuevo RagTutorWidget sin emojis se ha cargado correctamente.");
-  }, []);
 
   // Auto-scroll al final del chat
   useEffect(() => {
@@ -128,7 +123,7 @@ const panelStyle = isTopbar
                 
                 {msg.type === "text" && (
                   <div style={{ 
-                    maxWidth: "85%", padding: "10px 14px", borderRadius: "8px", fontSize: "12px", lineHeight: "1.5",
+                    maxWidth: "85%", padding: "12px 16px", borderRadius: "8px", fontSize: "14px", lineHeight: "1.6",
                     background: msg.role === "user" ? "var(--bg-elevated)" : (msg.isHighlight ? "var(--green-dim)" : "rgba(56,189,248,0.05)"),
                     border: msg.role === "user" ? "1px solid var(--border-dim)" : (msg.isHighlight ? "1px solid var(--green)" : "1px solid var(--blue-dim)"),
                     color: msg.role === "user" ? "var(--text-1)" : (msg.isHighlight ? "var(--green)" : "var(--text-1)")
@@ -167,7 +162,7 @@ const panelStyle = isTopbar
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregunta al tutor..."
+              placeholder="Ask anything to your tutor..."
               disabled={loading}
               style={{ flex: 1, background: "var(--bg-base)", border: "1px solid var(--border-dim)", color: "var(--text-1)", padding: "10px", borderRadius: "6px", fontSize: "12px", outline: "none" }}
             />
