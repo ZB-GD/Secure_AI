@@ -90,7 +90,7 @@ export default function LabScenarioIntro({ item, onStartLab }) {
           overflow: "hidden",
         }}
       >
-        <ScenarioWorkspace item={scenarioItem} onCompleteScenario={() => onStartLab?.(item.id)} />
+        <ScenarioWorkspace item={scenarioItem} onCompleteScenario={() => onStartLab?.(item.id)} compact={true} />
       </main>
     </section>
   );
