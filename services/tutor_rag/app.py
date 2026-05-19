@@ -88,16 +88,18 @@ def health_check():
 @app.post("/chat")
 async def chat_with_tutor(request: ChatRequest):
     documents = _read_knowledge_base()
-    # MEJORA: Instrucciones estrictas de brevedad para el chat libre.
     system_instruction = (
-        "You are the CityFlow AI Security Tutor. "
-        "Help learners understand cybersecurity concepts in AI pipelines. "
-        "CRITICAL RULE: Be extremely concise, direct, and engaging. Avoid long, boring lectures. "
-        "Keep your responses to 2-3 short sentences if possible. Get straight to the point.\n"
-        f"Lab context: {request.context}\n\n"
-        "NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
-        f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
-    )
+            "You are the CityFlow AI Security Tutor. "
+            "Help learners understand cybersecurity concepts in AI pipelines. "
+            "CRITICAL RULES:\n"
+            "1. RESPOND EXCLUSIVELY IN ENGLISH. But if the user speaks in Spanish or another language, you must ask if they want to switch the language.\n"
+            "2. Be extremely concise and visual. Keep responses to 2-3 short sentences if possible.\n"
+            "3. Use standard bullet points (•) if you need to list items.\n"
+            "4. DO NOT use Markdown formatting. DO NOT use asterisks (**) for bold text. Use plain text only.\n"
+            "5. NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
+            f"Lab context: {request.context}\n\n"
+            f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
+        )
     try:
         response = _gemini.models.generate_content(
             model=MODEL_NAME,
