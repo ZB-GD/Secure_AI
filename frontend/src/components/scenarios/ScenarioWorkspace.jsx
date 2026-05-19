@@ -4,6 +4,28 @@ import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
 import PipelineCanvas from "../pipeline/PipelineCanvas";
 import WelcomePage from "./WelcomePage";
 
+// --- ACADEMIC THEORETICAL FOUNDATIONS ---
+const THEORETICAL_BASES = {
+  "scenario-0": {
+    topic: "Cyber-Physical Systems (CPS)",
+    concept: "CPS integrate digital AI processing with physical infrastructure. A logical failure or cyber attack in the AI pipeline directly causes physical world consequences, such as traffic gridlocks.",
+    reference: "NIST SP 800-82",
+    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
+  },
+  "scenario-1": {
+    topic: "Data Poisoning Attacks",
+    concept: "The injection of malicious or physically impossible data into the ingestion pipeline. If unvalidated, the AI model learns or predicts based on corrupted reality, bypassing traditional firewalls.",
+    reference: "OWASP ML02:2023",
+    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
+  },
+  "default": {
+    topic: "AI Pipeline Security",
+    concept: "AI systems must implement defense-in-depth across the entire pipeline: from data ingestion and input handling, to model training and output serving.",
+    reference: "MITRE ATLAS",
+    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
+  }
+};
+
 // --- SCENARIO 1: PIPELINE INVESTIGATION ---
 function PhaseNode({ phase, isActive, onClick }) {
   const statusClass = `scenario-phase--${phase.status}`;
