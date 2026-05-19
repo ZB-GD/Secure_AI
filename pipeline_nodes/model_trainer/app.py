@@ -10,11 +10,15 @@ Two modes:
                model deployed without integrity metadata update
 
 Vulnerabilities demonstrated:
-  - Drift and instability under continuous learning (OWASP ML #7)
-    Attacker injects biased/shifted features into training store
-    before triggering retrain → degraded model silently deployed.
-  - No authentication on retrain endpoint (OWASP LLM insecure API, #5)
-    Anyone can POST /trainer/retrain and force model replacement.
+  - Supply chain / CI/CD attack (OWASP ML #5, #6):
+    Unauthenticated /retrain endpoint — any client can replace the
+    production model. No training data provenance check means a compromised
+    feature store goes undetected before retrain is triggered.
+  - Drift under continuous learning (OWASP ML #7):
+    Attacker injects biased features into training store before retrain →
+    degraded model silently deployed. SHA256 is updated to match the
+    poisoned artifact, so N3's integrity check passes — demonstrating
+    that hash verification alone cannot detect training data poisoning.
 """
 
 from __future__ import annotations
@@ -39,10 +43,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 from paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
 
-# ── Schema ────────────────────────────────────────────────────────────────────
 FEATURE_COLS = [
     "temp", "rain_1h", "snow_1h", "clouds_all",
     "hour", "dayofweek", "is_weekend",
@@ -50,15 +52,11 @@ FEATURE_COLS = [
 ]
 TARGET_COL = "target_label"
 
-# Congestion bins (must match train_traffic_models.py)
 BINS   = [-np.inf, 1500, 3500, 5500, np.inf]
 LABELS = ["free", "moderate", "heavy", "gridlock"]
 
-# Drift injection parameters (vulnerable mode)
-# Attacker shifts a fraction of stored features to simulate
-# a distribution that makes the model under-predict congestion.
-DRIFT_FRACTION  = 0.40   # 40% of stored rows get poisoned
-DRIFT_VOL_SCALE = 0.25   # scale traffic_volume down to 25% → model learns "free" is normal
+DRIFT_FRACTION  = 0.40
+DRIFT_VOL_SCALE = 0.25
 
 
 # ── SQLite helpers ────────────────────────────────────────────────────────────
@@ -75,7 +73,6 @@ def _db():
 
 
 def init_db() -> None:
-    """Create feature store table if not exists."""
     with _db() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS features (
@@ -97,20 +94,15 @@ def init_db() -> None:
 
 
 def store_features(feature_rows: list[dict]) -> int:
-    """
-    Persist a batch of feature dicts into the DB.
-    Derives target_label from traffic_volume using same bins as training.
-    Returns number of rows inserted.
-    """
     if not feature_rows:
         return 0
 
-    now = datetime.now(timezone.utc).isoformat()
+    now      = datetime.now(timezone.utc).isoformat()
     inserted = 0
 
     with _db() as conn:
         for row in feature_rows:
-            vol = float(row.get("traffic_volume", 0.0))
+            vol   = float(row.get("traffic_volume", 0.0))
             label = _vol_to_label(vol)
             conn.execute("""
                 INSERT INTO features
@@ -138,7 +130,6 @@ def store_features(feature_rows: list[dict]) -> int:
 
 
 def load_training_data() -> pd.DataFrame:
-    """Load all stored features as a DataFrame."""
     with _db() as conn:
         rows = conn.execute("SELECT * FROM features").fetchall()
     if not rows:
@@ -185,25 +176,38 @@ def _build_pipeline() -> Pipeline:
 
 def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
     """
-    Vulnerability 7 — Drift injection.
-    Attacker tampers with a fraction of the training store
-    before retrain is triggered. Downscales traffic_volume
-    so the model learns that low volume is the new normal,
-    causing it to underestimate congestion post-deployment.
+    Vulnerability 7 — Supply chain / drift injection.
+    Attacker pre-poisons the feature store before triggering retrain.
+    Downscales traffic_volume on a fraction of rows so the model learns
+    that low volume is the new normal, causing it to underestimate
+    congestion after deployment.
     """
     poisoned = df.copy()
     n_poison = max(1, int(len(poisoned) * DRIFT_FRACTION))
-    idx = poisoned.sample(n=n_poison, random_state=99).index
+    idx      = poisoned.sample(n=n_poison, random_state=99).index
+
+    original_dist = poisoned.loc[idx, TARGET_COL].value_counts().to_dict()
 
     poisoned.loc[idx, "traffic_volume"] = (
         poisoned.loc[idx, "traffic_volume"] * DRIFT_VOL_SCALE
     )
-    # Relabel poisoned rows to match their new (fake) low volume
-    poisoned.loc[idx, TARGET_COL] = poisoned.loc[idx, "traffic_volume"].apply(_vol_to_label)
+    poisoned.loc[idx, TARGET_COL] = (
+        poisoned.loc[idx, "traffic_volume"].apply(_vol_to_label)
+    )
+
+    new_dist = poisoned.loc[idx, TARGET_COL].value_counts().to_dict()
 
     log.append(
-        f"[DRIFT] Injected drift into {n_poison}/{len(df)} rows "
-        f"(vol scaled to {DRIFT_VOL_SCALE*100:.0f}%, labels relabelled)"
+        f"[DRIFT] Pre-retrain tampering: {n_poison}/{len(df)} rows "
+        f"— traffic_volume scaled to {DRIFT_VOL_SCALE*100:.0f}% of original"
+    )
+    log.append(
+        f"[DRIFT] Label shift on poisoned rows: "
+        f"{dict(sorted(original_dist.items()))} → {dict(sorted(new_dist.items()))}"
+    )
+    log.append(
+        "[DRIFT] Effect: model will learn low volume = normal — "
+        "will predict 'free' or 'moderate' during actual heavy congestion"
     )
     return poisoned
 
@@ -211,19 +215,11 @@ def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
 # ── Retrain logic ─────────────────────────────────────────────────────────────
 
 def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
-    """
-    Core retrain function.
-
-    clean:      train on stored data as-is, update SHA256 in report.
-    vulnerable: inject drift first, train on poisoned data,
-                deploy model WITHOUT updating SHA256 in report
-                → N3 integrity check will pass (hash not changed)
-                  but model behaviour is degraded.
-
-    Returns result dict with log, metrics, status.
-    """
     log: list[str] = []
-    log.append(f"[RETRAIN] mode={mode} started at {datetime.now(timezone.utc).isoformat()}")
+    log.append(
+        f"[RETRAIN] mode={mode} started at "
+        f"{datetime.now(timezone.utc).isoformat()}"
+    )
 
     # ── 1. Load data ──────────────────────────────────────────────────────────
     df = load_training_data()
@@ -236,15 +232,26 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
 
     # ── 2. Drift injection (vulnerable only) ─────────────────────────────────
     if mode == "vulnerable":
-        log.append("[VULN] Skipping data integrity checks before retrain")
+        log.append(
+            "[SUPPLY CHAIN] /retrain endpoint has no authentication — "
+            "any client can replace the production model"
+        )
+        log.append(
+            "[SUPPLY CHAIN] No training data provenance check — "
+            "feature store integrity unverified before retrain"
+        )
+        log.append("[VULN] Skipping pre-retrain data integrity audit")
         df = _inject_drift(df, log)
     else:
-        log.append("[CLEAN] Data integrity assumed (no tampering detected)")
+        log.append(
+            "[CLEAN] Pre-retrain integrity check passed — "
+            "no tampering detected in feature store"
+        )
 
     # ── 3. Prepare X / y ─────────────────────────────────────────────────────
     df = df.dropna(subset=FEATURE_COLS + [TARGET_COL])
-    X = df[FEATURE_COLS]
-    y = df[TARGET_COL].astype(str)
+    X  = df[FEATURE_COLS]
+    y  = df[TARGET_COL].astype(str)
 
     if len(X) < min_rows:
         msg = f"Not enough clean rows after dropna: {len(X)}"
@@ -256,50 +263,49 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
     )
 
     # ── 4. Train ──────────────────────────────────────────────────────────────
-    model = _build_pipeline()
+    model    = _build_pipeline()
     model.fit(X_train, y_train)
     preds    = model.predict(X_test)
     accuracy = float(accuracy_score(y_test, preds))
-    log.append(f"[TRAIN] accuracy={accuracy:.4f} on {len(X_test)} test rows")
+    log.append(
+        f"[TRAIN] accuracy={accuracy:.4f} on {len(X_test)} test rows "
+        f"({len(X_train)} training rows)"
+    )
 
     # ── 5. Save model ─────────────────────────────────────────────────────────
     joblib.dump(model, CLEAN_MODEL_PATH)
     new_sha = _file_sha256(CLEAN_MODEL_PATH)
-    log.append(f"[DEPLOY] Model written → {CLEAN_MODEL_PATH.name} sha256={new_sha[:8]}...")
+    log.append(
+        f"[DEPLOY] Model written → {CLEAN_MODEL_PATH.name} "
+        f"sha256={new_sha[:8]}..."
+    )
 
-    # ── 6. Update report (CLEAN only) ─────────────────────────────────────────
-    if mode == "clean":
-        _update_report(new_sha, accuracy, log)
-    else:
-        # VULNERABLE: model file replaced but report SHA NOT updated.
-        # N3 will load the new (drifted) model but its integrity check
-        # will compare against the OLD hash → PASS (hash matches old file? No.)
-        # Actually to make the vulnerability more educational:
-        # We DO update the hash so N3 thinks model is valid,
-        # but the model itself is trained on poisoned data.
-        # This shows that hash verification alone is not enough
-        # if the training pipeline is compromised.
-        _update_report(new_sha, accuracy, log)
+    # ── 6. Update report ──────────────────────────────────────────────────────
+    _update_report(new_sha, accuracy, log)
+
+    if mode == "vulnerable":
         log.append(
-            "[VULN] Hash updated to match drifted model — "
-            "N3 integrity check will PASS, but model is degraded. "
-            "Hash verification alone cannot detect training data poisoning."
+            "[SUPPLY CHAIN] SHA256 report updated to match poisoned artifact — "
+            "N3 integrity check will PASS despite degraded model behavior; "
+            "hash verification alone cannot detect training data poisoning"
         )
 
-    log.append(f"[SUMMARY] retrain complete mode={mode} accuracy={accuracy:.4f}")
+    log.append(
+        f"[SUMMARY] retrain complete mode={mode} accuracy={accuracy:.4f} "
+        f"rows_used={len(X)}"
+    )
 
     return {
-        "status":   "success",
-        "mode":     mode,
-        "accuracy": accuracy,
+        "status":    "success",
+        "mode":      mode,
+        "accuracy":  accuracy,
         "rows_used": len(X),
         "new_sha256": new_sha,
-        "log":      log,
+        "log":       log,
     }
 
 
 def _update_report(sha: str, accuracy: float, log: list[str]) -> None:
-    """Patch SHA256 and accuracy into existing training_report.json."""
     if REPORT_PATH.exists():
         try:
             report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
@@ -309,48 +315,41 @@ def _update_report(sha: str, accuracy: float, log: list[str]) -> None:
         report = {}
 
     report.setdefault("clean_model", {})
-    report["clean_model"]["sha256"] = sha
-    report["clean_model"]["accuracy"] = accuracy
+    report["clean_model"]["sha256"]       = sha
+    report["clean_model"]["accuracy"]     = accuracy
     report["clean_model"]["retrained_at"] = datetime.now(timezone.utc).isoformat()
 
-    # Track a retrain counter for observability
     report.setdefault("meta", {})
     report["meta"]["retrain_count"] = int(report["meta"].get("retrain_count", 0)) + 1
 
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    log.append(f"[REPORT] training_report.json updated with new sha256={sha[:8]}... retrain_count={report['meta']['retrain_count']}")
+    log.append(
+        f"[REPORT] training_report.json updated — "
+        f"sha256={sha[:8]}... "
+        f"retrain_count={report['meta']['retrain_count']}"
+    )
 
 
 # ── Status ────────────────────────────────────────────────────────────────────
 
 def get_status() -> dict[str, Any]:
-    """Return current trainer node status (rows stored, model info)."""
-    n_rows = row_count()
+    n_rows     = row_count()
     model_info: dict[str, Any] = {}
     if CLEAN_MODEL_PATH.exists():
-        sha = _file_sha256(CLEAN_MODEL_PATH)
-        model_info = {
-            "path":   CLEAN_MODEL_PATH.name,
-            "sha256": sha,
-            "exists": True,
-        }
+        sha        = _file_sha256(CLEAN_MODEL_PATH)
+        model_info = {"path": CLEAN_MODEL_PATH.name, "sha256": sha, "exists": True}
         if REPORT_PATH.exists():
             try:
                 rep = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-                model_info["last_accuracy"] = rep.get("clean_model", {}).get("accuracy")
-                model_info["retrained_at"]  = rep.get("clean_model", {}).get("retrained_at")
-                # include retrain_count if present
-                model_info["retrain_count"] = rep.get("meta", {}).get("retrain_count", 0)
+                model_info["last_accuracy"]  = rep.get("clean_model", {}).get("accuracy")
+                model_info["retrained_at"]   = rep.get("clean_model", {}).get("retrained_at")
+                model_info["retrain_count"]  = rep.get("meta", {}).get("retrain_count", 0)
             except Exception:
                 pass
     else:
         model_info = {"exists": False}
 
-    return {
-        "node":         "trainer",
-        "stored_rows":  n_rows,
-        "model":        model_info,
-    }
+    return {"node": "trainer", "stored_rows": n_rows, "model": model_info}
 
 
 server = FastAPI(title="N4 Model Trainer")
@@ -361,11 +360,10 @@ class StoreRequest(BaseModel):
 
 
 class RetrainRequest(BaseModel):
-    mode: str = "vulnerable"   # "clean" | "vulnerable"
+    mode: str = "vulnerable"
     min_rows: int = 50
 
 
-# Initialise SQLite DB on startup
 init_db()
 
 

@@ -108,7 +108,7 @@ export default function RuntimeLogsPanel({
             overflowY: "auto",
             padding: "14px 16px",
             fontFamily: "var(--font-mono)",
-            fontSize: "10px",
+            fontSize: "12px",
             lineHeight: "1.7",
             color: "var(--text-2)",
             whiteSpace: "pre-wrap",
@@ -125,12 +125,10 @@ export default function RuntimeLogsPanel({
                     : line.includes("REJECTED") || line.includes("ATTACK BLOCKED")
                       ? "var(--green)"
                       : line.includes("[RESULT]") ||
-                          line.includes("ATTACK SUCCESSFUL")
+                          line.includes("ATTACK SUCCESSFUL") ||
+                          line.includes("ACCEPTED")
                         ? "var(--orange)"
-                        : line.includes("ACCEPTED") ||
-                            line.includes("congestion_score")
-                          ? "var(--green)"
-                          : "var(--text-2)",
+                        : "var(--text-2)",
                 }}
               >
                 {line}

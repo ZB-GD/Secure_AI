@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import RagTutorWidget from "../workspace/RagTutorWidget";
 
-const LAST_LAB_STORAGE_KEY = "seclabs-last-lab-id";
+const LAST_LAB_STORAGE_KEY = "seclabs:last-lab-id";
 
 export default function TopBar({ items, activeItem, onSelectItem }) {
   const labs = items.filter((i) => i.type === "lab");
@@ -44,7 +44,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
   useEffect(() => {
     if (!activeId) return;
 
-    if (activeItem?.type === "pipeline") {
+    if (activeItem?.id === "scenario-1") {
       setNavView("scenarios");
       return;
     }
@@ -117,7 +117,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
     if (tab.id === "scenarios") {
       setNavView("scenarios");
-      onSelectItem("pipeline");
+      onSelectItem("scenario-1");
       return;
     }
 
@@ -202,7 +202,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "10px",
                 color: "var(--text-3)",
                 fontFamily: "var(--font-mono)",
                 letterSpacing: "0.12em",

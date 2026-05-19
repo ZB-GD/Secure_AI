@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
-import ScenarioMetricsPanel from "./ScenarioMetricsPanel";
-import PipelineCanvas from "../pipeline/PipelineCanvas";
+import PipelineCanvas from "./PipelineCanvas";
 import WelcomePage from "./WelcomePage";
 
 // --- ACADEMIC THEORETICAL FOUNDATIONS ---
@@ -149,7 +148,86 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   return [];
 }
 
-export function ScenarioOnePipelineRuntime() {
+function PipelineMetricRow({ label, value, description, tone = "neutral" }) {
+  const color =
+    tone === "danger"
+      ? "var(--red)"
+      : tone === "warning"
+        ? "var(--orange)"
+        : tone === "good"
+          ? "var(--green)"
+          : "var(--text-1)";
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        padding: "12px 0",
+        borderBottom: "1px solid var(--border-dim)",
+        gap: "16px",
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--text-3)",
+            letterSpacing: "0.1em",
+            fontFamily: "var(--font-display)",
+            marginBottom: "6px",
+          }}
+        >
+          {label}
+        </div>
+        <div style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
+          {description}
+        </div>
+      </div>
+      <div
+        style={{
+          fontSize: "22px",
+          fontWeight: 700,
+          fontFamily: "var(--font-display)",
+          color,
+          flexShrink: 0,
+          paddingTop: "2px",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const NODE_CONTEXT = {
+  edge: {
+    receives:
+      "Raw IoT frame from a street sensor, before any validation. traffic_volume is the vehicle count at the sensor; values below 0 are physically impossible. signed: false means the frame carries no device authentication.",
+    emits:
+      "The reading NODE-1 forwarded downstream. A _poisoned: true flag means a bad reading passed the entry point unchecked and is now travelling through the full pipeline.",
+  },
+  preprocessing: {
+    receives:
+      "The sensor readings forwarded by NODE-1, including any poisoned ones. NODE-2 sees these raw values and must decide whether to clean, quarantine, or pass them through.",
+    emits:
+      "The computed feature vector. The key field is congestion_score = traffic_volume / 8000. With traffic_volume = -5000 this becomes -0.625, a negative congestion score that is physically impossible and indicates the poisoned input is now a model feature.",
+  },
+  actuator: {
+    receives:
+      "The feature vector from NODE-2 that the model will run inference on. integrity_ok shows whether the model weights passed a hash check; null or false means the model cannot be trusted.",
+    emits:
+      "The model's prediction and the physical action dispatched to city infrastructure. model_version identifies which weights were used; retraining_feedback is sent back to NODE-4 to update the drift calculation.",
+  },
+  trainer: {
+    receives:
+      "Feature rows staged for storage and the current drift score. trigger_drift above the threshold means retraining is being considered, even if the features themselves are poisoned.",
+    emits:
+      "Whether features were stored (store) and if retraining was triggered (retrain_triggered). If poisoned features were stored and retraining ran, the model's future predictions will be based on corrupted data.",
+  },
+};
+
+function PipelineRuntime() {
   const fallbackPhases = useMemo(
     () => [
       {
@@ -160,7 +238,7 @@ export function ScenarioOnePipelineRuntime() {
         summary: "Accepted a physically impossible sensor reading.",
         statusReason: "Entry point accepted poisoned telemetry.",
         about:
-          "Collects raw telemetry from street sensors and camera feeds. This is the first trust boundary: it should authenticate devices, verify signatures, and reject physically impossible readings before anything reaches the AI pipeline.",
+          "NODE-1 is the entry point for all sensor data in CityFlow AI. It ingests raw traffic readings from IoT devices (vehicle counts, speeds, and weather conditions) and forwards them downstream. As the first trust boundary it must reject physically impossible values (e.g. traffic_volume < 0) and verify that frames come from authenticated sensors. In this scenario it skips all validation and accepts every reading, including the poisoned traffic_volume = -5000.",
         receives:
           '{\n  "sensor_id": "cam_north_01",\n  "timestamp": "08:14:58",\n  "traffic_volume": -5000,\n  "avg_speed": 0,\n  "source": "telemetry_csv",\n  "signed": false\n}',
         emits:
@@ -183,11 +261,11 @@ export function ScenarioOnePipelineRuntime() {
         id: "preprocessing",
         code: "NODE-2",
         name: "Edge Pre-processing Node",
-        status: "warning",
+        status: "compromised",
         summary: "Converted the poisoned reading into an invalid feature.",
-        statusReason: "Poisoned data produced an anomalous feature.",
+        statusReason: "Anomalous feature forwarded downstream without quarantine.",
         about:
-          "Cleans, normalizes, and converts raw readings into model features. It should preserve data lineage and quarantine out-of-range features instead of forwarding suspicious values.",
+          "NODE-2 transforms raw sensor readings into the feature vector the ML model expects. Its key computation is congestion_score = traffic_volume / 8000. When traffic_volume = -5000 arrives, the result is congestion_score = -0.625, a physically impossible value. The node flags it as anomalous but still forwards it instead of quarantining it, so the poisoned feature reaches inference unchanged.",
         receives:
           '{\n  "input_readings": [\n    {\n      "sensor_id": "cam_north_01",\n      "traffic_volume": -5000\n    }\n  ]\n}',
         emits:
@@ -205,11 +283,11 @@ export function ScenarioOnePipelineRuntime() {
         id: "actuator",
         code: "NODE-3",
         name: "Inference & Action Node",
-        status: "warning",
+        status: "compromised",
         summary: "Turned the invalid feature into a traffic-control action.",
-        statusReason: "Actions were generated from risky model input.",
+        statusReason: "Model integrity check skipped; actions generated from poisoned input.",
         about:
-          "Runs the traffic model and converts predictions into operational decisions. This node needs model integrity checks and action guardrails because its output can affect the physical city.",
+          "NODE-3 runs ML inference on the feature vector from NODE-2 and translates the prediction into a real-world action, such as holding a traffic light red or rerouting vehicles. Because its output directly controls physical infrastructure, it must verify model integrity and refuse to act on anomalous input. In vulnerable mode it generates actions even when the input feature was already flagged as anomalous.",
         receives:
           '{\n  "model_version": "v2.1",\n  "features": [\n    {\n      "congestion_score": -0.625,\n      "anomaly": true\n    }\n  ]\n}',
         emits:
@@ -227,11 +305,11 @@ export function ScenarioOnePipelineRuntime() {
         id: "trainer",
         code: "NODE-4",
         name: "Trainer Node",
-        status: "warning",
+        status: "compromised",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
         statusReason: "Retraining risk exists because poisoned features reached storage.",
         about:
-          "Stores features for future training and decides whether model retraining should run. It must monitor drift and pause retraining when incoming data looks poisoned or distribution-shifted.",
+          "NODE-4 persists incoming feature rows to the training database and monitors data drift. If the drift score crosses a threshold, it triggers model retraining, permanently incorporating the poisoned features into the model's future behavior. The critical defense here is halting retraining when drift is elevated and quarantining suspicious features before they corrupt the next model version.",
         receives:
           '{\n  "stored_features": [\n    {\n      "sensor_id": "cam_north_01",\n      "congestion_score": -0.625\n    }\n  ],\n  "trigger_drift": 0.279\n}',
         emits:
@@ -313,17 +391,13 @@ export function ScenarioOnePipelineRuntime() {
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
     const n3Status =
-      n3.integrity_ok === false || n3.halted
+      n3.integrity_ok === false || n3.halted || n3.integrity_ok === null || n3.integrity_ok === undefined
         ? "compromised"
-        : n3.integrity_ok === null || n3.integrity_ok === undefined
-          ? "warning"
-          : "healthy";
+        : "healthy";
     const n4Status =
-      n4.store_error || n4.retrain_error
+      n4.store_error || n4.retrain_error || n4.retrain_triggered
         ? "compromised"
-        : n4.retrain_triggered
-          ? "warning"
-          : "healthy";
+        : "healthy";
 
     return [
       {
@@ -336,7 +410,7 @@ export function ScenarioOnePipelineRuntime() {
           ? "Entry point accepted poisoned telemetry."
           : "Sensor readings passed ingestion checks.",
         about:
-          "Collects raw telemetry from street sensors and camera feeds. This is the first trust boundary: it should authenticate devices, verify signatures, and reject physically impossible readings before anything reaches the AI pipeline.",
+          "NODE-1 is the entry point for all sensor data in CityFlow AI. It ingests raw traffic readings from IoT devices (vehicle counts, speeds, and weather conditions) and forwards them downstream. As the first trust boundary it must reject physically impossible values (e.g. traffic_volume < 0) and verify that frames come from authenticated sensors. In this scenario it skips all validation and accepts every reading, including the poisoned traffic_volume = -5000.",
         receives: JSON.stringify(
           { mode: n1.mode, n_readings: n1.readings?.length || 0 },
           null,
@@ -364,13 +438,13 @@ export function ScenarioOnePipelineRuntime() {
         id: "preprocessing",
         code: "NODE-2",
         name: "Edge Pre-processing Node",
-        status: n2Anomalous ? "warning" : "healthy",
+        status: n2Anomalous ? "compromised" : "healthy",
         summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
         statusReason: n2Anomalous
           ? "Poisoned data produced an anomalous feature."
           : "Generated features are within expected ranges.",
         about:
-          "Cleans, normalizes, and converts raw readings into model features. It should preserve data lineage and quarantine out-of-range features instead of forwarding suspicious values.",
+          "NODE-2 transforms raw sensor readings into the feature vector the ML model expects. Its key computation is congestion_score = traffic_volume / 8000. When traffic_volume = -5000 arrives, the result is congestion_score = -0.625, a physically impossible value. The node flags it as anomalous but still forwards it instead of quarantining it, so the poisoned feature reaches inference unchanged.",
         receives: JSON.stringify(
           {
             input_readings: n1.readings?.length || 0,
@@ -412,7 +486,7 @@ export function ScenarioOnePipelineRuntime() {
                 ? "Model integrity verification was skipped in vulnerable mode."
                 : "Model integrity verified and decisions completed.",
         about:
-          "Runs the traffic model and converts predictions into operational decisions. This node needs model integrity checks and action guardrails because its output can affect the physical city.",
+          "NODE-3 runs ML inference on the feature vector from NODE-2 and translates the prediction into a real-world action, such as holding a traffic light red or rerouting vehicles. Because its output directly controls physical infrastructure, it must verify model integrity and refuse to act on anomalous input. In vulnerable mode it generates actions even when the input feature was already flagged as anomalous.",
         receives: JSON.stringify(
           {
             input_features: n2.features?.length || 0,
@@ -463,7 +537,7 @@ export function ScenarioOnePipelineRuntime() {
               ? "Drift threshold triggered retraining review."
               : "Stored features did not cross retraining threshold.",
         about:
-          "Stores features for future training and decides whether model retraining should run. It must monitor drift and pause retraining when incoming data looks poisoned or distribution-shifted.",
+          "NODE-4 persists incoming feature rows to the training database and monitors data drift. If the drift score crosses a threshold, it triggers model retraining, permanently incorporating the poisoned features into the model's future behavior. The critical defense here is halting retraining when drift is elevated and quarantining suspicious features before they corrupt the next model version.",
         receives: JSON.stringify(
           {
             stored_features: n2.features?.length || 0,
@@ -562,19 +636,20 @@ export function ScenarioOnePipelineRuntime() {
         </div>
 
         <div className="scenario-window-main">
+          {pipelineError && (
+            <div className="scenario-window-error" role="alert">
+              {pipelineError}
+            </div>
+          )}
           <PipelineCanvas
             phases={phases}
             activeNodeId={activePhase?.id}
             onNodeClick={(id) => setActivePhaseId(id)}
           />
 
-          <div className="scenario-metrics-band scenario-metrics-band--inside">
-            <ScenarioMetricsPanel metrics={pipelineMetrics} />
-          </div>
-
           <div className="scenario-connected-card__body">
             <div className="scenario-tabs" role="tablist">
-              {["about", "received", "emitted", "logs"].map((tab) => (
+              {["about", "received", "emitted", "logs", "metrics"].map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -589,7 +664,12 @@ export function ScenarioOnePipelineRuntime() {
             <div className="scenario-window-content">
               <div className="scenario-detail-panel__body">
                 {activeTab === "received" && (
-                  <CodeBlock color="var(--blue)" value={activePhase.receives} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
+                      {NODE_CONTEXT[activePhase?.id]?.receives}
+                    </p>
+                    <CodeBlock color="var(--blue)" value={activePhase.receives} />
+                  </div>
                 )}
 
                 {activeTab === "about" && (
@@ -616,11 +696,69 @@ export function ScenarioOnePipelineRuntime() {
                 )}
 
                 {activeTab === "emitted" && (
-                  <CodeBlock color="var(--orange)" value={activePhase.emits} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
+                      {NODE_CONTEXT[activePhase?.id]?.emits}
+                    </p>
+                    <CodeBlock color="var(--orange)" value={activePhase.emits} />
+                  </div>
                 )}
 
                 {activeTab === "logs" && (
                   <LogBlock value={activeNodeLogsText} />
+                )}
+
+                {activeTab === "metrics" && (
+                  <div style={{ padding: "4px 0" }}>
+                    <PipelineMetricRow
+                      label="READINGS"
+                      value={pipelineMetrics.readings_received ?? 0}
+                      description="Total sensor frames the pipeline ingested in this run. Each frame is one reading from a street sensor."
+                      tone="neutral"
+                    />
+                    <PipelineMetricRow
+                      label="POISONED"
+                      value={pipelineMetrics.poisoned_readings ?? 0}
+                      description="Readings that contained a manipulated or physically impossible value. In this scenario the attack injects traffic_volume = -5000, which is negative and therefore impossible for a vehicle count."
+                      tone={(pipelineMetrics.poisoned_readings || 0) > 0 ? "danger" : "good"}
+                    />
+                    <PipelineMetricRow
+                      label="ANOMALIES"
+                      value={pipelineMetrics.anomalous_features ?? 0}
+                      description="Feature values that fell outside expected ranges after NODE-2 processing. When traffic_volume = -5000 is converted using congestion_score = traffic_volume / 8000, the result is -0.625, which is an anomalous feature value."
+                      tone={(pipelineMetrics.anomalous_features || 0) > 0 ? "warning" : "good"}
+                    />
+                    <PipelineMetricRow
+                      label="RISK"
+                      value={(pipelineMetrics.risk_level || "unknown").toUpperCase()}
+                      description="Overall risk assessment for this pipeline run. HIGH means the attack succeeded and traffic control actions were generated from poisoned data."
+                      tone={pipelineMetrics.risk_level === "high" ? "danger" : pipelineMetrics.risk_level === "normal" ? "good" : "neutral"}
+                    />
+                    <PipelineMetricRow
+                      label="DRIFT SCORE"
+                      value={Number(pipelineMetrics.drift_score || 0).toFixed(3)}
+                      description="How far the current data distribution has shifted from the model's training baseline. A score above 0.25 means the data looks significantly different from what the model was trained on and will trigger automatic retraining."
+                      tone={Number(pipelineMetrics.drift_score || 0) >= 0.25 ? "warning" : "good"}
+                    />
+                    <PipelineMetricRow
+                      label="RETRAIN"
+                      value={
+                        pipelineMetrics.trainer_retrain_triggered
+                          ? pipelineMetrics.trainer_retrain_ok === true
+                            ? "YES"
+                            : "FAILED"
+                          : "NO"
+                      }
+                      description="Whether the trainer triggered model retraining this run. If poisoned features were stored and retraining ran, the model's future predictions will be based on corrupted data."
+                      tone={
+                        pipelineMetrics.trainer_retrain_triggered
+                          ? pipelineMetrics.trainer_retrain_ok === false
+                            ? "danger"
+                            : "warning"
+                          : "good"
+                      }
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -631,7 +769,6 @@ export function ScenarioOnePipelineRuntime() {
   );
 }
 
-// MAIN EXPORT
 export default function ScenarioWorkspace({
   item,
   onCompleteScenario,
@@ -645,7 +782,7 @@ export default function ScenarioWorkspace({
         onSelectItem={onSelectItem}
       />
     );
-  if (item.id === "scenario-1") return <ScenarioOnePipelineRuntime />;
+  if (item.id === "scenario-1") return <PipelineRuntime />;
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
