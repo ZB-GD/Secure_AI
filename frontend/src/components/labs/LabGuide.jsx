@@ -165,6 +165,7 @@ export default function LabGuide({
   onAnswerChange,
   onPrevStep,
   onNextStep,
+  onUnlockQuiz,
 }) {
   const [showHint, setShowHint] = useState(false)
   const [answerTouched, setAnswerTouched] = useState(false)
@@ -181,7 +182,7 @@ export default function LabGuide({
     setTutorQuestion(currentStep?.title || "")
     setTutorAnswer("")
     setTutorError("")
-  }, [currentStep?.id])
+  }, [currentStep?.id, currentStep?.title])
 
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
@@ -194,6 +195,7 @@ export default function LabGuide({
 
   const totalSteps = item.guide.steps.length
   const stepIndex = item.currentStepIndex
+  const isLastStep = stepIndex === totalSteps - 1
   const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
   const answerValid = isValid(currentStep, currentAnswer)
 
@@ -228,6 +230,10 @@ export default function LabGuide({
     setShowHint(false)
     setAnswerTouched(false)
     onNextStep()
+
+    if (isLastStep) {
+      onUnlockQuiz?.()
+    }
   }
 
   const handlePrev = () => {
@@ -439,7 +445,7 @@ export default function LabGuide({
         >
           <div
             style={{
-              fontSize: "9px",
+              fontSize: "10px",
               color: "var(--text-3)",
               letterSpacing: "0.1em",
               marginBottom: "8px",
@@ -461,7 +467,7 @@ export default function LabGuide({
         >
           <div
             style={{
-              fontSize: "9px",
+              fontSize: "10px",
               color: "var(--orange)",
               letterSpacing: "0.1em",
               marginBottom: "8px",
@@ -662,7 +668,7 @@ export default function LabGuide({
               : "0 0 15px rgba(249,115,22,0.15)",
           }}
         >
-          {stepIndex === totalSteps - 1 ? "UNLOCK QUIZ" : "NEXT ->"}
+          {isLastStep ? "UNLOCK QUIZ" : "NEXT ->"}
         </button>
       </div>
     </div>

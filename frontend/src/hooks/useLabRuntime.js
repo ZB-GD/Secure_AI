@@ -80,7 +80,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
       downstreamRisk: "reduced",
       congestionScore: congestionMatch?.[1] || previous.congestionScore || "-0.625",
       poisonedValue: "traffic_volume=-5000",
-      lastEvent: "Protected mode blocked the poisoned reading.",
     };
   }
 
@@ -88,7 +87,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
     return {
       ...previous,
       statusLabel: previous.statusLabel === "not found" ? "not found" : "running",
-      lastEvent: previous.lastEvent || DEFAULT_RUNTIME.lastEvent,
     };
   }
 
@@ -104,7 +102,6 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
     downstreamRisk: "high",
     congestionScore: congestionMatch?.[1] || "-0.625",
     poisonedValue: "traffic_volume=-5000",
-    lastEvent: "The local vulnerable node accepted an impossible traffic reading.",
   };
 }
 
@@ -202,7 +199,10 @@ export function useLabRuntime(labId, options = {}) {
     setRuntime(DEFAULT_RUNTIME);
 
     if (autoStart && labId) startRuntime();
-  }, [labId, autoStart, startRuntime]);
+    // startRuntime identity changes whenever labId changes (same trigger), so
+    // listing it would double-fire the effect. labId + autoStart are sufficient.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labId, autoStart]);
 
   // Recover when a redeploy or cleanup stops the disposable lab while the page
   // remains open. Otherwise noVNC keeps reconnecting to a dead host port.

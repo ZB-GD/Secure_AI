@@ -30,11 +30,11 @@ COPY lab_files/enable_defense.py     /opt/lab-home/Desktop/Lab1/enable_defense.p
 COPY lab_files/reset_lab.py          /opt/lab-home/Desktop/Lab1/reset_lab.py
 
 RUN cp /opt/lab-home/README-LAB1.txt /opt/lab-home/Desktop/Lab1/README-LAB1.txt && \
-    ln -sf /home/lab/Desktop/Lab1/poison_data.py /opt/lab-home/scripts/poison_data.py && \
-    ln -sf /home/lab/Desktop/Lab1/validate_defense.py /opt/lab-home/scripts/validate_defense.py && \
-    ln -sf /home/lab/Desktop/Lab1/vulnerable_app.py /opt/lab-home/scripts/vulnerable_app.py && \
-    ln -sf /home/lab/Desktop/Lab1/enable_defense.py /opt/lab-home/scripts/enable_defense.py && \
-    ln -sf /home/lab/Desktop/Lab1/reset_lab.py /opt/lab-home/scripts/reset_lab.py && \
+    ln -sf ../Desktop/Lab1/poison_data.py /opt/lab-home/scripts/poison_data.py && \
+    ln -sf ../Desktop/Lab1/validate_defense.py /opt/lab-home/scripts/validate_defense.py && \
+    ln -sf ../Desktop/Lab1/vulnerable_app.py /opt/lab-home/scripts/vulnerable_app.py && \
+    ln -sf ../Desktop/Lab1/enable_defense.py /opt/lab-home/scripts/enable_defense.py && \
+    ln -sf ../Desktop/Lab1/reset_lab.py /opt/lab-home/scripts/reset_lab.py && \
     chmod +x /opt/lab-home/Desktop/Lab1/*.py && \
     chown -R 1000:1000 /opt/lab-home
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 // IMPORTANTE: Asegúrate de que esta ruta a tu apiClient es correcta
 import { request } from "../../services/apiClient";
 
-export default function RagTutorWidget({ labId, phase, activeItem, placement = "floating" }) {
+export default function RagTutorWidget({ phase, activeItem, placement = "floating" }) {
     
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
