@@ -148,58 +148,6 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   return [];
 }
 
-function PipelineMetricRow({ label, value, description, tone = "neutral" }) {
-  const color =
-    tone === "danger"
-      ? "var(--red)"
-      : tone === "warning"
-        ? "var(--orange)"
-        : tone === "good"
-          ? "var(--green)"
-          : "var(--text-1)";
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        padding: "12px 0",
-        borderBottom: "1px solid var(--border-dim)",
-        gap: "16px",
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: "10px",
-            color: "var(--text-3)",
-            letterSpacing: "0.1em",
-            fontFamily: "var(--font-display)",
-            marginBottom: "6px",
-          }}
-        >
-          {label}
-        </div>
-        <div style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
-          {description}
-        </div>
-      </div>
-      <div
-        style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          fontFamily: "var(--font-display)",
-          color,
-          flexShrink: 0,
-          paddingTop: "2px",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 const NODE_CONTEXT = {
   edge: {
     receives:
@@ -227,7 +175,7 @@ const NODE_CONTEXT = {
   },
 };
 
-function PipelineRuntime() {
+function PipelineRuntime({ compact = false }) {
   const fallbackPhases = useMemo(
     () => [
       {
@@ -333,22 +281,7 @@ function PipelineRuntime() {
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
 
-  const pipelineMetrics = pipelineResult?.metrics || {
-    readings_received: 0,
-    readings_dropped: 0,
-    poisoned_readings: 0,
-    features_generated: 0,
-    anomalous_features: 0,
-    predictions_generated: 0,
-    actions_generated: 0,
-    dominant_state: "unknown",
-    avg_congestion_score: 0,
-    integrity_ok: null,
-    halted: false,
-    drift_score: 0,
-    risk_level: "normal",
-    summary: "Waiting for backend pipeline data.",
-  };
+  const drift_score = pipelineResult?.metrics?.drift_score ?? 0;
 
   async function runBackendPipeline() {
     setPipelineLoading(true);
@@ -541,7 +474,7 @@ function PipelineRuntime() {
         receives: JSON.stringify(
           {
             stored_features: n2.features?.length || 0,
-            trigger_drift: pipelineMetrics.drift_score,
+            trigger_drift: drift_score,
           },
           null,
           2,
@@ -573,7 +506,7 @@ function PipelineRuntime() {
         ],
       },
     ];
-  }, [pipelineResult, fallbackPhases, pipelineMetrics.drift_score]);
+  }, [pipelineResult, fallbackPhases, drift_score]);
 
   useEffect(() => {
     if (!phases.some((phase) => phase.id === activePhaseId)) {
@@ -583,15 +516,12 @@ function PipelineRuntime() {
 
   const activePhase =
     phases.find((phase) => phase.id === activePhaseId) || phases[0];
-  const compromisedCount = phases.filter(
-    (phase) => phase.status === "compromised" || phase.status === "warning",
-  ).length;
 
   const activeNodeLogsText = useMemo(() => {
     const lines = buildPipelineLogsForPhase(
       activePhase?.id,
       pipelineResult,
-      pipelineMetrics.drift_score,
+      drift_score,
     );
     if (lines.length > 0) return lines.join("\n");
     if (pipelineLoading) return "Loading pipeline logs...";
@@ -599,41 +529,24 @@ function PipelineRuntime() {
   }, [
     activePhase?.id,
     pipelineLoading,
-    pipelineMetrics.drift_score,
+    drift_score,
     pipelineResult,
   ]);
 
   return (
     <section className="scenario-workspace">
       <div className="scenario-unified-window">
-        <div className="scenario-window-header">
-          <div className="scenario-eyebrow scenario-eyebrow--blue">
-            CityFlow AI / Distributed Pipeline
+        {!compact && (
+          <div className="scenario-window-header">
+            <div className="scenario-eyebrow scenario-eyebrow--blue">
+              CityFlow AI / Distributed Pipeline
+            </div>
+            <div className="scenario-title">General Pipeline View</div>
+            <p className="scenario-subtitle">
+              Inspect what each node receives, emits, and logs as telemetry moves through the AI traffic-control system.
+            </p>
           </div>
-          <div className="scenario-title">General Pipeline View</div>
-          <p className="scenario-subtitle">
-            Inspect what each node receives, emits, and logs as telemetry moves through the AI traffic-control system.
-          </p>
-        </div>
-
-        <div className="scenario-window-topbar">
-          <div className="scenario-window-toolbar">
-            {compromisedCount > 0 && (
-              <span className="scenario-window-risk">
-                <span className="scenario-window-risk__dot" />
-                {compromisedCount} node{compromisedCount !== 1 ? "s" : ""} need attention
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={runBackendPipeline}
-              disabled={pipelineLoading}
-              className="scenario-refresh-button"
-            >
-              {pipelineLoading ? "Running…" : "↺ Refresh Pipeline"}
-            </button>
-          </div>
-        </div>
+        )}
 
         <div className="scenario-window-main">
           {pipelineError && (
@@ -649,7 +562,7 @@ function PipelineRuntime() {
 
           <div className="scenario-connected-card__body">
             <div className="scenario-tabs" role="tablist">
-              {["about", "received", "emitted", "logs", "metrics"].map((tab) => (
+              {["about", "received", "emitted", "logs"].map((tab) => (
                 <button
                   key={tab}
                   type="button"
@@ -707,59 +620,6 @@ function PipelineRuntime() {
                 {activeTab === "logs" && (
                   <LogBlock value={activeNodeLogsText} />
                 )}
-
-                {activeTab === "metrics" && (
-                  <div style={{ padding: "4px 0" }}>
-                    <PipelineMetricRow
-                      label="READINGS"
-                      value={pipelineMetrics.readings_received ?? 0}
-                      description="Total sensor frames the pipeline ingested in this run. Each frame is one reading from a street sensor."
-                      tone="neutral"
-                    />
-                    <PipelineMetricRow
-                      label="POISONED"
-                      value={pipelineMetrics.poisoned_readings ?? 0}
-                      description="Readings that contained a manipulated or physically impossible value. In this scenario the attack injects traffic_volume = -5000, which is negative and therefore impossible for a vehicle count."
-                      tone={(pipelineMetrics.poisoned_readings || 0) > 0 ? "danger" : "good"}
-                    />
-                    <PipelineMetricRow
-                      label="ANOMALIES"
-                      value={pipelineMetrics.anomalous_features ?? 0}
-                      description="Feature values that fell outside expected ranges after NODE-2 processing. When traffic_volume = -5000 is converted using congestion_score = traffic_volume / 8000, the result is -0.625, which is an anomalous feature value."
-                      tone={(pipelineMetrics.anomalous_features || 0) > 0 ? "warning" : "good"}
-                    />
-                    <PipelineMetricRow
-                      label="RISK"
-                      value={(pipelineMetrics.risk_level || "unknown").toUpperCase()}
-                      description="Overall risk assessment for this pipeline run. HIGH means the attack succeeded and traffic control actions were generated from poisoned data."
-                      tone={pipelineMetrics.risk_level === "high" ? "danger" : pipelineMetrics.risk_level === "normal" ? "good" : "neutral"}
-                    />
-                    <PipelineMetricRow
-                      label="DRIFT SCORE"
-                      value={Number(pipelineMetrics.drift_score || 0).toFixed(3)}
-                      description="How far the current data distribution has shifted from the model's training baseline. A score above 0.25 means the data looks significantly different from what the model was trained on and will trigger automatic retraining."
-                      tone={Number(pipelineMetrics.drift_score || 0) >= 0.25 ? "warning" : "good"}
-                    />
-                    <PipelineMetricRow
-                      label="RETRAIN"
-                      value={
-                        pipelineMetrics.trainer_retrain_triggered
-                          ? pipelineMetrics.trainer_retrain_ok === true
-                            ? "YES"
-                            : "FAILED"
-                          : "NO"
-                      }
-                      description="Whether the trainer triggered model retraining this run. If poisoned features were stored and retraining ran, the model's future predictions will be based on corrupted data."
-                      tone={
-                        pipelineMetrics.trainer_retrain_triggered
-                          ? pipelineMetrics.trainer_retrain_ok === false
-                            ? "danger"
-                            : "warning"
-                          : "good"
-                      }
-                    />
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -773,6 +633,7 @@ export default function ScenarioWorkspace({
   item,
   onCompleteScenario,
   onSelectItem,
+  compact = false,
 }) {
   if (item.id === "scenario-0")
     return (
@@ -782,7 +643,7 @@ export default function ScenarioWorkspace({
         onSelectItem={onSelectItem}
       />
     );
-  if (item.id === "scenario-1") return <PipelineRuntime />;
+  if (item.id === "scenario-1") return <PipelineRuntime compact={compact} />;
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
