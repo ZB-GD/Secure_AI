@@ -16,11 +16,6 @@ export default function RagTutorWidget({ labId, phase, activeItem, placement = "
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // CHIVATO PARA LA CONSOLA (Para comprobar que estás editando el archivo correcto)
-  useEffect(() => {
-    console.log("🚀 El nuevo RagTutorWidget sin emojis se ha cargado correctamente.");
-  }, []);
-
   // Auto-scroll al final del chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -167,7 +162,7 @@ const panelStyle = isTopbar
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pregunta al tutor..."
+              placeholder="Ask anything to your tutor..."
               disabled={loading}
               style={{ flex: 1, background: "var(--bg-base)", border: "1px solid var(--border-dim)", color: "var(--text-1)", padding: "10px", borderRadius: "6px", fontSize: "12px", outline: "none" }}
             />
