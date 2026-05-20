@@ -1,0 +1,155 @@
+.
+├── backend
+│   ├── api
+│   │   ├── .gitkeep
+│   │   ├── models
+│   │   │   └── state.py
+│   │   ├── routes
+│   │   │   ├── health.py
+│   │   │   ├── labs.py
+│   │   │   ├── logs.py
+│   │   │   ├── pipeline.py
+│   │   │   ├── trainer.py
+│   │   │   └── tutor.py
+│   │   └── services
+│   │       ├── docker_service.py
+│   │       ├── log_service.py
+│   │       └── pipeline_service.py
+│   ├── Dockerfile
+│   ├── .env
+│   ├── main.py
+│   ├── models
+│   ├── requirements.txt
+│   └── scripts
+│       ├── Dockerfile.trainer-init
+│       └── train_traffic_models.py
+├── data
+│   └── datasets
+│       └── metro_interstate_traffic_volume.csv
+├── deploy.sh
+├── docker-compose.yml
+├── estructura.txt
+├── frontend
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── .env
+│   ├── eslint.config.js
+│   ├── .gitignore
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── labs
+│   │   │   │   ├── AttackControls.jsx
+│   │   │   │   ├── LabGuide.jsx
+│   │   │   │   ├── LabMetrics.jsx
+│   │   │   │   ├── LabRuntimeWorkspace.jsx
+│   │   │   │   ├── PipelineStatus.jsx
+│   │   │   │   └── RuntimeLogsPanel.jsx
+│   │   │   ├── layout
+│   │   │   │   ├── MainLayout.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   ├── TopBar.jsx
+│   │   │   │   └── VulnerabilityGate.jsx
+│   │   │   ├── pipeline
+│   │   │   │   ├── PipelineCanvas.jsx
+│   │   │   │   ├── PipelineConnection.jsx
+│   │   │   │   ├── PipelineLegend.jsx
+│   │   │   │   ├── PipelineMetricsPanel.jsx
+│   │   │   │   └── PipelineNodeCard.jsx
+│   │   │   ├── scenarios
+│   │   │   │   ├── ScenarioGuide.jsx
+│   │   │   │   ├── ScenarioLogsPanel.jsx
+│   │   │   │   ├── ScenarioMetricsPanel.jsx
+│   │   │   │   └── ScenarioWorkspace.jsx
+│   │   │   └── workspace
+│   │   │       ├── index.js
+│   │   │       ├── RagTutorWidget.jsx
+│   │   │       ├── RemoteDesktopPanel.jsx
+│   │   │       └── WorkspacePanel.jsx
+│   │   ├── context
+│   │   │   └── LabContext.jsx
+│   │   ├── data
+│   │   │   ├── journey.js
+│   │   │   └── pipelineStages.js
+│   │   ├── hooks
+│   │   │   └── useLabRuntime.js
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   ├── DashboardPage.jsx
+│   │   │   └── LabPage.jsx
+│   │   ├── services
+│   │   │   ├── apiClient.js
+│   │   │   └── labService.js
+│   │   └── styles
+│   │       └── global.css
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── .gitignore
+├── lab-assets
+│   ├── lab1-data-poisoning
+│   ├── lab2-input-injection
+│   ├── lab3-supply-chain
+│   └── lab4-output-handling
+├── labs
+│   ├── base-novnc
+│   │   ├── Dockerfile
+│   │   └── supervisord.conf
+│   ├── decision-retraining
+│   │   └── Dockerfile
+│   ├── edge-preprocessing
+│   │   └── Dockerfile
+│   ├── sensor-data
+│   │   ├── Dockerfile
+│   │   └── lab_files
+│   │       ├── poison_data.py
+│   │       ├── README-LAB1.txt
+│   │       └── validate_defense.py
+│   └── traffic-inference
+│       └── Dockerfile
+├── pipeline_nodes
+│   ├── actuator
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── docker-compose.pipeline.yml
+│   ├── edge_preprocessing
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── model_trainer
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── paths.py
+│   └── sensor_data
+│       ├── app.py
+│       ├── Dockerfile
+│       └── __init__.py
+├── README.md
+├── scripts
+│   └── start-novnc.sh
+├── services
+│   └── tutor_rag
+│       ├── app.py
+│       ├── Dockerfile
+│       ├── knowledge_base
+│       │   ├── cityflow_manual.md
+│       │   └── incident_response.md
+│       └── requirements.txt
+├── setup.sh
+├── tree_proyecto.txt
+└── TROUBLESHOOTING.md
+
+42 directories, 110 files

@@ -1,0 +1,227 @@
+x-lab-security: &lab-security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - SETUID
+    - SETGID
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /run
+    - /home/lab:rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755
+  user: "1000:1000"
+
+services:
+  model-init:
+    build:
+      context: .
+      dockerfile: backend/scripts/Dockerfile.trainer-init
+    container_name: seclabs-model-init
+    volumes:
+      - model-store:/models
+    networks:
+      - seclabs-network
+    restart: "no"
+
+  sensor:
+    build:
+      context: .
+      dockerfile: pipeline_nodes/sensor_data/Dockerfile
+    container_name: seclabs-sensor
+    ports:
+      - "8001:8001"
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  edge:
+    build:
+      context: .
+      dockerfile: pipeline_nodes/edge_preprocessing/Dockerfile
+    container_name: seclabs-edge
+    ports:
+      - "8002:8002"
+    depends_on:
+      sensor:
+        condition: service_healthy
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  actuator:
+    build:
+      context: .
+      dockerfile: pipeline_nodes/actuator/Dockerfile
+    container_name: seclabs-actuator
+    ports:
+      - "8003:8003"
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+      edge:
+        condition: service_healthy
+    environment:
+      - MODELS_DIR=/models
+    volumes:
+      - model-store:/models
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8003/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  trainer:
+    build:
+      context: .
+      dockerfile: pipeline_nodes/model_trainer/Dockerfile
+    container_name: seclabs-trainer
+    ports:
+      - "8004:8004"
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+      actuator:
+        condition: service_healthy
+    environment:
+      - MODELS_DIR=/models
+      - DB_PATH=/data/trainer_store.db
+    volumes:
+      - model-store:/models
+      - trainer-db:/data
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8004/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: seclabs-backend
+    # Bind only to localhost so students cannot reach port 8000 directly.
+    # All student traffic goes through nginx (frontend container) which
+    # proxies /health, /labs, /logs, /api to this service.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - RAG_SERVICE_URL=http://tutor-rag:8010
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - API_KEY=${API_KEY:-}
+      - MAX_CONCURRENT_LABS=${MAX_CONCURRENT_LABS:-20}
+      - LAB_HEARTBEAT_TIMEOUT_SECONDS=${LAB_HEARTBEAT_TIMEOUT_SECONDS:-180}
+      - LAB_CLEANUP_INTERVAL_SECONDS=${LAB_CLEANUP_INTERVAL_SECONDS:-30}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - seclabs-network
+    depends_on:
+      sensor:
+        condition: service_healthy
+      edge:
+        condition: service_healthy
+      actuator:
+        condition: service_healthy
+      trainer:
+        condition: service_healthy
+      tutor-rag:
+        condition: service_healthy
+    restart: unless-stopped
+
+  tutor-rag:
+    env_file:
+      - ./backend/.env
+    build:
+      context: .
+      dockerfile: services/tutor_rag/Dockerfile
+    container_name: seclabs-tutor-rag
+    ports:
+      - "127.0.0.1:8010:8010"
+    networks:
+      - seclabs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8010/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # In production: set VITE_API_BASE_URL="" (empty) so the frontend
+        # uses relative URLs and nginx proxies API calls to the backend.
+        # In development: set VITE_API_BASE_URL to your backend's address.
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+        - VITE_API_BASE_URL_FALLBACK=${VITE_API_BASE_URL_FALLBACK:-}
+        - VITE_API_KEY=${VITE_API_KEY:-}
+    container_name: seclabs-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - seclabs-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  lab-base-novnc:
+    <<: *lab-security
+    profiles:
+      - labs-build
+    image: lab-base-novnc
+    build:
+      context: ./labs/base-novnc
+      dockerfile: Dockerfile
+    command: ["true"]
+
+  lab1:
+    <<: *lab-security
+    profiles:
+      - labs-build
+    image: seclabs-lab1:vuln
+    build:
+      context: ./labs/sensor-data
+      dockerfile: Dockerfile
+    depends_on:
+      - lab-base-novnc
+    command: ["true"]
+
+networks:
+  seclabs-network:
+    driver: bridge
+
+volumes:
+  model-store:
+  trainer-db:
