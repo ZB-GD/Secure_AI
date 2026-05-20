@@ -180,27 +180,15 @@ def _run_inference(features: list[dict], mode: str, log: list) -> tuple[list, bo
             return [], False, "tampered"
 
         integrity_ok = True
-        log.append(
-            f"[INTEGRITY] PASS — SHA256 verified: {actual[:8]}... "
-            f"artifact matches training_report.json"
-        )
+        log.append(f"[INTEGRITY] PASS — SHA256 verified: {actual[:8]}...")
 
     else:
         # VULNERABLE: load backdoored artifact without any provenance check
         model_path   = BACKDOORED_MODEL_PATH
         integrity_ok = None
-        log.append(
-            "[SUPPLY CHAIN] Artifact origin unverified — "
-            "no code signing, no provenance check"
-        )
-        log.append(
-            f"[SUPPLY CHAIN] Loading: {BACKDOORED_MODEL_PATH.name} "
-            f"(injected via compromised CI/CD pipeline)"
-        )
-        log.append(
-            "[INTEGRITY] SKIPPED — SHA256 check bypassed; "
-            "backdoored model produces manipulated predictions"
-        )
+        log.append("[SUPPLY CHAIN] Artifact origin unverified — no code signing")
+        log.append(f"[SUPPLY CHAIN] Loading: {BACKDOORED_MODEL_PATH.name}")
+        log.append("[INTEGRITY] SKIPPED — SHA256 check bypassed")
 
     if not model_path.exists():
         log.append(f"[MODEL] FAIL — model file not found: {model_path}")
@@ -263,10 +251,8 @@ def _run_inference(features: list[dict], mode: str, log: list) -> tuple[list, bo
             if gap > 0.25:
                 log.append(
                     f"[MISMATCH] id={reading_id} — "
-                    f"N2 edge score={edge_score:.2f} ({_score_label(edge_score)}) "
-                    f"but model predicts '{state}' ({pred_severity:.2f}) "
-                    f"gap={gap:.2f} — "
-                    f"backdoored model blind spot exploited by crafted feature vector"
+                    f"edge={edge_score:.2f} ({_score_label(edge_score)}) "
+                    f"model='{state}' ({pred_severity:.2f}) gap={gap:.2f}"
                 )
         elif is_poisoned:
             log.append(
@@ -321,9 +307,7 @@ def _run_decision(predictions: list, integrity_ok: bool | None, mode: str, log: 
             else:
                 anomalies.append(pred)
                 log.append(
-                    f"[REJECT] id={pred.get('reading_id', 'unknown')} "
-                    f"{pred.get('timestamp')} — {reason} "
-                    f"(output validation blocked invalid prediction)"
+                    f"[REJECT] id={pred.get('reading_id', 'unknown')} — {reason}"
                 )
 
         anomaly_ratio = len(anomalies) / max(len(predictions), 1)
@@ -331,9 +315,7 @@ def _run_decision(predictions: list, integrity_ok: bool | None, mode: str, log: 
             halted  = True
             actions = []
             log.append(
-                f"[HALT] {anomaly_ratio:.0%} of predictions anomalous "
-                f"(threshold={ANOMALY_THRESHOLD:.0%}) — "
-                f"all traffic actions suspended until pipeline is cleared"
+                f"[HALT] {anomaly_ratio:.0%} anomalous (threshold={ANOMALY_THRESHOLD:.0%}) — actions suspended"
             )
         else:
             log.append(
@@ -355,8 +337,7 @@ def _run_decision(predictions: list, integrity_ok: bool | None, mode: str, log: 
             log.append(
                 f"[ACTION] id={pred.get('reading_id', 'unknown')} "
                 f"{pred.get('timestamp')} "
-                f"state={pred['state']} → {action} | {action_desc} "
-                f"(score={pred['congestion_score']}, no output validation)"
+                f"state={pred['state']} → {action} | {action_desc}"
             )
 
     return actions, halted

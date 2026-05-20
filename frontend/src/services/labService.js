@@ -124,4 +124,14 @@ export const labService = {
       cache: "no-store",
     });
   },
+
+  async injectCommandById(labId, text) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    return request(`/labs/${stage}/inject-command?${sessionParam()}`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+  },
 };

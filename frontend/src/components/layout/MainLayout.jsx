@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import TopBar from "./TopBar";
-import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
-
-const SIDEBAR_MIN_WIDTH = 340;
-const SIDEBAR_MAX_WIDTH = 760;
-const SIDEBAR_DEFAULT_WIDTH = 480;
 
 function buildBreadcrumb(activeItem) {
   if (!activeItem) return ["Dashboard"];
@@ -85,12 +79,7 @@ function BreadcrumbStrip({ activeItem }) {
               color: isLast ? "var(--text-1)" : "var(--text-3)",
             }}
           >
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
               {crumb}
             </span>
             {!isLast && <span style={{ color: "var(--text-3)" }}>{">"}</span>}
@@ -99,18 +88,6 @@ function BreadcrumbStrip({ activeItem }) {
       })}
     </div>
   );
-}
-
-function clampSidebarWidth(width) {
-  const viewportMax =
-    typeof window === "undefined"
-      ? SIDEBAR_MAX_WIDTH
-      : Math.max(
-          SIDEBAR_MIN_WIDTH,
-          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 520),
-        );
-
-  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), viewportMax);
 }
 
 export default function MainLayout({
@@ -127,69 +104,6 @@ export default function MainLayout({
   onCompleteLabQuiz,
   onStartLab,
 }) {
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
-    return clampSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
-  });
-  const isResizingRef = useRef(false);
-  const isFullWidthBriefing = activeItem.id === "scenario-0";
-  const isScenario = activeItem.type === "scenario";
-  const showSidebar = !isFullWidthBriefing && isScenario;
-
-  const stopResize = useCallback(() => {
-    if (!isResizingRef.current) return;
-    isResizingRef.current = false;
-    document.body.classList.remove("is-resizing-layout");
-  }, []);
-
-  const resizeGuide = useCallback((clientX) => {
-    setSidebarWidth((currentWidth) => {
-      const nextWidth = clampSidebarWidth(clientX);
-      return nextWidth === currentWidth ? currentWidth : nextWidth;
-    });
-  }, []);
-
-  const startResize = useCallback(
-    (event) => {
-      event.preventDefault();
-      isResizingRef.current = true;
-      document.body.classList.add("is-resizing-layout");
-      resizeGuide(event.clientX);
-    },
-    [resizeGuide],
-  );
-
-  useEffect(() => {
-    function handlePointerMove(event) {
-      if (!isResizingRef.current) return;
-      resizeGuide(event.clientX);
-    }
-
-    function handlePointerUp() {
-      stopResize();
-    }
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("pointercancel", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerUp);
-      document.body.classList.remove("is-resizing-layout");
-    };
-  }, [resizeGuide, stopResize]);
-
-  useEffect(() => {
-    function handleWindowResize() {
-      setSidebarWidth((width) => clampSidebarWidth(width));
-    }
-
-    window.addEventListener("resize", handleWindowResize);
-    return () => window.removeEventListener("resize", handleWindowResize);
-  }, []);
-
   return (
     <div
       style={{
@@ -210,30 +124,6 @@ export default function MainLayout({
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
-        {/* Sidebar only for standalone scenario items */}
-        {showSidebar && (
-          <>
-            <Sidebar
-              item={activeItem}
-              width={sidebarWidth}
-              currentStep={currentStep}
-              currentAnswer={currentAnswer}
-              currentAnswerValid={currentAnswerValid}
-              onCompleteScenario={onCompleteScenario}
-              onAnswerChange={onAnswerChange}
-              onPrevStep={onPrevStep}
-              onNextStep={onNextStep}
-            />
-            <button
-              type="button"
-              className="layout-resizer"
-              onPointerDown={startResize}
-              aria-label="Resize guide and workspace"
-              title="Resize guide and workspace"
-            />
-          </>
-        )}
-
         <main
           style={{
             flex: 1,
