@@ -104,6 +104,74 @@ export default function MainLayout({
   onCompleteLabQuiz,
   onStartLab,
 }) {
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
+    return clampSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
+  });
+  const isResizingRef = useRef(false);
+  const isFullWidthBriefing = activeItem.id === "scenario-0";
+const isScenario = activeItem.type === "scenario";
+
+const isCompletedPipelineScenario =
+  activeItem.id === "scenario-1" && activeItem.completed;
+
+const showSidebar =
+  !isFullWidthBriefing && isScenario && !isCompletedPipelineScenario;
+
+  const stopResize = useCallback(() => {
+    if (!isResizingRef.current) return;
+    isResizingRef.current = false;
+    document.body.classList.remove("is-resizing-layout");
+  }, []);
+
+  const resizeGuide = useCallback((clientX) => {
+    setSidebarWidth((currentWidth) => {
+      const nextWidth = clampSidebarWidth(clientX);
+      return nextWidth === currentWidth ? currentWidth : nextWidth;
+    });
+  }, []);
+
+  const startResize = useCallback(
+    (event) => {
+      event.preventDefault();
+      isResizingRef.current = true;
+      document.body.classList.add("is-resizing-layout");
+      resizeGuide(event.clientX);
+    },
+    [resizeGuide],
+  );
+
+  useEffect(() => {
+    function handlePointerMove(event) {
+      if (!isResizingRef.current) return;
+      resizeGuide(event.clientX);
+    }
+
+    function handlePointerUp() {
+      stopResize();
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      document.body.classList.remove("is-resizing-layout");
+    };
+  }, [resizeGuide, stopResize]);
+
+  useEffect(() => {
+    function handleWindowResize() {
+      setSidebarWidth((width) => clampSidebarWidth(width));
+    }
+
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, []);
+
   return (
     <div
       style={{
@@ -124,6 +192,31 @@ export default function MainLayout({
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
+        {/* Sidebar only for standalone scenario items */}
+        {showSidebar && (
+          <>
+            <Sidebar
+              item={activeItem}
+              width={sidebarWidth}
+              currentStep={currentStep}
+              currentAnswer={currentAnswer}
+              currentAnswerValid={currentAnswerValid}
+              onCompleteScenario={onCompleteScenario}
+              onAnswerChange={onAnswerChange}
+              onPrevStep={onPrevStep}
+              onNextStep={onNextStep}
+              onSelectItem={onSelectItem}
+            />
+            <button
+              type="button"
+              className="layout-resizer"
+              onPointerDown={startResize}
+              aria-label="Resize guide and workspace"
+              title="Resize guide and workspace"
+            />
+          </>
+        )}
+
         <main
           style={{
             flex: 1,

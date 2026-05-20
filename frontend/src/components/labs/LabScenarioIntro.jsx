@@ -7,7 +7,7 @@ const SIDEBAR_MIN = 340;
 const SIDEBAR_MAX = 760;
 const SIDEBAR_DEFAULT = 480;
 
-export default function LabScenarioIntro({ item, onStartLab }) {
+export default function LabScenarioIntro({ item, onStartLab, onSelectItem }) {
   const linkedId = item.id.replace("lab", "scenario");
   const scenarioItem =
     journey.find((entry) => entry.id === linkedId) || item.scenario;
@@ -48,8 +48,9 @@ export default function LabScenarioIntro({ item, onStartLab }) {
     >
       <Sidebar
         item={scenarioItem}
-        width={sidebarWidth}
+        width={360}
         onCompleteScenario={() => onStartLab?.(item.id)}
+        onSelectItem={onSelectItem}
       />
 
       {/* Drag handle — same style as Lab 1 splitter */}
@@ -90,7 +91,11 @@ export default function LabScenarioIntro({ item, onStartLab }) {
           overflow: "hidden",
         }}
       >
-        <ScenarioWorkspace item={scenarioItem} onCompleteScenario={() => onStartLab?.(item.id)} compact={true} />
+        <ScenarioWorkspace
+          item={scenarioItem}
+          onCompleteScenario={() => onStartLab?.(item.id)}
+          onSelectItem={onSelectItem}
+        />
       </main>
     </section>
   );
