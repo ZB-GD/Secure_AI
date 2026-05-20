@@ -1,1 +1,513 @@
-# Secure_AI
+# SecLabs — TFG
+
+Educational platform for learning security in AI pipelines. It allows users to run a complete AI pipeline, explore vulnerabilities in an isolated environment, and restore a clean pipeline once the lab is finished.
+
+---
+
+## 📁 Project structure
+
+```text
+SecLabs/
+├── backend/                         # Orchestrator API and state manager
+│   ├── api/
+│   ├── scripts/
+│   └── requirements.txt
+├── pipeline_nodes/                  # Main traffic AI pipeline services
+│   ├── docker-compose.pipeline.yml
+│   ├── sensor_data/
+│   ├── edge_preprocessing/
+│   ├── model_trainer/
+│   └── actuator/
+├── services/
+│   └── tutor_rag/                   # RAG tutor service used by the UI
+├── labs/                            # Disposable student lab sandboxes
+│   ├── base-novnc/
+│   ├── sensor-data/
+│   ├── edge-preprocessing/
+│   ├── traffic-inference/
+│   └── decision-retraining/
+├── data/
+│   └── datasets/
+├── frontend/                        # User interface (React)
+├── docker-compose.yml               # Root Compose file for the platform
+├── setup.sh                         # Development environment setup (run inside the VM)
+├── deploy.sh                        # Build images and start the platform
+└── TROUBLESHOOTING.md               # Known issues and solutions
+```
+
+### The three system states
+
+| State  | Description                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------- |
+| **E1** | Functional general pipeline — the user can see the complete pipeline running                      |
+| **E2** | Interactive lab — each phase runs in an isolated container, dynamically managed from the frontend |
+| **E3** | Post-lab cleanup — E2 containers are destroyed and the clean environment is restored              |
+
+---
+
+## 🖥️ Development environment setup
+
+The backend runs inside a VM (VirtualBox + Ubuntu Server). The frontend calls the backend through a REST API from outside the VM.
+
+### 1. Install VirtualBox 7.0
+
+> If you already have VirtualBox 7.0 installed, skip to step 2.  
+> If you have VirtualBox 6.1, you must upgrade it — see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+Download and install VirtualBox 7.0 from the [official website](https://www.virtualbox.org/wiki/Downloads).
+
+On **Linux (Ubuntu/Debian)**, install it from Oracle's official repository:
+
+```bash
+sudo apt remove --purge virtualbox* -y
+wget -O- https://www.virtualbox.org/download/oracle_vbox_2016.asc | \
+  sudo gpg --dearmor --yes --output /usr/share/keyrings/oracle-virtualbox-2016.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-2016.gpg] \
+  https://download.virtualbox.org/virtualbox/debian jammy contrib" | \
+  sudo tee /etc/apt/sources.list.d/virtualbox.list
+sudo apt update && sudo apt install virtualbox-7.0 -y
+sudo usermod -aG vboxusers $USER
+```
+
+### 2. Create the VM
+
+Download the Ubuntu Server 22.04 ISO:
+
+```bash
+wget https://releases.ubuntu.com/22.04.5/ubuntu-22.04.5-live-server-amd64.iso -P ~/Downloads/
+```
+
+Create and configure the VM:
+
+```bash
+VBoxManage createvm --name "SecLabs-Lab" --ostype Ubuntu_64 --register
+VBoxManage modifyvm "SecLabs-Lab" --memory 2048 --cpus 2
+VBoxManage createhd --filename ~/VirtualBox\ VMs/SecLabs-Lab/SecLabs-Lab.vdi --size 20480
+VBoxManage storagectl "SecLabs-Lab" --name "SATA" --add sata --controller IntelAhci
+VBoxManage storageattach "SecLabs-Lab" --storagectl "SATA" --port 0 --device 0 --type hdd \
+  --medium ~/VirtualBox\ VMs/SecLabs-Lab/SecLabs-Lab.vdi
+VBoxManage storagectl "SecLabs-Lab" --name "IDE" --add ide
+VBoxManage storageattach "SecLabs-Lab" --storagectl "IDE" --port 0 --device 0 --type dvddrive \
+  --medium ~/Downloads/ubuntu-22.04.5-live-server-amd64.iso
+VBoxManage modifyvm "SecLabs-Lab" --boot1 dvd --boot2 disk --boot3 none --boot4 none
+VBoxManage modifyvm "SecLabs-Lab" --nic1 nat
+VBoxManage modifyvm "SecLabs-Lab" --natpf1 "ssh,tcp,,2222,,22"
+VBoxManage modifyvm "SecLabs-Lab" --nic2 hostonly --hostonlyadapter2 vboxnet0
+```
+
+### 3. Install Ubuntu Server
+
+Start the VM:
+
+```bash
+VBoxManage startvm "SecLabs-Lab" --type headless
+```
+
+Connect to view the installation screen:
+
+```bash
+# Option A — SSH (when the installer allows it)
+ssh -p 2222 <your_user>@localhost
+
+# Option B — RDP with Remmina (requires the Extension Pack installed)
+# New connection → RDP → localhost:3389
+```
+
+Follow the Ubuntu Server installer. When prompted:
+
+- **Installer update**: select _Continue without updating_
+- **SSH**: enable _Install OpenSSH server_
+- **Additional snaps**: do not select any (Docker is installed by setup.sh)
+
+Once installed, the VM will reboot. Connect through SSH:
+
+```bash
+ssh <your_user>@<enp0s8_IP>
+# To see the IP: ip addr show enp0s8
+```
+
+> If SSH does not work through NAT (port 2222), see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### 4. Clone the repository and run the setup
+
+Inside the VM:
+
+```bash
+git clone https://github.com/ZB-GD/SecLabs.git
+cd SecLabs
+chmod +x setup.sh
+./setup.sh
+```
+
+The script installs Docker, Python 3, Node.js, and configures the permanent host-only network. At the end, it shows the VM IP you can use to connect through SSH.
+
+> If `docker pull` fails with a TLS certificate error, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) (known issue with FortiClient VPN).
+
+### 5. Daily VM usage
+
+```bash
+# Start the VM (from the host)
+VBoxManage startvm "SecLabs-Lab" --type headless
+
+# Connect through SSH
+ssh <your_user>@<enp0s8_IP>
+
+# Power off the VM
+VBoxManage controlvm "SecLabs-Lab" poweroff
+```
+
+### 6. Run SecLabs
+
+From the repository root:
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+The deployment exposes the student UI on port `3000`. The backend port `8000`
+is intentionally bound to `127.0.0.1` in Docker Compose, so remote browsers
+should reach the backend through the frontend/nginx container, not directly.
+
+### 7. Choose the correct testing setup
+
+#### Real university VM deployment
+
+Use this when the platform runs on the university machine and students access it
+from another browser/device.
+
+`.env` should keep API base URLs empty:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://<university-vm-ip>:3000
+```
+
+Open:
+
+```text
+http://<university-vm-ip>:3000
+```
+
+Health check:
+
+```bash
+curl http://<university-vm-ip>:3000/health
+```
+
+Do not use `http://<university-vm-ip>:8000` unless you deliberately expose the
+backend port.
+
+#### Local Docker deployment
+
+Use this when Docker runs on the same machine where the browser is open.
+
+`.env` should also keep API base URLs empty:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Health check:
+
+```bash
+curl http://localhost:3000/health
+```
+
+#### Tailscale VM deployment
+
+Use this when Docker runs on a machine reachable through Tailscale, for example
+`100.111.250.126`.
+
+`.env` should still keep API base URLs empty, because the browser must call the
+same origin on port `3000` and let nginx proxy backend requests internally:
+
+```env
+VITE_API_BASE_URL=
+VITE_API_BASE_URL_FALLBACK=
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://<tailscale-ip>:3000
+```
+
+Open:
+
+```text
+http://<tailscale-ip>:3000
+```
+
+Health check:
+
+```bash
+curl http://<tailscale-ip>:3000/health
+```
+
+Expected to fail unless the backend is intentionally exposed:
+
+```bash
+curl http://<tailscale-ip>:8000/health
+```
+
+#### Vite development server
+
+Use this only when running the React dev server directly with `npm run dev`.
+In that setup, the browser is served by Vite, not nginx, so either expose the
+backend deliberately or use a Vite proxy.
+
+Example only:
+
+```env
+VITE_API_BASE_URL=http://<backend-host>:8000
+VITE_API_BASE_URL_FALLBACK=http://localhost:8000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+After changing any `VITE_*` value, rebuild the frontend because Vite bakes these
+values into the JS bundle:
+
+```bash
+TARGET=frontend NO_CACHE=1 ./deploy.sh
+```
+
+---
+
+## 🌿 Git workflow
+
+The project uses one integration branch (`dev`) and fixed branches per area/person. The idea is simple: **nobody works directly on `dev` or `main`**. Each person works on their own branch, pushes changes, and opens a Pull Request into `dev`.
+
+### Branches
+
+```text
+main
+└── dev                           ← stable integration
+    ├── feature/backend-glaira    ← backend and infrastructure
+    └── feature/frontend-zineb    ← user interface
+```
+
+- **`main`**: main/production branch. It only receives merges from `dev` when everything is stable.
+- **`dev`**: integration branch. Validated changes are merged here through Pull Requests.
+- **`feature/backend-glaira`**: fixed branch for backend and infrastructure.
+- **`feature/frontend-zineb`**: fixed branch for frontend.
+
+> The `feature/*` branches are permanent working branches. They are not deleted after each PR.
+
+---
+
+### Initial setup (only the first time)
+
+```bash
+git clone <repo-url>
+cd SecLabs
+
+# Fetch remote branches
+git fetch origin
+
+# Switch to dev and update it
+git switch dev
+git pull origin dev
+
+# Switch to your fixed branch
+git switch feature/backend-glaira
+# or, for frontend:
+git switch feature/frontend-zineb
+```
+
+If your fixed branch does not exist locally yet, but it already exists remotely:
+
+```bash
+git switch --track origin/feature/backend-glaira
+# or:
+git switch --track origin/feature/frontend-zineb
+```
+
+---
+
+### Daily workflow
+
+Before editing code, update `dev` and sync your branch with it.
+
+```bash
+# 1. Update dev
+git switch dev
+git pull origin dev
+
+# 2. Go back to your fixed branch
+git switch feature/backend-glaira
+# or:
+git switch feature/frontend-zineb
+
+# 3. Bring the latest dev changes into your branch
+git merge dev
+
+# 4. Work... make changes in VS Code...
+
+# 5. Review changes
+git status
+
+# 6. Stage and commit
+git add .
+git commit -m "feat: short description of the change"
+
+# 7. Push your branch
+git push origin feature/backend-glaira
+# or:
+git push origin feature/frontend-zineb
+```
+
+---
+
+### Create a Pull Request into `dev`
+
+A Pull Request (PR) is used to integrate the changes from your branch into `dev` without overwriting the other person's work.
+
+```text
+feature/backend-glaira ──── PR ────► dev ──── PR ────► main
+feature/frontend-zineb ──── PR ────► dev
+```
+
+**PR configuration:**
+
+```text
+base: dev
+compare: feature/backend-glaira
+```
+
+or, for frontend:
+
+```text
+base: dev
+compare: feature/frontend-zineb
+```
+
+**Steps on GitHub:**
+
+1. Go to **Pull Requests** → **New pull request**.
+2. Select `dev` as the base branch.
+3. Select your `feature/...` branch as the compare branch.
+4. Add a title and a short description.
+5. Create the PR.
+6. Review conflicts if they appear.
+7. Merge once it has been validated.
+
+**From VS Code:**
+
+1. Open the **GitHub Pull Requests and Issues** extension.
+2. Click **Create Pull Request**.
+3. Check that the base branch is `dev` and the compare branch is your branch.
+4. Add a title and description.
+5. Create the PR.
+
+---
+
+### After merging a PR
+
+Because the `feature/*` branches are fixed, **they are not deleted**. After the merge, they must be synced again with `dev`.
+
+```bash
+# 1. Update dev
+git switch dev
+git pull origin dev
+
+# 2. Go back to your fixed branch
+git switch feature/backend-glaira
+# or:
+git switch feature/frontend-zineb
+
+# 3. Sync your branch with dev
+git merge dev
+
+# 4. Push the synced branch
+git push origin feature/backend-glaira
+# or:
+git push origin feature/frontend-zineb
+```
+
+This prevents your branch from falling behind `dev` and reduces conflicts in the next PR.
+
+---
+
+### Useful diagnostic commands
+
+Check which branch you are on and whether there are pending changes:
+
+```bash
+git status
+```
+
+Show local branches and their relationship with the remote branches:
+
+```bash
+git branch -vv
+```
+
+Show local commits that have not been pushed yet:
+
+```bash
+git log origin/<your-branch>..HEAD --oneline
+```
+
+Example:
+
+```bash
+git log origin/feature/backend-glaira..HEAD --oneline
+```
+
+Show remote branches:
+
+```bash
+git branch -r
+```
+
+Update remote references:
+
+```bash
+git fetch origin
+```
+
+---
+
+### Commit convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) to keep the history clean:
+
+| Prefix      | When to use it                         |
+| ----------- | -------------------------------------- |
+| `feat:`     | New feature                            |
+| `fix:`      | Bug fix                                |
+| `chore:`    | Configuration, structure, dependencies |
+| `docs:`     | Documentation changes                  |
+| `refactor:` | Refactoring without functional changes |
+
+**Examples:**
+
+```text
+feat: add endpoint to create phase container
+fix: correct Dockerfile path in phase-2
+chore: add requirements.txt with base dependencies
+docs: update README with setup instructions
+```
+
+---
+
+## ⚙️ Requirements
+
+- [VirtualBox 7.0](https://www.virtualbox.org/wiki/Downloads)
+- Python 3.10+ _(installed by setup.sh)_
+- Node.js 18+ _(installed by setup.sh)_
+- Docker _(installed by setup.sh)_
+
+---
+
+## 👥 Team
+
+| Area                     | Owner  |
+| ------------------------ | ------ |
+| Frontend                 | Zineb  |
+| Backend / Infrastructure | Glaira |

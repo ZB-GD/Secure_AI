@@ -1,0 +1,1235 @@
+import { useState, useRef, useEffect } from "react";
+import RemoteDesktopPanel from "../workspace/RemoteDesktopPanel";
+import AttackControls from "./AttackControls";
+import LabMetrics from "./LabMetrics";
+import RuntimeLogsPanel from "./RuntimeLogsPanel";
+import { useLabRuntime } from "../../hooks/useLabRuntime";
+import { request } from "../../services/apiClient";
+import LabGuide from "./LabGuide";
+
+// ─── Tab definitions ────────────────────────────────────────────────────────
+const TABS = [
+  { id: "guide", label: "Guide", icon: "◈" },
+  { id: "logs", label: "Logs", icon: "≡" },
+  { id: "metrics", label: "Metrics", icon: "◎" },
+  { id: "quiz", label: "Quiz", icon: "✦" },
+];
+
+// ─── Sub-component: TabBar ───────────────────────────────────────────────────
+function TabBar({ activeTab, onSelect, quizUnlocked }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        borderBottom: "1px solid var(--border-dim)",
+        background: "var(--bg-panel)",
+        flexShrink: 0,
+      }}
+    >
+      {TABS.map((tab) => {
+        const locked = tab.id === "quiz" && !quizUnlocked;
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => !locked && onSelect(tab.id)}
+            title={locked ? "Complete the lab to unlock" : undefined}
+            style={{
+              flex: 1,
+              padding: "11px 8px",
+              border: "none",
+              borderBottom: isActive
+                ? "2px solid var(--orange)"
+                : "2px solid transparent",
+              background: isActive ? "var(--bg-elevated)" : "transparent",
+              color: locked
+                ? "var(--text-3)"
+                : isActive
+                  ? "var(--text-1)"
+                  : "var(--text-3)",
+              fontSize: "10px",
+              letterSpacing: "0.10em",
+              fontFamily: "var(--font-display)",
+              cursor: locked ? "not-allowed" : "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "3px",
+              transition: "all 0.15s",
+              opacity: locked ? 0.4 : 1,
+            }}
+          >
+            <span style={{ fontSize: "14px" }}>{tab.icon}</span>
+            {tab.label.toUpperCase()}
+            {tab.id === "quiz" && !quizUnlocked && (
+              <span style={{ fontSize: "10px", color: "var(--text-3)" }}>
+                LOCKED
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Sub-component: MetricsTab ───────────────────────────────────────────────
+function MetricSparkline({ points = [], color = "var(--orange)" }) {
+  const width = 120;
+  const height = 34;
+  const values = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = width / Math.max(values.length - 1, 1);
+  const d = values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - ((value - min) / range) * (height - 6) - 3;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+      style={{ width: "100%", height: "34px", display: "block" }}
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {values.map((value, index) => {
+        const x = index * step;
+        const y = height - ((value - min) / range) * (height - 6) - 3;
+        return (
+          <circle
+            key={`${value}-${index}`}
+            cx={x}
+            cy={y}
+            r={index === values.length - 1 ? 2.6 : 1.8}
+            fill={color}
+            opacity={index === values.length - 1 ? 1 : 0.55}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function MetricCard({ metric, history }) {
+  const [showHelp, setShowHelp] = useState(false);
+
+  return (
+    <div
+      style={{
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border-dim)",
+        borderRadius: "8px",
+        padding: "10px 12px",
+        minHeight: "90px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: showHelp ? "flex-start" : "space-between",
+        gap: showHelp ? "8px" : 0,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div
+          style={{
+            fontSize: "10px",
+            color: "var(--text-3)",
+            letterSpacing: "0.08em",
+            lineHeight: 1.4,
+          }}
+        >
+          {metric.label}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowHelp((v) => !v)}
+          style={{
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            border: `1px solid ${showHelp ? "var(--orange)" : "var(--border-mid)"}`,
+            background: showHelp ? "rgba(249,115,22,0.15)" : "transparent",
+            color: showHelp ? "var(--orange)" : "var(--text-3)",
+            fontSize: "10px",
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            marginLeft: "6px",
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          {showHelp ? "×" : "?"}
+        </button>
+      </div>
+
+      {showHelp ? (
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--text-2)",
+            lineHeight: 1.65,
+            flex: 1,
+          }}
+        >
+          {metric.caption}
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              fontSize: "28px",
+              color: metric.color,
+              fontWeight: 700,
+              fontFamily: "var(--font-display)",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "4px",
+            }}
+          >
+            {metric.value}
+            {metric.suffix && (
+              <span style={{ fontSize: "16px" }}>{metric.suffix}</span>
+            )}
+          </div>
+          {metric.label === "DOWNSTREAM RISK" && (
+            <MetricSparkline
+              points={history.map((p) => p.drift)}
+              color={metric.color}
+            />
+          )}
+          {metric.label === "MODEL TRUST" && (
+            <MetricSparkline
+              points={history.map((p) => p.trust)}
+              color={metric.color}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function MetricsTab({ runtime, item }) {
+  const [history, setHistory] = useState([]);
+  const driftColor = runtime.driftScore >= 25 ? "var(--red)" : "var(--green)";
+  const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
+  const protectedMode =
+    runtime.statusLabel === "protected" || runtime.defenseEnabled;
+
+  const statusColor = runtime.isCompromised
+    ? "var(--red)"
+    : protectedMode
+      ? "var(--green)"
+      : "var(--orange)";
+
+  const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
+
+  useEffect(() => {
+    setHistory((prev) => {
+      const nextPoint = {
+        drift: Number(runtime.driftScore ?? 0),
+        trust: Number(runtime.accuracy ?? 0),
+        key: `${runtime.driftScore}-${runtime.accuracy}-${runtime.attackAttempts}-${runtime.defenseEnabled}`,
+      };
+      if (prev[prev.length - 1]?.key === nextPoint.key) return prev;
+      return [...prev, nextPoint].slice(-10);
+    });
+  }, [
+    runtime.accuracy,
+    runtime.attackAttempts,
+    runtime.defenseEnabled,
+    runtime.driftScore,
+  ]);
+
+  const metricCards = [
+    {
+      label: "ATTACK ATTEMPTS",
+      value: runtime.attackAttempts ?? 0,
+      suffix: "",
+      color: "var(--text-1)",
+      caption:
+        "Each run of poison_data.py sends traffic_volume=-5000 to the local /ingest endpoint — an impossible negative reading. In a real attack, an adversary injects out-of-bounds values to corrupt the data the AI pipeline trains on, degrading model behaviour without triggering obvious errors.",
+    },
+    {
+      label: "ACCEPTED / REJECTED",
+      value: `${runtime.acceptedReadings ?? 0}/${runtime.rejectedReadings ?? 0}`,
+      suffix: "",
+      color: runtime.isCompromised ? "var(--red)" : "var(--green)",
+      caption: runtime.isCompromised
+        ? "The vulnerable node accepted the poisoned reading with no validation, passing traffic_volume=-5000 downstream to feature engineering. In production this reading would enter the training loop and corrupt future predictions — accepted poisoned inputs are the root cause of model drift."
+        : protectedMode
+          ? "Your validate_defense.py caught the poisoned reading before it entered the pipeline. At least one defense layer — input sanity check, anomaly detection, or drift gate — identified the impossible value and blocked it, keeping the training data clean."
+          : "Run poison_data.py from the Desktop to send a poisoned reading. This counter will show how many submissions were accepted (bypassed all defenses) vs. rejected (blocked by your defense script).",
+    },
+    {
+      label: "CONGESTION SCORE",
+      value: runtime.congestionScore ?? "n/a",
+      suffix: "",
+      color: scoreColor,
+      caption: runtime.isCompromised
+        ? "Edge Node 2 computes congestion_score = traffic_volume / 8000. With traffic_volume=-5000 the score becomes -0.625 — a physically impossible value. This corrupted feature is what the ML model uses for inference and retraining, skewing its understanding of traffic state across the whole network."
+        : "Edge Node 2 computes congestion_score = traffic_volume / 8000. Legitimate scores fall between 0 and 1. Once you run the attack, this will show the anomalous feature value produced by the poisoned input — the same feature that causes the model to predict free flow during a congested rush hour.",
+    },
+    {
+      label: "DEFENSE COVERAGE",
+      value: `${runtime.defenseCoverage ?? 0}/3`,
+      suffix: "",
+      color: protectedMode ? "var(--green)" : "var(--orange)",
+      caption:
+        "validate_defense.py implements 3 defense layers: (1) validate_reading() checks input bounds and rejects physically impossible values like negative traffic volumes; (2) detect_anomaly() applies Z-score analysis to flag statistical outliers in the feature space; (3) evaluate_drift() monitors model drift and halts retraining if it exceeds the safety threshold. A score of 3/3 means all layers are active and the attack was fully contained.",
+    },
+    {
+      label: "DOWNSTREAM RISK",
+      value: runtime.driftScore,
+      suffix: "%",
+      color: driftColor,
+      caption: runtime.isCompromised
+        ? "Once poisoned data enters the pipeline the model drift score rises above 25% — the safety threshold used in this lab. At that point a real system should halt retraining to prevent the model from learning corrupted traffic patterns and issuing wrong signals to city infrastructure."
+        : protectedMode
+          ? "Your defense blocked the poisoned input before it reached the model trainer. With no corrupted data entering the training loop, drift stays low and the model continues to predict traffic states accurately."
+          : "Before any attack the model drift score is low — only clean sensor data has been seen. Run poison_data.py to see how injecting traffic_volume=-5000 pushes this score above the 25% threshold and what that means for the downstream ML pipeline.",
+    },
+    {
+      label: "MODEL TRUST",
+      value: runtime.accuracy,
+      suffix: "%",
+      color: accuracyColor,
+      caption: runtime.isCompromised
+        ? "After the vulnerable node accepted the poisoned reading it was forwarded to feature engineering and would trigger a corrupted retraining cycle. Accuracy drops from ~98% to ~61%, simulating how poisoned training data causes the model to misclassify congestion — setting all lights to green during rush hour."
+        : "Before any attack the model has only been trained on clean traffic data and classifies congestion states with ~98% accuracy. Run the attack to see how a single poisoned feature can degrade model trust, causing wrong predictions that could ripple across the entire city network.",
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        padding: "12px 14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      {/* Estado general */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderRadius: "10px",
+          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
+          background: runtime.isCompromised
+            ? "rgba(248,113,113,0.08)"
+            : "var(--green-dim)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.1em",
+              marginBottom: "4px",
+            }}
+          >
+            LOCAL LAB STATUS
+          </div>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "var(--text-1)",
+              lineHeight: 1.5,
+            }}
+          >
+            {runtime.lastEvent}
+            {runtime.lastReason && (
+              <span style={{ color: "var(--text-3)" }}>
+                {" "}
+                {runtime.lastReason}
+              </span>
+            )}
+          </div>
+        </div>
+        <span
+          style={{
+            fontSize: "10px",
+            padding: "3px 10px",
+            borderRadius: "999px",
+            border: `1px solid ${statusColor}`,
+            color: statusColor,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            marginLeft: "12px",
+          }}
+        >
+          {runtime.isCompromised
+            ? "COMPROMISED"
+            : protectedMode
+              ? "PROTECTED"
+              : "VULNERABLE"}
+        </span>
+      </div>
+
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}
+      >
+        {metricCards.map((metric) => (
+          <MetricCard key={metric.label} metric={metric} history={history} />
+        ))}
+      </div>
+
+    </div>
+  );
+}
+
+function QuizTab({ item, phase, onComplete }) {
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [tutorFeedback, setTutorFeedback] = useState("");
+  const [docLinks, setDocLinks] = useState([]);
+  const [tutorLoading, setTutorLoading] = useState(false);
+  const [tutorError, setTutorError] = useState("");
+
+  const feedbackRef = useRef(null);
+
+  const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
+
+  const answeredCount = quiz.filter((_, i) =>
+    Object.prototype.hasOwnProperty.call(answers, i),
+  ).length;
+
+  const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
+
+  const correctCount = quiz.filter(
+    (q, i) => answers[i] === q.correctAnswerIndex,
+  ).length;
+
+  const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
+
+  function getOptions(question) {
+    if (Array.isArray(question?.options)) return question.options;
+    if (Array.isArray(question?.choices)) return question.choices;
+    if (Array.isArray(question?.answers)) return question.answers;
+    return [];
+  }
+
+  function selectAnswer(questionIndex, optionIndex) {
+    if (submitted) return;
+    setAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }));
+  }
+
+  async function handleSubmit() {
+    if (!allAnswered) return;
+
+    setSubmitted(true);
+
+    if (scoreRatio >= 0.75) {
+      onComplete?.(item.id, {
+        score: {
+          correct: correctCount,
+          total: quiz.length,
+          percent: Math.round(scoreRatio * 100),
+        },
+      });
+    }
+
+    setTutorLoading(true);
+    setTutorError("");
+    setTutorFeedback("");
+    setDocLinks([]);
+
+    const wrongAnswers = quiz
+      .map((question, index) => {
+        const options = getOptions(question);
+        const selectedIndex = answers[index];
+
+        if (selectedIndex === question.correctAnswerIndex) return null;
+
+        return {
+          question: question.question,
+          student_answer: options[selectedIndex] ?? "No answer",
+          correct_answer: options[question.correctAnswerIndex] ?? "Unknown",
+          explanation: question.explanation ?? null,
+        };
+      })
+      .filter(Boolean);
+
+    try {
+      const data = await request("/api/rag/quiz-feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          lab_id: item.id,
+          phase: phase || "Cybersecurity lab",
+          score: correctCount,
+          total: quiz.length,
+          wrong_answers: wrongAnswers,
+        }),
+      });
+
+      console.log("QUIZ FEEDBACK RESPONSE:", data);
+
+      setTutorFeedback(data?.feedback ?? "");
+      setDocLinks(Array.isArray(data?.doc_links) ? data.doc_links : []);
+
+      setTimeout(() => {
+        feedbackRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
+    } catch (err) {
+      console.error("QUIZ FEEDBACK ERROR:", err);
+      setTutorError(`Tutor feedback unavailable: ${err.message}`);
+
+      setTimeout(() => {
+        feedbackRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 150);
+    } finally {
+      setTutorLoading(false);
+    }
+  }
+
+  function reset() {
+    setAnswers({});
+    setSubmitted(false);
+    setTutorFeedback("");
+    setTutorError("");
+    setDocLinks([]);
+  }
+
+  if (quiz.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "32px 20px",
+          textAlign: "center",
+          color: "var(--text-3)",
+          fontSize: "14px",
+        }}
+      >
+        No questions are configured for this lab.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        overflowY: "auto",
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+      }}
+    >
+      {/* ── Header bar with score + submit/retry ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "12px 14px",
+          background: "var(--bg-elevated)",
+          borderRadius: "8px",
+          border: "1px solid var(--border-dim)",
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "var(--text-1)",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            {submitted
+              ? `${correctCount}/${quiz.length}`
+              : `${answeredCount}/${quiz.length}`}
+          </div>
+
+          <div
+            style={{
+              fontSize: "10px",
+              color: "var(--text-3)",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {submitted ? "correct" : "answered"}
+          </div>
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            height: "4px",
+            background: "var(--bg-surface)",
+            borderRadius: "2px",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: submitted
+                ? `${Math.round(scoreRatio * 100)}%`
+                : `${Math.round((answeredCount / quiz.length) * 100)}%`,
+              background: submitted
+                ? scoreRatio >= 0.75
+                  ? "var(--green)"
+                  : "var(--orange)"
+                : "var(--orange)",
+              transition: "width 0.25s ease",
+            }}
+          />
+        </div>
+
+        {!submitted ? (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!allAnswered}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "none",
+              background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
+              color: allAnswered ? "#fff" : "var(--text-3)",
+              fontSize: "10px",
+              fontWeight: 700,
+              fontFamily: "var(--font-display)",
+              cursor: allAnswered ? "pointer" : "not-allowed",
+              whiteSpace: "nowrap",
+            }}
+          >
+            SUBMIT
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              padding: "8px 12px",
+              borderRadius: "6px",
+              border: "1px solid var(--border-dim)",
+              background: "transparent",
+              color: "var(--text-2)",
+              fontSize: "10px",
+              fontFamily: "var(--font-display)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            RETRY
+          </button>
+        )}
+      </div>
+
+      {/* ── Tutor feedback block ── */}
+      {submitted && (
+        <div
+          ref={feedbackRef}
+          style={{
+            border: "1px solid var(--border-dim)",
+            borderRadius: "10px",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "var(--bg-elevated)",
+              borderBottom: "1px solid var(--border-dim)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <div
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: tutorFeedback
+                  ? "var(--green)"
+                  : tutorLoading
+                    ? "var(--orange)"
+                    : tutorError
+                      ? "var(--red)"
+                      : "var(--text-3)",
+              }}
+            />
+
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "var(--text-1)",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              TUTOR — Personalized feedback
+            </span>
+
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: "10px",
+                color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              {Math.round(scoreRatio * 100)}% —{" "}
+              {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
+            </span>
+          </div>
+
+          <div style={{ padding: "14px 16px", minHeight: "80px" }}>
+            {tutorLoading && (
+              <div
+                style={{
+                  color: "var(--text-3)",
+                  fontSize: "14px",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                Analyzing your answers...
+              </div>
+            )}
+
+            {tutorError && (
+              <div
+                style={{
+                  color: "var(--red)",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {tutorError}
+              </div>
+            )}
+
+            {tutorFeedback && (
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-1)",
+                  lineHeight: 1.75,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {tutorFeedback}
+              </div>
+            )}
+          </div>
+
+          {docLinks.length > 0 && (
+            <div style={{ padding: "0 16px 14px" }}>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--text-3)",
+                  letterSpacing: "0.12em",
+                  marginBottom: "8px",
+                }}
+              >
+                FURTHER READING
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                {docLinks.map((link) => (
+                  <a
+                    key={link.path}
+                    href={link.path}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      background: "var(--bg-base)",
+                      border: "1px solid var(--border-dim)",
+                      color: "var(--blue)",
+                      textDecoration: "none",
+                      fontSize: "10px",
+                      fontFamily: "var(--font-display)",
+                    }}
+                  >
+                    <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
+                    {link.title}
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: "10px",
+                        color: "var(--text-3)",
+                      }}
+                    >
+                      docs →
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Questions ── */}
+      {quiz.map((question, questionIndex) => {
+        const options = getOptions(question);
+        const selectedAnswer = answers[questionIndex];
+
+        return (
+          <section
+            key={`${question.question}-${questionIndex}`}
+            style={{
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: "10px",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 14px",
+                borderBottom: "1px solid var(--border-dim)",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-1)",
+                  lineHeight: 1.6,
+                  fontWeight: 600,
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                {questionIndex + 1}. {question.question}
+              </div>
+
+              {submitted && (
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "4px 10px",
+                    borderRadius: "12px",
+                    flexShrink: 0,
+                    background:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green-dim)"
+                        : "var(--red-dim)",
+                    color:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "var(--green)"
+                        : "var(--red)",
+                    border:
+                      selectedAnswer === question.correctAnswerIndex
+                        ? "1px solid var(--green-border)"
+                        : "1px solid rgba(248,113,113,0.28)",
+                  }}
+                >
+                  {selectedAnswer === question.correctAnswerIndex
+                    ? "CORRECT"
+                    : "WRONG"}
+                </span>
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              {options.map((option, optionIndex) => {
+                const isSelected = selectedAnswer === optionIndex;
+                const isCorrect = optionIndex === question.correctAnswerIndex;
+
+                let background = "var(--bg-base)";
+                let border = "var(--border-dim)";
+                let color = "var(--text-2)";
+
+                if (!submitted && isSelected) {
+                  background = "var(--orange-dim)";
+                  border = "var(--orange-border)";
+                  color = "var(--text-1)";
+                }
+
+                if (submitted && isCorrect) {
+                  background = "var(--green-dim)";
+                  border = "var(--green-border)";
+                  color = "var(--green)";
+                }
+
+                if (submitted && isSelected && !isCorrect) {
+                  background = "var(--red-dim)";
+                  border = "rgba(248,113,113,0.28)";
+                  color = "var(--red)";
+                }
+
+                return (
+                  <button
+                    key={`${questionIndex}-${optionIndex}`}
+                    type="button"
+                    onClick={() => selectAnswer(questionIndex, optionIndex)}
+                    disabled={submitted}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      borderRadius: "7px",
+                      border: `1px solid ${border}`,
+                      background,
+                      color,
+                      fontSize: "14px",
+                      lineHeight: 1.55,
+                      fontFamily: "var(--font-display)",
+                      cursor: submitted ? "default" : "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "999px",
+                        border: `1px solid ${
+                          isSelected ? "var(--orange)" : "var(--border-mid)"
+                        }`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        fontSize: "10px",
+                        color: isSelected ? "var(--orange)" : "var(--text-3)",
+                      }}
+                    >
+                      {String.fromCharCode(65 + optionIndex)}
+                    </span>
+
+                    <span>{option}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {submitted && question.explanation && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--border-dim)",
+                  background: "rgba(56,189,248,0.04)",
+                  fontSize: "14px",
+                  color: "var(--text-2)",
+                  lineHeight: 1.65,
+                }}
+              >
+                {question.explanation}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
+export default function LabRuntimeWorkspace({
+  item,
+  currentStep,
+  currentAnswer,
+  onAnswerChange,
+  onPrevStep,
+  onNextStep,
+  onCompleteLabQuiz,
+}) {
+  const [activeTab, setActiveTab] = useState("guide");
+  const containerRef = useRef(null);
+  const [rightWidth, setRightWidth] = useState(800);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+  const hasUserResized = useRef(false);
+
+  useGlobalDragHandlers(
+    containerRef,
+    isDragging,
+    dragStartX,
+    dragStartWidth,
+    setRightWidth,
+  );
+  useInitialRightWidth(containerRef, hasUserResized, setRightWidth);
+
+  const {
+    remoteUrl,
+    remoteLoading,
+    remoteError,
+    retryRuntime,
+    triggerAttack,
+    attackLoading,
+    runtime,
+    logs,
+  } = useLabRuntime(item?.id, {
+    autoStart: true,
+    pollIntervalMs: 3000,
+    logPollIntervalMs: 1200,
+    logLimit: 200,
+  });
+
+  const quizUnlocked = Boolean(item?.guideCompleted);
+
+  const previousGuideCompleted = useRef(Boolean(item?.guideCompleted));
+
+useEffect(() => {
+  const isNowCompleted = Boolean(item?.guideCompleted);
+
+  if (!previousGuideCompleted.current && isNowCompleted) {
+    setActiveTab("quiz");
+  }
+
+  previousGuideCompleted.current = isNowCompleted;
+}, [item?.guideCompleted]);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: "hidden",
+      }}
+    >
+      <section
+        ref={containerRef}
+        style={{
+          display: "grid",
+          gridTemplateColumns: `1fr 12px ${rightWidth}px`,
+          flex: 1,
+          overflow: "hidden",
+          background: "var(--bg-base)",
+          gap: 0,
+          minHeight: 0,
+        }}
+      >
+        {/* ── LEFT: VM always visible ─────────────────────────────────────── */}
+        <div
+          style={{ minWidth: 0, minHeight: 0, padding: "14px 8px 14px 14px" }}
+        >
+          <RemoteDesktopPanel
+            item={item}
+            remoteUrl={remoteUrl}
+            remoteLoading={remoteLoading}
+            remoteError={remoteError}
+            onRetry={retryRuntime}
+          />
+        </div>
+
+        {/* Splitter */}
+        <div
+          onMouseDown={(e) => {
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = e.clientX;
+            dragStartWidth.current = rightWidth;
+            document.body.style.cursor = "col-resize";
+          }}
+          onTouchStart={(e) => {
+            const touch = e.touches[0];
+            isDragging.current = true;
+            hasUserResized.current = true;
+            dragStartX.current = touch.clientX;
+            dragStartWidth.current = rightWidth;
+          }}
+          style={{
+            width: "12px",
+            cursor: "col-resize",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+          }}
+        >
+          <div
+            style={{
+              width: "2px",
+              height: "48px",
+              background: "var(--border-dim)",
+              borderRadius: "2px",
+              opacity: 0.9,
+            }}
+          />
+        </div>
+
+        {/* ── RIGHT: Tabbed panel ──────────────────────────────────────────── */}
+        <aside
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            borderLeft: "1px solid var(--border-dim)",
+            background: "var(--bg-panel)",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          <TabBar
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            quizUnlocked={quizUnlocked}
+          />
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {activeTab === "guide" && (
+              <LabGuide
+                item={item}
+                currentStep={currentStep}
+                currentAnswer={currentAnswer}
+                onAnswerChange={onAnswerChange}
+                onPrevStep={onPrevStep}
+                onNextStep={onNextStep}
+                onUnlockQuiz={() => setActiveTab("quiz")}
+              />
+            )}
+            {activeTab === "logs" && (
+              <RuntimeLogsPanel
+                lines={logs}
+                statusLabel={runtime.statusLabel}
+              />
+            )}
+            {activeTab === "metrics" && (
+              <MetricsTab
+                item={item}
+                runtime={runtime}
+                onAttack={triggerAttack}
+                attackLoading={attackLoading}
+              />
+            )}
+            {activeTab === "quiz" && quizUnlocked && (
+              <QuizTab
+                item={item}
+                phase={item?.phase}
+                onComplete={onCompleteLabQuiz}
+              />
+            )}
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function useGlobalDragHandlers(
+  containerRef,
+  isDragging,
+  dragStartX,
+  dragStartWidth,
+  setRightWidth,
+) {
+  useEffect(() => {
+    function onMove(e) {
+      if (!isDragging.current) return;
+      if (e.touches && e.touches.length) e.preventDefault();
+      const clientX = e.clientX != null ? e.clientX : e.touches?.[0]?.clientX;
+      if (clientX == null) return;
+      // Invert delta so dragging direction matches pointer movement
+      const delta = dragStartX.current - clientX;
+      const containerWidth =
+        containerRef.current?.clientWidth || window.innerWidth;
+      const minWidth = 300;
+      const maxWidth = Math.max(minWidth, containerWidth - 120);
+      const newWidth = Math.max(
+        minWidth,
+        Math.min(maxWidth, dragStartWidth.current + delta),
+      );
+      setRightWidth(newWidth);
+    }
+
+    function onUp() {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      document.body.style.cursor = "";
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [containerRef, isDragging, dragStartX, dragStartWidth, setRightWidth]);
+}
+
+// Set a better initial right panel width so the desktop fills available space
+// without large empty margins. Respect user's manual resize afterwards.
+function useInitialRightWidth(containerRef, hasUserResized, setRightWidth) {
+  useEffect(() => {
+    function setInitial() {
+      if (hasUserResized.current) return;
+      const containerWidth =
+        containerRef.current?.clientWidth || window.innerWidth;
+      // Aim for ~35% of container but clamp between 420 and 900px
+      const desired = Math.round(
+        Math.max(420, Math.min(900, Math.floor(containerWidth * 0.35))),
+      );
+      setRightWidth(desired);
+    }
+
+    setInitial();
+    function onResize() {
+      setInitial();
+    }
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [containerRef, hasUserResized, setRightWidth]);
+}

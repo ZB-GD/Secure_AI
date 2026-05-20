@@ -1,0 +1,25 @@
+# Python environments
+.venv/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Claude Code guidance file (local only)
+CLAUDE.md
+
+# VS Code local workspace files
+.vscode/
+.codex/
+.codex
+
+# Environment files (keep secrets out of git)
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+.env
+.env.*
+!.env.example
