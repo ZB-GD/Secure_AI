@@ -78,24 +78,15 @@ def _validate(reading: dict) -> tuple[bool, str]:
     """
     temp = reading.get('temp', 290)
     if not (200 <= temp <= 350):
-        return False, (
-            f"Temperature {temp}K outside valid range 200–350K "
-            f"(rule: physical impossibility)"
-        )
+        return False, f"temp {temp}K out of range [200–350K]"
 
     vol = reading.get('traffic_volume', 0)
     if vol < 0:
-        return False, (
-            f"Traffic volume {vol} is negative "
-            f"(rule: sensor cannot count negative vehicles)"
-        )
+        return False, f"vol {vol} is negative"
 
     rain = reading.get('rain_1h', 0)
     if rain > 500:
-        return False, (
-            f"Rainfall {rain}mm/h exceeds physical maximum 500mm/h "
-            f"(rule: sensor spike rejection)"
-        )
+        return False, f"rain {rain}mm/h exceeds max [500mm/h]"
 
     return True, "ok"
 
@@ -162,43 +153,31 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
                 readings.append(r)
                 if is_adversarial:
                     log.append(
-                        f"[ACCEPT] id={reading_id} {date_time} "
-                        f"| temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm "
-                        f"[ADVERSARIAL] passes all bounds checks — "
-                        f"rule-based validation cannot detect crafted inputs"
+                        f"[ACCEPT] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm [ADVERSARIAL]"
                     )
                 else:
                     log.append(
-                        f"[ACCEPT] id={reading_id} {date_time} "
-                        f"| temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm"
+                        f"[ACCEPT] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']}"
                     )
             else:
                 dropped.append({**r, "reason": reason})
                 log.append(
-                    f"[REJECT] id={reading_id} {date_time} — {reason}"
+                    f"[REJECT] id={reading_id} — {reason}"
                 )
         else:
             # Vulnerable: no validation gate, all readings forwarded
             readings.append(r)
             if is_poisoned:
                 log.append(
-                    f"[FORWARD] id={reading_id} {date_time} "
-                    f"| temp={r['temp']}K (valid: 200–350K) "
-                    f"vol={r['traffic_volume']} (must be ≥0) "
-                    f"[POISONED] impossible values accepted — no validation gate"
+                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} [POISONED]"
                 )
             elif is_adversarial:
                 log.append(
-                    f"[FORWARD] id={reading_id} {date_time} "
-                    f"| temp={r['temp']}K vol={r['traffic_volume']} "
-                    f"rain={r.get('rain_1h', 0)}mm "
-                    f"[ADVERSARIAL] crafted values pass all sanity checks"
+                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm [ADVERSARIAL]"
                 )
             else:
                 log.append(
-                    f"[FORWARD] id={reading_id} {date_time} "
-                    f"| temp={r['temp']}K vol={r['traffic_volume']} "
-                    f"— no validation, raw sensor data forwarded"
+                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']}"
                 )
 
     poisoned_count    = sum(1 for r in raw_batch if r.get('_poisoned'))

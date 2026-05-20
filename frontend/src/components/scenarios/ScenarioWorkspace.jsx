@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { request } from "../../services/apiClient";
 import PipelineCanvas from "./PipelineCanvas";
 import WelcomePage from "./WelcomePage";
+import PipelineLogBlock from "./PipelineLogBlock";
 
 function Hi({ children }) {
   return (
@@ -107,51 +108,6 @@ function CodeBlock({ value, color = "var(--text-2)", fill = false }) {
   );
 }
 
-function LogBlock({ value, title = "PIPELINE LOGS" }) {
-  const lines = value ? value.split("\n") : [];
-
-  if (!lines.length) {
-    return (
-      <div className="scenario-empty-state">
-        No logs available for this node yet.
-      </div>
-    );
-  }
-
-  return (
-    <div className="scenario-log-block">
-      <div className="scenario-log-block__header">{title}</div>
-
-      <div className="scenario-log-block__body">
-        {lines.map((line, index) => {
-          const isError =
-            line.includes("ERROR") ||
-            line.includes("FAILED") ||
-            line.includes("VULNERABLE");
-
-          const isWarning =
-            line.includes("WARNING") ||
-            line.includes("ANOMALY") ||
-            line.includes("DRIFT");
-
-          return (
-            <div
-              key={`${line}-${index}`}
-              className={`scenario-log-line ${
-                isError ? "is-error" : isWarning ? "is-warning" : ""
-              }`}
-            >
-              <span className="scenario-log-line__number">
-                {String(index + 1).padStart(3, "0")}
-              </span>
-              <span className="scenario-log-line__text">{line}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   const data = pipelineResult?.data || {};
@@ -180,22 +136,27 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
 
   if (phaseId === "trainer") {
     const logs = [];
-    if (n4.store_error) logs.push(`[NODE-4] Store failed: ${n4.store_error}`);
-    if (n4.store)
-      logs.push("[NODE-4] Feature rows stored for training review.");
-    if (n4.retrain_error)
-      logs.push(`[NODE-4] Retrain failed: ${n4.retrain_error}`);
-    if (Array.isArray(n4.retrain?.log)) {
+
+    // Store phase logs (always present)
+    if (n4.store_error) {
+      logs.push(`[NODE-4] [STORE] FAILED: ${n4.store_error}`);
+    } else if (Array.isArray(n4.store?.log)) {
+      logs.push(...n4.store.log.map((line) => `[NODE-4] ${line}`));
+    } else if (n4.store) {
+      logs.push(`[NODE-4] [STORE] ${n4.store.stored ?? "?"} rows written to feature store`);
+    }
+
+    // Retrain phase logs (only when triggered)
+    if (n4.retrain_error) {
+      logs.push(`[NODE-4] [RETRAIN] FAILED: ${n4.retrain_error}`);
+    } else if (Array.isArray(n4.retrain?.log)) {
       logs.push(...n4.retrain.log.map((line) => `[NODE-4] ${line}`));
     } else if (n4.retrain_triggered) {
-      logs.push(
-        `[NODE-4] Retraining triggered. drift=${Number(driftScore).toFixed(3)}`,
-      );
+      logs.push(`[NODE-4] [RETRAIN] Triggered — drift=${Number(driftScore).toFixed(3)}`);
     } else {
-      logs.push(
-        `[NODE-4] Retraining not triggered. drift=${Number(driftScore).toFixed(3)}`,
-      );
+      logs.push(`[NODE-4] [RETRAIN] Not triggered — drift=${Number(driftScore).toFixed(3)} (threshold 0.25)`);
     }
+
     return logs;
   }
 
@@ -788,7 +749,28 @@ function PipelineRuntime({ compact = false }) {
                 )}
 
                 {activeTab === "logs" && (
-                  <LogBlock value={activeNodeLogsText} />
+                  <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "8px", minHeight: 0 }}>
+                    <PipelineLogBlock value={activeNodeLogsText} />
+                    {NODE_CONTEXT[activePhase?.id]?.logs && (
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(234,179,8,0.3)",
+                          background: "rgba(234,179,8,0.05)",
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span style={{ fontSize: "14px", flexShrink: 0, marginTop: "1px" }}>💡</span>
+                        <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.65 }}>
+                          {NODE_CONTEXT[activePhase.id].logs}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
