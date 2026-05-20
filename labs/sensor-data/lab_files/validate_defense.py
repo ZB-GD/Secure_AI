@@ -39,29 +39,27 @@ def validate_reading(reading: dict) -> tuple:
     rain    = reading.get("rain_1h", 0)
     clouds  = reading.get("clouds_all", 0)
 
-    # -- TODO: Implement your validation here -------------------------------
-    #
-    # Uncomment and complete the following lines:
-    #
-    # if traffic is None:
-    #     return False, "traffic_volume is missing"
-    #
-    # if traffic < ???:    # <- Step 3 answer from the guide
-    #     return False, f"traffic_volume={traffic} is below the physical minimum"
-    #
-    # if traffic > 10_000:
-    #     return False, f"traffic_volume={traffic} exceeds the realistic maximum"
-    #
-    # if not (200 <= temp <= 350):
-    #     return False, f"Impossible temperature: {temp}K"
-    #
-    # if rain < 0:
-    #     return False, "Negative rainfall is impossible"
-    #
-    # if not (0 <= clouds <= 100):
-    #     return False, f"clouds_all={clouds} is outside 0-100%"
-    #
-    # -----------------------------------------------------------------------
+    # -- TODO: Delete the triple-quotes (the """ lines) to uncomment the block,
+    # then replace ??? with the minimum valid traffic_volume.
+    """
+    if traffic is None:
+        return False, "traffic_volume is missing"
+
+    if traffic < ???:    # <- Step 3 answer from the guide
+        return False, f"traffic_volume={traffic} is below the physical minimum"
+
+    if traffic > 10_000:
+        return False, f"traffic_volume={traffic} exceeds the realistic maximum"
+
+    if not (200 <= temp <= 350):
+        return False, f"Impossible temperature: {temp}K"
+
+    if rain < 0:
+        return False, "Negative rainfall is impossible"
+
+    if not (0 <= clouds <= 100):
+        return False, f"clouds_all={clouds} is outside 0-100%"
+    """
 
     return True, "OK"   # Keep this final success case after all rejection checks.
 
@@ -86,15 +84,14 @@ def detect_anomaly(feature: dict) -> tuple:
     """
     score = float(feature.get("congestion_score", 0))
 
-    # -- TODO: Implement the Z-Score ----------------------------------------
-    #
-    # z = abs((score - MEAN_SCORE) / STD_SCORE)
-    #
-    # if z > Z_THRESHOLD:
-    #     return True, round(z, 2), "QUARANTINE - anomalous value"
-    # return False, round(z, 2), "FORWARD - inside normal range"
-    #
-    # -----------------------------------------------------------------------
+    # -- TODO: Delete the triple-quotes (the """ lines) to uncomment the block.
+    """
+    z = abs((score - MEAN_SCORE) / STD_SCORE)
+
+    if z > Z_THRESHOLD:
+        return True, round(z, 2), "QUARANTINE - anomalous value"
+    return False, round(z, 2), "FORWARD - inside normal range"
+    """
 
     return False, 0.0, "FORWARD (not implemented)"   # <- remove when implemented
 
@@ -114,13 +111,12 @@ def evaluate_drift(drift_score: float) -> str:
     The lab gives you the drift_score. Your job is to interpret it.
     """
 
-    # -- TODO: Implement the decision logic ---------------------------------
-    #
-    # if drift_score >= DRIFT_THRESHOLD:
-    #     return "HALT RETRAINING - drift is too high; keep the baseline model"
-    # return "SAFE - new model approved for deployment"
-    #
-    # -----------------------------------------------------------------------
+    # -- TODO: Delete the triple-quotes (the """ lines) to uncomment the block.
+    """
+    if drift_score >= DRIFT_THRESHOLD:
+        return "HALT RETRAINING - drift is too high; keep the baseline model"
+    return "SAFE - new model approved for deployment"
+    """
 
     return "Not implemented"   # <- remove when implemented
 
