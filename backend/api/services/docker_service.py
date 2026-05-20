@@ -28,7 +28,7 @@ _cleanup_thread_started = False
 
 def _build_novnc_url(host_port: str, request_host: str | None = None):
     host = request_host or os.getenv("NOVNC_HOST", "localhost")
-    return f"http://{host}:{host_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1"
+    return f"http://{host}:{host_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1&compression=2&quality=6&show_dot=true"
 
 
 def _get_host_port_or_500(container):
@@ -416,3 +416,40 @@ def run_lab_attack(node: str, session_id: str = "shared"):
         raise HTTPException(status_code=404, detail=f"Node '{node}' is not running.")
     except docker.errors.APIError as e:
         raise HTTPException(status_code=500, detail=f"Error while running attack: {e}")
+
+
+def inject_command_to_terminal(node: str, text: str, session_id: str = "shared") -> dict:
+    """Type text into the xfce4-terminal running in the lab container via xdotool."""
+    lab = _get_lab_or_404(node)
+    container_name = session_container_name(lab["container_name"], session_id)
+    client = _client()
+
+    try:
+        container = client.containers.get(container_name)
+
+        # Try to bring the terminal window into focus first; non-fatal if it fails
+        # (xdotool will still type into whatever window currently has focus).
+        container.exec_run(
+            ["xdotool", "search", "--onlyvisible", "--class", "xfce4-terminal",
+             "windowfocus", "--sync"],
+            environment={"DISPLAY": ":1"},
+        )
+
+        result = container.exec_run(
+            ["xdotool", "type", "--clearmodifiers", "--delay", "20", text],
+            environment={"DISPLAY": ":1"},
+        )
+
+        if result.exit_code != 0:
+            output = result.output.decode("utf-8", errors="replace") if result.output else ""
+            raise HTTPException(
+                status_code=500,
+                detail=f"xdotool type failed (exit {result.exit_code}): {output}",
+            )
+
+        return {"status": "injected", "node": node}
+
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail=f"Lab container for '{node}' is not running.")
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error injecting command: {e}")

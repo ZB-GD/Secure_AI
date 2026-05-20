@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query, Request
+from pydantic import BaseModel
 
 from api.models.state import LabStartResponse, LabStopResponse
 from api.services import docker_service
@@ -29,3 +30,12 @@ def get_lab_status(node: str, request: Request, session_id: str = Query(default=
 @router.post("/{node}/attack")
 def run_lab_attack(node: str, session_id: str = Query(default="shared")):
     return docker_service.run_lab_attack(node, session_id)
+
+
+class InjectCommandBody(BaseModel):
+    text: str
+
+
+@router.post("/{node}/inject-command")
+def inject_command(node: str, body: InjectCommandBody, session_id: str = Query(default="shared")):
+    return docker_service.inject_command_to_terminal(node, body.text, session_id)

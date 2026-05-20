@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import TopBar from "./TopBar";
-import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
-
-const SIDEBAR_MIN_WIDTH = 340;
-const SIDEBAR_MAX_WIDTH = 760;
-const SIDEBAR_DEFAULT_WIDTH = 480;
 
 function buildBreadcrumb(activeItem) {
   if (!activeItem) return ["Dashboard"];
@@ -85,12 +79,7 @@ function BreadcrumbStrip({ activeItem }) {
               color: isLast ? "var(--text-1)" : "var(--text-3)",
             }}
           >
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
               {crumb}
             </span>
             {!isLast && <span style={{ color: "var(--text-3)" }}>{">"}</span>}
@@ -99,18 +88,6 @@ function BreadcrumbStrip({ activeItem }) {
       })}
     </div>
   );
-}
-
-function clampSidebarWidth(width) {
-  const viewportMax =
-    typeof window === "undefined"
-      ? SIDEBAR_MAX_WIDTH
-      : Math.max(
-          SIDEBAR_MIN_WIDTH,
-          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 520),
-        );
-
-  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), viewportMax);
 }
 
 export default function MainLayout({
