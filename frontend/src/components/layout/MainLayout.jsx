@@ -1,5 +1,15 @@
+import { useState, useRef, useCallback, useEffect } from "react";
 import TopBar from "./TopBar";
+import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
+
+const SIDEBAR_DEFAULT_WIDTH = 340;
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 600;
+
+function clampSidebarWidth(width) {
+  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), SIDEBAR_MAX_WIDTH);
+}
 
 function buildBreadcrumb(activeItem) {
   if (!activeItem) return ["Dashboard"];
