@@ -220,30 +220,62 @@ function DocDetailView({ doc, onBack }) {
     </div>
   );
 }
+  function normalizeDocId(value) {
+  if (!value) return null;
 
-    function getDocFromUrl() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const docId = urlParams.get("id");
+  // Si ya viene como "owasp-ml02"
+  if (!String(value).includes("?") && !String(value).includes("/")) {
+    return value;
+  }
 
-      if (!docId) return null;
+  // Si viene como "/docs?id=owasp-ml02"
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.searchParams.get("id");
+  } catch {
+    return null;
+  }
+}
 
-      return FRAMEWORK_DOCS.find((doc) => doc.id === docId) || null;
+function getDocById(docId) {
+  if (!docId) return null;
+  return FRAMEWORK_DOCS.find((doc) => doc.id === docId) || null;
+}
+
+function getDocIdFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("id");
+}
+
+export default function DocsPage({ initialDocPath = null, initialDocId = null }) {
+  const requestedDocId =
+    normalizeDocId(initialDocId) ||
+    normalizeDocId(initialDocPath) ||
+    getDocIdFromUrl();
+
+  const [activeDoc, setActiveDoc] = useState(() => getDocById(requestedDocId));
+
+  useEffect(() => {
+    const nextDocId =
+      normalizeDocId(initialDocId) ||
+      normalizeDocId(initialDocPath) ||
+      getDocIdFromUrl();
+
+    setActiveDoc(getDocById(nextDocId));
+  }, [initialDocId, initialDocPath]);
+
+  useEffect(() => {
+    function syncDocFromUrl() {
+      setActiveDoc(getDocById(getDocIdFromUrl()));
     }
 
-    export default function DocsPage() {
-      const [activeDoc, setActiveDoc] = useState(() => getDocFromUrl());
+    window.addEventListener("popstate", syncDocFromUrl);
 
-      useEffect(() => {
-        function syncDocFromUrl() {
-          setActiveDoc(getDocFromUrl());
-        }
+    return () => {
+      window.removeEventListener("popstate", syncDocFromUrl);
+    };
+  }, []);
 
-        window.addEventListener("popstate", syncDocFromUrl);
-
-        return () => {
-          window.removeEventListener("popstate", syncDocFromUrl);
-        };
-      }, []);
 
     if (activeDoc) {
       return (

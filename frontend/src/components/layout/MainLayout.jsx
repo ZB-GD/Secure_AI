@@ -133,8 +133,13 @@ export default function MainLayout({
   });
   const isResizingRef = useRef(false);
   const isFullWidthBriefing = activeItem.id === "scenario-0";
-  const isScenario = activeItem.type === "scenario";
-  const showSidebar = !isFullWidthBriefing && isScenario;
+const isScenario = activeItem.type === "scenario";
+
+const isCompletedPipelineScenario =
+  activeItem.id === "scenario-1" && activeItem.completed;
+
+const showSidebar =
+  !isFullWidthBriefing && isScenario && !isCompletedPipelineScenario;
 
   const stopResize = useCallback(() => {
     if (!isResizingRef.current) return;

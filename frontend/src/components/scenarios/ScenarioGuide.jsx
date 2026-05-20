@@ -46,14 +46,32 @@ export default function ScenarioGuide({ item, onComplete, onSelectItem }) {
     }
   };
 
-  function openTheoryDoc(event) {
-  event.preventDefault();
 
-  if (!theory.link) return;
 
-  window.history.pushState({}, "", theory.link);
-  onSelectItem?.("docs");
-}
+    function openTheoryDoc(event) {
+      if (!theory.link) return;
+
+      // Si no llega onSelectItem, dejamos que el href funcione como fallback.
+      if (!onSelectItem) return;
+
+      event.preventDefault();
+
+      const targetUrl = new URL(theory.link, window.location.origin);
+      const docId = targetUrl.searchParams.get("id");
+
+      onSelectItem({
+        id: "docs",
+        type: "docs",
+        docPath: docId,
+        docId: docId,
+      });
+
+      //BORARR LUEGO
+      console.log("Opening theory doc:", {
+        hasOnSelectItem: Boolean(onSelectItem),
+        theoryLink: theory.link,
+      });
+    }
 
   return (
     <div style={{

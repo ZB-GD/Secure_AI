@@ -64,6 +64,7 @@ export default function WorkspacePanel({
           onStartLab?.(item.id);
           setLabView("lab");
         }}
+        onSelectItem={onSelectItem}
       />
     );
   }
@@ -82,7 +83,7 @@ export default function WorkspacePanel({
         onPrevStep={onPrevStep}
         onNextStep={onNextStep}
         onCompleteLabQuiz={onCompleteLabQuiz}
-        onCompleteScenario={onCompleteScenario}
+        onViewScenario={() => onSelectItem?.("scenario-1")}
       />
     );
   }
