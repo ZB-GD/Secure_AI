@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ─── EXCLUSIVE OFFICIAL FRAMEWORKS DATABASE ─────────────
 const FRAMEWORK_DOCS = [
@@ -224,6 +224,21 @@ function DocDetailView({ doc, onBack }) {
 // ─── MAIN COMPONENT ─────────────
 export default function DocsPage() {
   const [activeDoc, setActiveDoc] = useState(null);
+
+  useEffect(() => {
+    // 1. Leemos la URL buscando un "?id=..."
+    const urlParams = new URLSearchParams(window.location.search);
+    const docId = urlParams.get("id");
+
+    // 2. Si hay un ID, buscamos esa vulnerabilidad en la base de datos
+    if (docId) {
+      const docToOpen = FRAMEWORK_DOCS.find((doc) => doc.id === docId);
+      // 3. Si la encontramos, la abrimos automáticamente
+      if (docToOpen) {
+        setActiveDoc(docToOpen);
+      }
+    }
+  }, []);
 
   if (activeDoc) {
     return <DocDetailView doc={activeDoc} onBack={() => setActiveDoc(null)} />;

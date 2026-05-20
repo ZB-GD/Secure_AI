@@ -206,7 +206,6 @@ export default function MainLayout({
         activeItem={activeItem}
         onSelectItem={onSelectItem}
       />
-      <BreadcrumbStrip activeItem={activeItem} />
 
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}

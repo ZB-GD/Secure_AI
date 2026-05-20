@@ -11,7 +11,8 @@ const THEORETICAL_BASES = {
   "scenario-1": {
     topic: "Data Poisoning Attacks",
     concept: "The injection of malicious or physically impossible data into the ingestion pipeline. If unvalidated, the AI model learns or predicts based on corrupted reality, bypassing traditional firewalls.",
-    reference: "OWASP ML02:2023"
+    reference: "OWASP ML02:2023",
+    link: "/docs?id=owasp-ml02"
   },
   // Default fallback for future scenarios
   "default": {
@@ -94,9 +95,36 @@ export default function ScenarioGuide({ item, onComplete }) {
                 <h3 style={{ margin: 0, fontSize: "10px", color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
                   <span>📚</span> Theoretical Foundation
                 </h3>
-                <span style={{ fontSize: "9px", background: "rgba(167,139,250,0.15)", color: "#a78bfa", padding: "3px 8px", borderRadius: "10px", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
-                  {theory.reference}
-                </span>
+               <a 
+                  href={theory.link}
+                  title="Open in Threat Intelligence Center"
+                  style={{ 
+                    fontSize: "9px", 
+                    background: "rgba(167,139,250,0.15)", 
+                    color: "#a78bfa", 
+                    padding: "3px 8px", 
+                    borderRadius: "10px", 
+                    fontFamily: "var(--font-mono)", 
+                    fontWeight: "bold",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    border: "1px solid transparent",
+                    transition: "all 0.2s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(167,139,250,0.25)";
+                    e.currentTarget.style.borderColor = "rgba(167,139,250,0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(167,139,250,0.15)";
+                    e.currentTarget.style.borderColor = "transparent";
+                  }}
+                >
+                  {theory.reference} <span style={{fontSize: "11px"}}>→</span>
+                </a>
               </div>
               <strong style={{ display: "block", fontSize: "13px", color: "var(--text-1)", marginBottom: "6px" }}>
                 {theory.topic}
@@ -121,6 +149,34 @@ export default function ScenarioGuide({ item, onComplete }) {
         ) : (
           // === VIEW 2: ASSESSMENT ===
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
+            {/* NUEVO: BOTÓN DE ATRÁS */}
+            <button
+              onClick={() => {
+                setView("briefing");
+                setShowHint(false); // Ocultamos la pista si volvemos atrás
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-3)",
+                fontSize: "11px",
+                fontFamily: "var(--font-mono)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                marginBottom: "16px",
+                padding: "0 4px",
+                width: "fit-content",
+                transition: "color 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-1)"}
+              onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-3)"}
+            >
+              ← Back to Briefing
+            </button>
+
             <div style={{ background: "var(--bg-base)", border: "1px solid var(--border-dim)", borderRadius: "10px", padding: "20px", flex: 1 }}>
               <h3 style={{ margin: "0 0 20px 0", fontSize: "14px", color: "var(--text-1)", lineHeight: 1.6 }}>
                 {item.question?.text || "Based on the briefing, what is your initial assessment?"}

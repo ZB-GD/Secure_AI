@@ -140,8 +140,8 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          padding: "10px 20px",
-          gap: "16px",
+          padding: "16px 28px",
+          gap: "22px",
         }}
       >
         <button
@@ -151,8 +151,8 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "10px",
-            minWidth: "180px",
+            gap: "14px",
+            minWidth: "220px",
             width: "fit-content",
             border: "none",
             background: "transparent",
@@ -163,9 +163,9 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
         >
           <div
             style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "7px",
+              width: "42px",
+              height: "42px",
+              borderRadius: "10px",
               background: "var(--orange-dim)",
               border: "1px solid var(--orange-border)",
               display: "flex",
@@ -178,7 +178,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             <span
               style={{
                 color: "var(--orange)",
-                fontSize: "10px",
+                fontSize: "13px",
                 fontWeight: 600,
                 fontFamily: "var(--font-mono)",
               }}
@@ -190,11 +190,11 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           <div>
             <div
               style={{
-                fontSize: "13px",
+                fontSize: "17px",
                 fontWeight: 700,
                 fontFamily: "var(--font-display)",
                 color: "var(--text-1)",
-                letterSpacing: "0.04em",
+                letterSpacing: "0.14em",
               }}
             >
               SEC<span style={{ color: "var(--orange)" }}>LABS</span>
@@ -202,7 +202,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
 
             <div
               style={{
-                fontSize: "10px",
+                fontSize: "11px",
                 color: "var(--text-3)",
                 fontFamily: "var(--font-mono)",
                 letterSpacing: "0.12em",
@@ -218,10 +218,11 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           style={{
             display: "inline-flex",
             border: "1px solid var(--border-dim)",
-            borderRadius: "8px",
+            borderRadius: "12px",
             overflow: "hidden",
-            background: "var(--bg-elevated)",
+            background: "rgba(15,23,42,0.95)",
             justifySelf: "center",
+            boxShadow: "0 0 18px rgba(0,0,0,0.22)",
           }}
         >
           {navTabs.map((tab, index) => {
@@ -245,24 +246,29 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 onClick={() => handleTabClick(tab)}
                 disabled={isDisabled}
                 style={{
-                  padding: "8px 16px",
+                  padding: "12px 24px",
                   border: "none",
                   borderRight:
                     index < navTabs.length - 1
                       ? "1px solid var(--border-dim)"
                       : "none",
                   background: isActive ? activeBg : "transparent",
-                  color: isActive ? activeColor : "var(--text-3)",
+                  color: isActive
+                    ? activeColor
+                    : isDisabled
+                      ? "var(--text-2)"
+                      : "var(--text-1)",
                   fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  letterSpacing: "0.10em",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
                   cursor: isDisabled ? "not-allowed" : "pointer",
-                  opacity: isDisabled && !isActive ? 0.35 : 1,
+                  opacity: isDisabled && !isActive ? 0.65 : 1,
                   whiteSpace: "nowrap",
-                  maxWidth: tab.id === "labs" ? "320px" : "none",
+                  maxWidth: tab.id === "labs" ? "420px" : "none",
                   display: "flex",
                   alignItems: "center",
-                  gap: "7px",
+                  gap: "9px",
                   transition: "all 0.15s",
                 }}
               >
