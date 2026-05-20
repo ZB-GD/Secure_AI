@@ -223,6 +223,7 @@ export default function MainLayout({
               onAnswerChange={onAnswerChange}
               onPrevStep={onPrevStep}
               onNextStep={onNextStep}
+              onSelectItem={onSelectItem}
             />
             <button
               type="button"
