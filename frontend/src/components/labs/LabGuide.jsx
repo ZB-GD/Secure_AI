@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { request } from "../../services/apiClient"
+import { labService } from "../../services/labService"
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -25,18 +26,35 @@ function isValid(step, answer) {
   })
 }
 
-function CommandBlock({ command }) {
-  const [copied, setCopied] = useState(false)
+function CommandBlock({ command, labId }) {
+  const [state, setState] = useState("idle") // idle | sending | sent | error
 
-  async function copyCommand() {
+  async function sendToTerminal() {
+    if (state === "sending") return
+    setState("sending")
     try {
-      await navigator.clipboard.writeText(command)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1400)
+      await labService.injectCommandById(labId, command)
+      setState("sent")
     } catch {
-      setCopied(false)
+      setState("error")
+    } finally {
+      window.setTimeout(() => setState("idle"), 1800)
     }
   }
+
+  const label = { idle: "COPY", sending: "COPYING", sent: "COPIED", error: "ERROR" }[state]
+  const color = {
+    idle: "var(--text-2)",
+    sending: "var(--text-3)",
+    sent: "var(--green)",
+    error: "var(--red)",
+  }[state]
+  const bg = {
+    idle: "var(--bg-base)",
+    sending: "var(--bg-base)",
+    sent: "var(--green-dim)",
+    error: "var(--red-dim)",
+  }[state]
 
   return (
     <div
@@ -68,27 +86,28 @@ function CommandBlock({ command }) {
 
       <button
         type="button"
-        onClick={copyCommand}
-        title="Copy command"
+        onClick={sendToTerminal}
+        title="Send command to the VM terminal"
+        disabled={state === "sending"}
         style={{
           minWidth: "62px",
           border: "1px solid var(--border-mid)",
           borderRadius: "7px",
-          background: copied ? "var(--green-dim)" : "var(--bg-base)",
-          color: copied ? "var(--green)" : "var(--text-2)",
+          background: bg,
+          color,
           fontFamily: "var(--font-display)",
           fontSize: "10px",
           fontWeight: 700,
-          cursor: "pointer",
+          cursor: state === "sending" ? "wait" : "pointer",
         }}
       >
-        {copied ? "COPIED" : "COPY"}
+        {label}
       </button>
     </div>
   )
 }
 
-function InstructionText({ text }) {
+function InstructionText({ text, labId }) {
   const blocks = []
   let paragraph = []
   let commandLines = []
@@ -134,7 +153,7 @@ function InstructionText({ text }) {
           return (
             <div key={index}>
               {block.lines.map((line) => (
-                <CommandBlock key={line} command={line} />
+                <CommandBlock key={line} command={line} labId={labId} />
               ))}
             </div>
           )
@@ -454,7 +473,7 @@ export default function LabGuide({
             INSTRUCTIONS
           </div>
 
-          <InstructionText text={currentStep.body} />
+          <InstructionText text={currentStep.body} labId={item.id} />
         </div>
 
         <div
