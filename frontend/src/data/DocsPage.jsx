@@ -221,28 +221,41 @@ function DocDetailView({ doc, onBack }) {
   );
 }
 
-// ─── MAIN COMPONENT ─────────────
-export default function DocsPage() {
-  const [activeDoc, setActiveDoc] = useState(null);
+    function getDocFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const docId = urlParams.get("id");
 
-  useEffect(() => {
-    // 1. Leemos la URL buscando un "?id=..."
-    const urlParams = new URLSearchParams(window.location.search);
-    const docId = urlParams.get("id");
+      if (!docId) return null;
 
-    // 2. Si hay un ID, buscamos esa vulnerabilidad en la base de datos
-    if (docId) {
-      const docToOpen = FRAMEWORK_DOCS.find((doc) => doc.id === docId);
-      // 3. Si la encontramos, la abrimos automáticamente
-      if (docToOpen) {
-        setActiveDoc(docToOpen);
-      }
+      return FRAMEWORK_DOCS.find((doc) => doc.id === docId) || null;
     }
-  }, []);
 
-  if (activeDoc) {
-    return <DocDetailView doc={activeDoc} onBack={() => setActiveDoc(null)} />;
-  }
+    export default function DocsPage() {
+      const [activeDoc, setActiveDoc] = useState(() => getDocFromUrl());
+
+      useEffect(() => {
+        function syncDocFromUrl() {
+          setActiveDoc(getDocFromUrl());
+        }
+
+        window.addEventListener("popstate", syncDocFromUrl);
+
+        return () => {
+          window.removeEventListener("popstate", syncDocFromUrl);
+        };
+      }, []);
+
+    if (activeDoc) {
+      return (
+        <DocDetailView
+          doc={activeDoc}
+          onBack={() => {
+            window.history.pushState({}, "", "/docs");
+            setActiveDoc(null);
+          }}
+        />
+      );
+    }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", background: "var(--bg-base)" }}>
@@ -264,7 +277,14 @@ export default function DocsPage() {
           gap: "24px"
         }}>
           {FRAMEWORK_DOCS.map((doc) => (
-            <FrameworkCard key={doc.id} doc={doc} onClick={() => setActiveDoc(doc)} />
+            <FrameworkCard
+            key={doc.id}
+            doc={doc}
+            onClick={() => {
+              window.history.pushState({}, "", `/docs?id=${doc.id}`);
+              setActiveDoc(doc);
+            }}
+          />
           ))}
         </div>
       </div>
