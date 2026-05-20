@@ -3,26 +3,77 @@ import { request } from "../../services/apiClient";
 import PipelineCanvas from "./PipelineCanvas";
 import WelcomePage from "./WelcomePage";
 
+function Hi({ children }) {
+  return (
+    <span style={{ color: "var(--text-1)", fontWeight: 700 }}>{children}</span>
+  );
+}
+
+function FieldList({ fields }) {
+  return (
+    <dl
+      style={{
+        margin: "8px 0 0",
+        display: "flex",
+        flexDirection: "column",
+        gap: "5px",
+      }}
+    >
+      {fields.map(([key, desc]) => (
+        <div
+          key={key}
+          style={{ display: "flex", gap: "10px", alignItems: "baseline" }}
+        >
+          <dt
+            style={{
+              flexShrink: 0,
+              fontFamily: "var(--font-mono)",
+              fontSize: "11px",
+              color: "var(--blue)",
+              fontWeight: 600,
+            }}
+          >
+            {key}
+          </dt>
+          <dd
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              color: "var(--text-2)",
+              lineHeight: 1.6,
+            }}
+          >
+            {desc}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 // --- ACADEMIC THEORETICAL FOUNDATIONS ---
 const THEORETICAL_BASES = {
   "scenario-0": {
     topic: "Cyber-Physical Systems (CPS)",
-    concept: "CPS integrate digital AI processing with physical infrastructure. A logical failure or cyber attack in the AI pipeline directly causes physical world consequences, such as traffic gridlocks.",
+    concept:
+      "CPS integrate digital AI processing with physical infrastructure. A logical failure or cyber attack in the AI pipeline directly causes physical world consequences, such as traffic gridlocks.",
     reference: "NIST SP 800-82",
-    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
+    link: "/docs", // <-- RUTA A TU PESTAÑA DE DOC
   },
   "scenario-1": {
     topic: "Data Poisoning Attacks",
-    concept: "The injection of malicious or physically impossible data into the ingestion pipeline. If unvalidated, the AI model learns or predicts based on corrupted reality, bypassing traditional firewalls.",
+    concept:
+      "The injection of malicious or physically impossible data into the ingestion pipeline. If unvalidated, the AI model learns or predicts based on corrupted reality, bypassing traditional firewalls.",
     reference: "OWASP ML02:2023",
-    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
+    link: "/docs", // <-- RUTA A TU PESTAÑA DE DOC
   },
-  "default": {
+  default: {
     topic: "AI Pipeline Security",
-    concept: "AI systems must implement defense-in-depth across the entire pipeline: from data ingestion and input handling, to model training and output serving.",
+    concept:
+      "AI systems must implement defense-in-depth across the entire pipeline: from data ingestion and input handling, to model training and output serving.",
     reference: "MITRE ATLAS",
-    link: "/docs" // <-- RUTA A TU PESTAÑA DE DOC
-  }
+    link: "/docs", // <-- RUTA A TU PESTAÑA DE DOC
+  },
 };
 
 // --- SCENARIO 1: PIPELINE INVESTIGATION ---
@@ -45,9 +96,12 @@ function PhaseNode({ phase, isActive, onClick }) {
   );
 }
 
-function CodeBlock({ value, color = "var(--text-2)" }) {
+function CodeBlock({ value, color = "var(--text-2)", fill = false }) {
   return (
-    <pre className="scenario-code-block" style={{ color }}>
+    <pre
+      className="scenario-code-block"
+      style={{ color, ...(fill && { height: "100%", boxSizing: "border-box", margin: 0 }) }}
+    >
       {value}
     </pre>
   );
@@ -150,29 +204,114 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
 
 const NODE_CONTEXT = {
   edge: {
-    receives:
-      "Raw IoT frame from a street sensor, before any validation. traffic_volume is the vehicle count at the sensor; values below 0 are physically impossible. signed: false means the frame carries no device authentication.",
-    emits:
-      "The reading NODE-1 forwarded downstream. A _poisoned: true flag means a bad reading passed the entry point unchecked and is now travelling through the full pipeline.",
+    receives: <>Raw sensor frame from a street camera, before any checks. The key field is <Hi>traffic_volume</Hi> — a vehicle count that must be zero or above to be realistic. <Hi>signed: false</Hi> means the sensor did not prove its identity before sending data.</>,
+    receivesFields: [
+      ["sensor_id",       "unique ID of the camera or counter that sent this frame (e.g. cam_north_01)"],
+      ["timestamp",       "time the reading was recorded at the sensor"],
+      ["traffic_volume",  <>vehicle count — must be <Hi>≥ 0</Hi>; this is the field the attack manipulates</>],
+      ["avg_speed",       "average vehicle speed in km/h at the time of the reading"],
+      ["signed",          <><Hi>false</Hi> — no cryptographic proof the frame came from a real, registered device</>],
+      ["source",          <><Hi>telemetry_csv</Hi> — data replayed from a file, not sent live by a physical sensor</>],
+    ],
+    emits: <>The reading NODE-1 passed downstream. <Hi>_poisoned: true</Hi> means an impossible value made it through the entry point unchecked and is now inside the pipeline.</>,
+    emitsFields: [
+      ["forwarded_reading", "the original sensor frame, passed to NODE-2 as-is"],
+      ["_poisoned",         <><Hi>true</Hi> — reading failed a range check but was forwarded anyway; this flag tracks the attack through the pipeline</>],
+      ["dropped",           <>count of readings NODE-1 rejected — <Hi>0</Hi> in vulnerable mode because no validation runs</>],
+    ],
+    logs: <>Each line shows what NODE-1 accepted or dropped. Look for <Hi>_poisoned</Hi> readings — if one appears, an invalid sensor frame entered the pipeline without any challenge.</>,
   },
   preprocessing: {
-    receives:
-      "The sensor readings forwarded by NODE-1, including any poisoned ones. NODE-2 sees these raw values and must decide whether to clean, quarantine, or pass them through.",
-    emits:
-      "The computed feature vector. The key field is congestion_score = traffic_volume / 8000. With traffic_volume = -5000 this becomes -0.625, a negative congestion score that is physically impossible and indicates the poisoned input is now a model feature.",
+    receives: <>The sensor reading forwarded by NODE-1. NODE-2 must decide: is this value realistic enough to compute features from, or should it be <Hi>quarantined</Hi>? In vulnerable mode nothing is quarantined.</>,
+    receivesFields: [
+      ["input_readings", "array of sensor frames from NODE-1; may include readings with impossible traffic_volume values"],
+    ],
+    emits: <>The <Hi>feature vector</Hi> the model will use. The key output is <Hi>congestion_score</Hi>. A negative value means a poisoned input made it to this stage and is now dressed up as a valid model feature.</>,
+    emitsFields: [
+      ["congestion_score", <><Hi>traffic_volume / 8,000</Hi> — a 0-to-1 scale of road busyness; negative means the attack reached feature engineering</>],
+      ["anomaly",          <><Hi>true</Hi> when congestion_score falls outside [0, 1]; node detected the problem but still forwarded it in vulnerable mode</>],
+      ["skipped",          <>count of readings discarded before computing features — <Hi>0</Hi> in vulnerable mode</>],
+    ],
+    logs: <>Shows the feature values NODE-2 computed. Look for <Hi>anomaly: true</Hi> or a <Hi>negative congestion_score</Hi> — either confirms a poisoned reading is being treated as valid data.</>,
   },
   actuator: {
-    receives:
-      "The feature vector from NODE-2 that the model will run inference on. integrity_ok shows whether the model weights passed a hash check; null or false means the model cannot be trusted.",
-    emits:
-      "The model's prediction and the physical action dispatched to city infrastructure. model_version identifies which weights were used; retraining_feedback is sent back to NODE-4 to update the drift calculation.",
+    receives: <>The feature vector from NODE-2 that will be fed into the ML model. <Hi>integrity_ok</Hi> is the result of a model hash check — if it is <Hi>null or false</Hi>, the model weights may have been modified and cannot be trusted.</>,
+    receivesFields: [
+      ["model_version", "version of the trained model running inference (e.g. v2.1)"],
+      ["features",      "feature vector from NODE-2; congestion_score is the primary input the model reads"],
+      ["integrity_ok",  <><Hi>null</Hi> in vulnerable mode — model file hash was never checked; model could have been tampered with</>],
+    ],
+    emits: <>The model's prediction translated into a physical traffic control command. <Hi>guardrail_blocked: false</Hi> means no safety check stopped the action, even though the input was already flagged as anomalous.</>,
+    emitsFields: [
+      ["prediction",        "the model's classification of the traffic state (e.g. NO_TRAFFIC, CONGESTED)"],
+      ["action",            "command dispatched to city infrastructure (e.g. SET_NORTH_AVENUE_RED — a real signal change)"],
+      ["guardrail_blocked", <><Hi>false</Hi> — no safety rule stopped the action even though the input was flagged as anomalous</>],
+    ],
+    logs: <>Shows which prediction the model produced and which <Hi>physical action</Hi> was dispatched. If the action was generated from a poisoned feature, this is where the attack turns into a real-world consequence.</>,
   },
   trainer: {
-    receives:
-      "Feature rows staged for storage and the current drift score. trigger_drift above the threshold means retraining is being considered, even if the features themselves are poisoned.",
-    emits:
-      "Whether features were stored (store) and if retraining was triggered (retrain_triggered). If poisoned features were stored and retraining ran, the model's future predictions will be based on corrupted data.",
+    receives: <>The feature rows to be stored and the current <Hi>drift score</Hi>. A <Hi>trigger_drift above 0.25</Hi> means retraining is being evaluated. If those features are poisoned, any retraining that follows will corrupt the next model version.</>,
+    receivesFields: [
+      ["stored_features", "feature rows from NODE-2 to be written to the training database"],
+      ["trigger_drift",   <>current drift score — above <Hi>0.25</Hi> means the data has shifted enough to consider retraining</>],
+    ],
+    emits: <>Whether features were saved (<Hi>store</Hi>) and whether retraining was triggered (<Hi>retrain_triggered</Hi>). A <Hi>retrain_triggered: true</Hi> means poisoned data has been written into the model's next version.</>,
+    emitsFields: [
+      ["store",             <><Hi>ok</Hi> — features written to the database; an error message here means storage failed</>],
+      ["retrain_triggered", <><Hi>true</Hi> — drift threshold crossed and retraining started; if features were poisoned, the next model version will be corrupted</>],
+      ["drift_score",       "calculated drift value for this run; the number that determined whether retraining happened"],
+    ],
+    logs: <>Shows storage and retraining decisions. Look for <Hi>Retraining triggered</Hi> with a high drift score — that confirms the attack has succeeded in changing the model's future behavior.</>,
   },
+};
+
+const NODE_ABOUT = {
+  edge: (
+    <>
+      <Hi>NODE-1</Hi> is the first stop for all incoming traffic data. It reads
+      raw <Hi>sensor frames</Hi> from IoT cameras across the city and passes
+      them to the rest of the pipeline. A secure node validates that{" "}
+      <Hi>traffic_volume</Hi> is a physically possible value (0 to ~8,000
+      vehicles/hour) and that the sender is a{" "}
+      <Hi>known, authenticated sensor</Hi>. In this scenario both checks are
+      disabled — it accepts every reading, including the attack-injected{" "}
+      <Hi>traffic_volume = -5,000</Hi>.
+    </>
+  ),
+  preprocessing: (
+    <>
+      <Hi>NODE-2</Hi> converts raw readings into numbers the ML model can work
+      with. Its main task is computing{" "}
+      <Hi>congestion_score = traffic_volume / 8,000</Hi>, a 0-to-1 scale of
+      road busyness. When the poisoned <Hi>traffic_volume = -5,000</Hi> arrives,
+      the formula produces <Hi>congestion_score = -0.625</Hi> — a physically
+      impossible value. NODE-2 flags it as <Hi>anomalous</Hi> but in vulnerable
+      mode still passes it to the model instead of <Hi>quarantining it</Hi>.
+    </>
+  ),
+  actuator: (
+    <>
+      <Hi>NODE-3</Hi> is where the ML model makes decisions. It takes the{" "}
+      <Hi>feature vector</Hi> from NODE-2, runs <Hi>inference</Hi>, and turns
+      the prediction into a real traffic action — such as{" "}
+      <Hi>holding a light red</Hi> or <Hi>rerouting buses</Hi>. A secure node
+      would refuse to act on <Hi>anomalous input</Hi> and verify the model
+      hasn't been tampered with via an <Hi>integrity check</Hi>. In vulnerable
+      mode both checks are skipped and actions are issued even on{" "}
+      <Hi>poisoned data</Hi>.
+    </>
+  ),
+  trainer: (
+    <>
+      <Hi>NODE-4</Hi> keeps the ML model up to date by saving incoming{" "}
+      <Hi>feature rows</Hi> and tracking <Hi>data drift</Hi> — how different
+      the new data looks compared to what the model was trained on. If drift
+      crosses <Hi>0.25</Hi>, it triggers <Hi>retraining</Hi>. The danger: if{" "}
+      <Hi>poisoned features</Hi> were stored and drift is already elevated,
+      retraining bakes the <Hi>corrupted data</Hi> permanently into the model,
+      making future predictions wrong even after the attack ends.
+    </>
+  ),
 };
 
 function PipelineRuntime({ compact = false }) {
@@ -185,8 +324,7 @@ function PipelineRuntime({ compact = false }) {
         status: "compromised",
         summary: "Accepted a physically impossible sensor reading.",
         statusReason: "Entry point accepted poisoned telemetry.",
-        about:
-          "NODE-1 is the entry point for all sensor data in CityFlow AI. It ingests raw traffic readings from IoT devices (vehicle counts, speeds, and weather conditions) and forwards them downstream. As the first trust boundary it must reject physically impossible values (e.g. traffic_volume < 0) and verify that frames come from authenticated sensors. In this scenario it skips all validation and accepts every reading, including the poisoned traffic_volume = -5000.",
+        about: NODE_ABOUT.edge,
         receives:
           '{\n  "sensor_id": "cam_north_01",\n  "timestamp": "08:14:58",\n  "traffic_volume": -5000,\n  "avg_speed": 0,\n  "source": "telemetry_csv",\n  "signed": false\n}',
         emits:
@@ -211,9 +349,9 @@ function PipelineRuntime({ compact = false }) {
         name: "Edge Pre-processing Node",
         status: "compromised",
         summary: "Converted the poisoned reading into an invalid feature.",
-        statusReason: "Anomalous feature forwarded downstream without quarantine.",
-        about:
-          "NODE-2 transforms raw sensor readings into the feature vector the ML model expects. Its key computation is congestion_score = traffic_volume / 8000. When traffic_volume = -5000 arrives, the result is congestion_score = -0.625, a physically impossible value. The node flags it as anomalous but still forwards it instead of quarantining it, so the poisoned feature reaches inference unchanged.",
+        statusReason:
+          "Anomalous feature forwarded downstream without quarantine.",
+        about: NODE_ABOUT.preprocessing,
         receives:
           '{\n  "input_readings": [\n    {\n      "sensor_id": "cam_north_01",\n      "traffic_volume": -5000\n    }\n  ]\n}',
         emits:
@@ -233,9 +371,9 @@ function PipelineRuntime({ compact = false }) {
         name: "Inference & Action Node",
         status: "compromised",
         summary: "Turned the invalid feature into a traffic-control action.",
-        statusReason: "Model integrity check skipped; actions generated from poisoned input.",
-        about:
-          "NODE-3 runs ML inference on the feature vector from NODE-2 and translates the prediction into a real-world action, such as holding a traffic light red or rerouting vehicles. Because its output directly controls physical infrastructure, it must verify model integrity and refuse to act on anomalous input. In vulnerable mode it generates actions even when the input feature was already flagged as anomalous.",
+        statusReason:
+          "Model integrity check skipped; actions generated from poisoned input.",
+        about: NODE_ABOUT.actuator,
         receives:
           '{\n  "model_version": "v2.1",\n  "features": [\n    {\n      "congestion_score": -0.625,\n      "anomaly": true\n    }\n  ]\n}',
         emits:
@@ -255,9 +393,9 @@ function PipelineRuntime({ compact = false }) {
         name: "Trainer Node",
         status: "compromised",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
-        statusReason: "Retraining risk exists because poisoned features reached storage.",
-        about:
-          "NODE-4 persists incoming feature rows to the training database and monitors data drift. If the drift score crosses a threshold, it triggers model retraining, permanently incorporating the poisoned features into the model's future behavior. The critical defense here is halting retraining when drift is elevated and quarantining suspicious features before they corrupt the next model version.",
+        statusReason:
+          "Retraining risk exists because poisoned features reached storage.",
+        about: NODE_ABOUT.trainer,
         receives:
           '{\n  "stored_features": [\n    {\n      "sensor_id": "cam_north_01",\n      "congestion_score": -0.625\n    }\n  ],\n  "trigger_drift": 0.279\n}',
         emits:
@@ -324,7 +462,10 @@ function PipelineRuntime({ compact = false }) {
       : false;
     const n3IntegrityOk = n3.integrity_ok === true;
     const n3Status =
-      n3.integrity_ok === false || n3.halted || n3.integrity_ok === null || n3.integrity_ok === undefined
+      n3.integrity_ok === false ||
+      n3.halted ||
+      n3.integrity_ok === null ||
+      n3.integrity_ok === undefined
         ? "compromised"
         : "healthy";
     const n4Status =
@@ -342,8 +483,7 @@ function PipelineRuntime({ compact = false }) {
         statusReason: n1Poisoned
           ? "Entry point accepted poisoned telemetry."
           : "Sensor readings passed ingestion checks.",
-        about:
-          "NODE-1 is the entry point for all sensor data in CityFlow AI. It ingests raw traffic readings from IoT devices (vehicle counts, speeds, and weather conditions) and forwards them downstream. As the first trust boundary it must reject physically impossible values (e.g. traffic_volume < 0) and verify that frames come from authenticated sensors. In this scenario it skips all validation and accepts every reading, including the poisoned traffic_volume = -5000.",
+        about: NODE_ABOUT.edge,
         receives: JSON.stringify(
           { mode: n1.mode, n_readings: n1.readings?.length || 0 },
           null,
@@ -376,8 +516,7 @@ function PipelineRuntime({ compact = false }) {
         statusReason: n2Anomalous
           ? "Poisoned data produced an anomalous feature."
           : "Generated features are within expected ranges.",
-        about:
-          "NODE-2 transforms raw sensor readings into the feature vector the ML model expects. Its key computation is congestion_score = traffic_volume / 8000. When traffic_volume = -5000 arrives, the result is congestion_score = -0.625, a physically impossible value. The node flags it as anomalous but still forwards it instead of quarantining it, so the poisoned feature reaches inference unchanged.",
+        about: NODE_ABOUT.preprocessing,
         receives: JSON.stringify(
           {
             input_readings: n1.readings?.length || 0,
@@ -418,8 +557,7 @@ function PipelineRuntime({ compact = false }) {
               : n3.integrity_ok === null || n3.integrity_ok === undefined
                 ? "Model integrity verification was skipped in vulnerable mode."
                 : "Model integrity verified and decisions completed.",
-        about:
-          "NODE-3 runs ML inference on the feature vector from NODE-2 and translates the prediction into a real-world action, such as holding a traffic light red or rerouting vehicles. Because its output directly controls physical infrastructure, it must verify model integrity and refuse to act on anomalous input. In vulnerable mode it generates actions even when the input feature was already flagged as anomalous.",
+        about: NODE_ABOUT.actuator,
         receives: JSON.stringify(
           {
             input_features: n2.features?.length || 0,
@@ -469,8 +607,7 @@ function PipelineRuntime({ compact = false }) {
             : n4.retrain_triggered
               ? "Drift threshold triggered retraining review."
               : "Stored features did not cross retraining threshold.",
-        about:
-          "NODE-4 persists incoming feature rows to the training database and monitors data drift. If the drift score crosses a threshold, it triggers model retraining, permanently incorporating the poisoned features into the model's future behavior. The critical defense here is halting retraining when drift is elevated and quarantining suspicious features before they corrupt the next model version.",
+        about: NODE_ABOUT.trainer,
         receives: JSON.stringify(
           {
             stored_features: n2.features?.length || 0,
@@ -526,12 +663,7 @@ function PipelineRuntime({ compact = false }) {
     if (lines.length > 0) return lines.join("\n");
     if (pipelineLoading) return "Loading pipeline logs...";
     return "No pipeline logs available for this node yet.";
-  }, [
-    activePhase?.id,
-    pipelineLoading,
-    drift_score,
-    pipelineResult,
-  ]);
+  }, [activePhase?.id, pipelineLoading, drift_score, pipelineResult]);
 
   return (
     <section className="scenario-workspace">
@@ -543,7 +675,8 @@ function PipelineRuntime({ compact = false }) {
             </div>
             <div className="scenario-title">General Pipeline View</div>
             <p className="scenario-subtitle">
-              Inspect what each node receives, emits, and logs as telemetry moves through the AI traffic-control system.
+              Inspect what each node receives, emits, and logs as telemetry
+              moves through the AI traffic-control system.
             </p>
           </div>
         )}
@@ -577,12 +710,7 @@ function PipelineRuntime({ compact = false }) {
             <div className="scenario-window-content">
               <div className="scenario-detail-panel__body">
                 {activeTab === "received" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
-                      {NODE_CONTEXT[activePhase?.id]?.receives}
-                    </p>
-                    <CodeBlock color="var(--blue)" value={activePhase.receives} />
-                  </div>
+                  <CodeBlock color="var(--blue)" value={activePhase.receives} />
                 )}
 
                 {activeTab === "about" && (
@@ -590,31 +718,73 @@ function PipelineRuntime({ compact = false }) {
                     style={{
                       color: "var(--text-2)",
                       fontSize: "14px",
-                      lineHeight: 1.65,
+                      lineHeight: 1.7,
                       width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "16px",
                     }}
                   >
-                    <div
-                      style={{
-                        color: "var(--text-1)",
-                        fontFamily: "var(--font-display)",
-                        fontSize: "16px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      {activePhase.code} · {activePhase.name}
+                    <div>
+                      <div
+                        style={{
+                          color: "var(--text-1)",
+                          fontFamily: "var(--font-display)",
+                          fontSize: "15px",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {activePhase.code} · {activePhase.name}
+                      </div>
+                      {activePhase.about}
                     </div>
-                    {activePhase.about}
+
+                    {NODE_CONTEXT[activePhase?.id] && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "14px",
+                          borderTop: "1px solid var(--border-dim)",
+                          paddingTop: "14px",
+                        }}
+                      >
+                        {[
+                          { key: "receives", label: "RECEIVES" },
+                          { key: "emits", label: "EMITS" },
+                          { key: "logs", label: "LOGS" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                color: "var(--text-3)",
+                                letterSpacing: "0.1em",
+                                fontFamily: "var(--font-display)",
+                                marginBottom: "5px",
+                              }}
+                            >
+                              {label}
+                            </div>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "14px",
+                                color: "var(--text-2)",
+                                lineHeight: 1.7,
+                              }}
+                            >
+                              {NODE_CONTEXT[activePhase.id][key]}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === "emitted" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-3)", lineHeight: 1.65 }}>
-                      {NODE_CONTEXT[activePhase?.id]?.emits}
-                    </p>
-                    <CodeBlock color="var(--orange)" value={activePhase.emits} />
-                  </div>
+                  <CodeBlock color="var(--orange)" value={activePhase.emits} />
                 )}
 
                 {activeTab === "logs" && (
