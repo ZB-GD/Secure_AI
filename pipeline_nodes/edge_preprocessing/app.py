@@ -179,10 +179,7 @@ def run(sensor_output: dict, mode: str = "clean") -> dict:
                     clip_note = ""
 
                 if feat.get("_adversarial"):
-                    adv_note = (
-                        " [ADVERSARIAL] feature vector accepted — "
-                        "watch for prediction mismatch at N3"
-                    )
+                    adv_note = " [ADVERSARIAL]"
                 else:
                     adv_note = ""
 
@@ -203,20 +200,17 @@ def run(sensor_output: dict, mode: str = "clean") -> dict:
 
             if score < 0:
                 log.append(
-                    f"[CORRUPT] id={feat['reading_id']} {feat['date_time']} "
-                    f"score={score:.3f} — NEGATIVE (physically impossible) "
-                    f"| vol={feat['traffic_volume']} / {TRAFFIC_VOL_MAX} = {score:.3f} "
-                    f"propagated downstream without bounds check"
+                    f"[CORRUPT] id={feat['reading_id']} "
+                    f"score={score:.3f} — negative (impossible) | vol={feat['traffic_volume']}"
                 )
             elif feat.get("_adversarial"):
                 log.append(
-                    f"[FEATURE] id={feat['reading_id']} {feat['date_time']} "
-                    f"score={feat['congestion_score']} ({feat['label_hint']}) "
-                    f"[ADVERSARIAL] valid-looking feature vector forwarded to N3"
+                    f"[FEATURE] id={feat['reading_id']} "
+                    f"score={feat['congestion_score']} ({feat['label_hint']}) [ADVERSARIAL]"
                 )
             else:
                 log.append(
-                    f"[FEATURE] id={feat['reading_id']} {feat['date_time']} "
+                    f"[FEATURE] id={feat['reading_id']} "
                     f"score={feat['congestion_score']} ({feat['label_hint']})"
                 )
 
