@@ -429,10 +429,14 @@ function PipelineRuntime({ compact = false }) {
       n3.integrity_ok === undefined
         ? "compromised"
         : "healthy";
+    const trainerVulnerable =
+      (pipelineResult.metrics?.modes?.trainer ?? "vulnerable") === "vulnerable";
     const n4Status =
       n4.store_error || n4.retrain_error || n4.retrain_triggered
         ? "compromised"
-        : "healthy";
+        : trainerVulnerable
+          ? "warning"
+          : "healthy";
 
     return [
       {
@@ -567,7 +571,9 @@ function PipelineRuntime({ compact = false }) {
             ? "Training store or retraining failed."
             : n4.retrain_triggered
               ? "Drift threshold triggered retraining review."
-              : "Stored features did not cross retraining threshold.",
+              : trainerVulnerable
+                ? "Silently storing poisoned features. Next retraining will corrupt the model."
+                : "Stored features did not cross retraining threshold.",
         about: NODE_ABOUT.trainer,
         receives: JSON.stringify(
           {
