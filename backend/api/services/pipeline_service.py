@@ -68,6 +68,32 @@ def _post_json(url: str, payload: dict[str, Any], *, timeout: float = 10.0, retr
     raise HTTPException(status_code=502, detail=f"Pipeline node unavailable at {url}: {last_error}")
 
 
+def _get_json(url: str, *, timeout: float = 10.0, retries: int = 3) -> dict:
+    """GET JSON with the same retry/error pattern as _post_json."""
+    request = Request(url, headers={"Accept": "application/json"}, method="GET")
+    last_error: Exception | None = None
+    for attempt in range(retries + 1):
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+        except HTTPError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Pipeline node call failed for {url}: {exc.code} {exc.reason}",
+            ) from exc
+        except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt < retries:
+                time.sleep(0.5)
+                continue
+            raise HTTPException(
+                status_code=502,
+                detail=f"Pipeline node unavailable at {url}: {exc}",
+            ) from exc
+    raise HTTPException(status_code=502, detail=f"Pipeline node unavailable at {url}: {last_error}")
+
+
 def _json_safe(value: Any) -> Any:
     """Recursively replace non-finite floats (NaN/Inf) with None for JSON safety."""
     if isinstance(value, float):
