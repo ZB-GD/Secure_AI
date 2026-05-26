@@ -48,7 +48,7 @@ export default function LabScenarioIntro({ item, onStartLab, onSelectItem }) {
     >
       <Sidebar
         item={scenarioItem}
-        width={360}
+        width={sidebarWidth}
         onCompleteScenario={() => onStartLab?.(item.id)}
         onSelectItem={onSelectItem}
       />

@@ -287,15 +287,15 @@ export default function ScenarioGuide({ item, onComplete, onSelectItem }) {
                 disabled={!selectedOption}
                 style={{
                   flex: 1, padding: "16px", borderRadius: "8px", border: "none",
-                  background: selectedOption ? "var(--blue)" : "var(--bg-surface)", 
-                  color: selectedOption ? "#fff" : "var(--text-3)", 
+                  background: selectedOption ? "var(--blue)" : "var(--bg-surface)",
+                  color: selectedOption ? "#fff" : "var(--text-3)",
                   fontSize: "12px", fontWeight: 700, cursor: selectedOption ? "pointer" : "not-allowed",
                   textTransform: "uppercase", transition: "background 0.2s"
                 }}
               >
                 Submit Assessment
               </button>
-            ) : (
+            ) : isCorrect ? (
               <button
                 onClick={onComplete}
                 style={{
@@ -305,8 +305,23 @@ export default function ScenarioGuide({ item, onComplete, onSelectItem }) {
                   textTransform: "uppercase", boxShadow: "0 4px 15px rgba(74,222,128,0.2)"
                 }}
               >
-                <span>{isCorrect ? "Complete Phase" : "Acknowledge & Continue"}</span>
+                <span>Complete Phase</span>
                 <span style={{ fontSize: "16px" }}>→</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedOption(null);
+                  setIsCorrect(null);
+                }}
+                style={{
+                  flex: 1, padding: "16px", borderRadius: "8px", border: "1px solid var(--orange-border)",
+                  background: "rgba(249,115,22,0.08)", color: "var(--orange)", fontSize: "12px", fontWeight: 700,
+                  cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px",
+                  textTransform: "uppercase",
+                }}
+              >
+                <span>← Try Again</span>
               </button>
             )}
           </div>

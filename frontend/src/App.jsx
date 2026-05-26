@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
 
@@ -22,8 +22,8 @@ function isStepAnswerValid(step, answer) {
   if (!step) return false;
   const value = (answer || "").toLowerCase().trim();
   if (!value) return false;
-  return (step.expectedKeywords || []).some((kw) =>
-    value.includes(kw.toLowerCase()),
+  return (step.expectedKeywords || []).some(
+    (kw) => value === kw.toLowerCase().trim()
   );
 }
 
@@ -95,6 +95,7 @@ export default function App() {
     if (itemId === "dashboard") {
       setActiveDocPath(null);
       setActiveItemId("dashboard");
+      window.history.pushState({}, "", "/");
       return;
     }
 
@@ -120,6 +121,7 @@ export default function App() {
 
     setActiveDocPath(null);
     setActiveItemId(itemId);
+    window.history.pushState({}, "", "/");
   }
 
     function getLabIdForScenarioId(scenarioId, list = items) {
@@ -274,6 +276,22 @@ export default function App() {
     setActiveDocPath(null);
     setActiveItemId(itemId);
   }
+  // BUG 5: sync React state when the browser back/forward button changes the URL
+  useEffect(() => {
+    function handlePopState() {
+      const path = window.location.pathname;
+      if (path === "/docs" || path.startsWith("/docs/")) {
+        const params = new URLSearchParams(window.location.search);
+        setActiveDocPath(params.get("id") || null);
+        setActiveItemId("docs");
+      } else {
+        setActiveItemId("dashboard");
+      }
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const currentStep =
     activeItem.type === "lab"
       ? activeItem?.guide?.steps?.[activeItem.currentStepIndex] || null
@@ -289,9 +307,6 @@ export default function App() {
       ? isStepAnswerValid(currentStep, currentAnswer)
       : false;
 
-  const showValidation =
-    activeItem.type === "lab" ? activeItem.showValidation ?? false : false;
-
   return (
     <MainLayout
       items={items}
@@ -299,7 +314,6 @@ export default function App() {
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
-      showValidation={showValidation}
       onSelectItem={handleSelectItem}
       onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}
