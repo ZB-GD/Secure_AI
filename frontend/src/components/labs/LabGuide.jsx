@@ -1,29 +1,14 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { request } from "../../services/apiClient"
 import { labService } from "../../services/labService"
 
-function escapeRegExp(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
 function isValid(step, answer) {
   if (!step) return false
-
   const value = (answer || "").toLowerCase().trim()
   if (!value) return false
-
-  return (step.expectedKeywords || []).some((kw) => {
-    const keyword = kw.toLowerCase().trim()
-
-    // For phrases, allow plain text matching.
-    if (keyword.includes(" ")) {
-      return value.includes(keyword)
-    }
-
-    // Si es una sola palabra, exigimos palabra completa
-    const regex = new RegExp(`(^|\\b)${escapeRegExp(keyword)}(\\b|$)`, "i")
-    return regex.test(value)
-  })
+  return (step.expectedKeywords || []).some(
+    (kw) => value === kw.toLowerCase().trim()
+  )
 }
 
 function CommandBlock({ command, labId }) {
@@ -133,7 +118,7 @@ function InstructionText({ text, labId }) {
       continue
     }
 
-    if (/^(curl|cat|python3|gedit)\s+/.test(line)) {
+    if (/^(curl|cat|python3?|gedit|ls|sudo|chmod|cd|nano|vim|vi|grep|touch|mkdir|rm|cp|mv|echo|bash|sh|pip3?|apt(?:-get)?|systemctl|docker|git)\s+/.test(line)) {
       flushParagraph()
       commandLines.push(line)
       continue
@@ -193,7 +178,9 @@ export default function LabGuide({
   const [tutorAnswer, setTutorAnswer] = useState("")
   const [tutorLoading, setTutorLoading] = useState(false)
   const [tutorError, setTutorError] = useState("")
+  const contentScrollRef = useRef(null)
 
+  // UX: scroll to top and reset local state on every step change
   useEffect(() => {
     setShowHint(false)
     setAnswerTouched(false)
@@ -201,6 +188,7 @@ export default function LabGuide({
     setTutorQuestion(currentStep?.title || "")
     setTutorAnswer("")
     setTutorError("")
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }, [currentStep?.id, currentStep?.title])
 
 
@@ -333,6 +321,7 @@ export default function LabGuide({
       </div>
 
       <div
+        ref={contentScrollRef}
         style={{
           flex: 1,
           padding: "24px",
@@ -476,39 +465,42 @@ export default function LabGuide({
           <InstructionText text={currentStep.body} labId={item.id} />
         </div>
 
-        <div
-          style={{
-            background: "rgba(249,115,22,0.05)",
-            padding: "16px",
-            borderRadius: "8px",
-            border: "1px solid var(--orange-border)",
-          }}
-        >
+        {currentStep.observation && (
           <div
             style={{
-              fontSize: "10px",
-              color: "var(--orange)",
-              letterSpacing: "0.1em",
-              marginBottom: "8px",
+              background: "rgba(249,115,22,0.05)",
+              padding: "16px",
+              borderRadius: "8px",
+              border: "1px solid var(--orange-border)",
             }}
           >
-            OBSERVATION
-          </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--orange)",
+                letterSpacing: "0.1em",
+                marginBottom: "8px",
+              }}
+            >
+              OBSERVATION
+            </div>
 
-          <p
-            style={{
-              fontSize: "14px",
-              lineHeight: "1.7",
-              color: "var(--text-2)",
-            }}
-          >
-            {currentStep.observation}
-          </p>
-        </div>
+            <p
+              style={{
+                fontSize: "14px",
+                lineHeight: "1.7",
+                color: "var(--text-2)",
+              }}
+            >
+              {currentStep.observation}
+            </p>
+          </div>
+        )}
 
         {currentStep.hint && (
           <div>
             <button
+              type="button"
               onClick={() => setShowHint(!showHint)}
               style={{
                 background: "transparent",
@@ -628,7 +620,7 @@ export default function LabGuide({
                 color: "var(--red)",
               }}
             >
-              Incorrect or incomplete answer. Please review your workspace.
+              Incorrect answer.{currentStep.placeholder ? ` Try: ${currentStep.placeholder}` : " Review your workspace and try again."}
             </div>
           )}
         </div>

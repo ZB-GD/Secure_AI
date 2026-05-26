@@ -186,6 +186,24 @@ export default function LabDashboard({ items, onSelectItem }) {
         >
           {labs.map((lab) => {
             const available = lab.guide?.steps?.length > 0;
+            const inProgress = available && !!lab.startedAt && !lab.completed;
+            const totalSteps = lab.guide?.steps?.length ?? 0;
+            const currentStep = (lab.currentStepIndex ?? 0) + 1;
+            const stepProgress = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
+
+            let badgeColor = "var(--text-3)";
+            let badgeBorder = "var(--border-dim)";
+            let badgeLabel = available ? "READY" : "COMING SOON";
+
+            if (lab.completed) {
+              badgeColor = "var(--green)";
+              badgeBorder = "var(--green-border)";
+              badgeLabel = "COMPLETE";
+            } else if (inProgress) {
+              badgeColor = "var(--blue)";
+              badgeBorder = "rgba(56,189,248,0.35)";
+              badgeLabel = "IN PROGRESS";
+            }
 
             return (
               <button
@@ -199,7 +217,9 @@ export default function LabDashboard({ items, onSelectItem }) {
                   borderRadius: "8px",
                   border: lab.completed
                     ? "1px solid var(--green-border)"
-                    : "1px solid var(--border-dim)",
+                    : inProgress
+                      ? "1px solid rgba(56,189,248,0.25)"
+                      : "1px solid var(--border-dim)",
                   background: "var(--bg-panel)",
                   padding: "18px",
                   cursor: available ? "pointer" : "not-allowed",
@@ -210,7 +230,7 @@ export default function LabDashboard({ items, onSelectItem }) {
                   gap: "14px",
                 }}
               >
-                <div>
+                <div style={{ width: "100%" }}>
                   <div
                     style={{
                       display: "flex",
@@ -231,23 +251,15 @@ export default function LabDashboard({ items, onSelectItem }) {
                     </span>
                     <span
                       style={{
-                        color: lab.completed
-                          ? "var(--green)"
-                          : available
-                            ? "var(--text-3)"
-                            : "var(--orange)",
-                        border: `1px solid ${
-                          lab.completed
-                            ? "var(--green-border)"
-                            : "var(--border-dim)"
-                        }`,
+                        color: badgeColor,
+                        border: `1px solid ${badgeBorder}`,
                         borderRadius: "999px",
                         padding: "3px 8px",
                         fontSize: "10px",
                         fontFamily: "var(--font-display)",
                       }}
                     >
-                      {lab.completed ? "COMPLETE" : available ? "READY" : "COMING SOON"}
+                      {badgeLabel}
                     </span>
                   </div>
 
@@ -274,6 +286,105 @@ export default function LabDashboard({ items, onSelectItem }) {
                   </p>
                 </div>
 
+                {/* Progress bar — IN PROGRESS */}
+                {inProgress && (
+                  <div style={{ width: "100%" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "6px",
+                        fontSize: "10px",
+                        fontFamily: "var(--font-display)",
+                        color: "var(--text-3)",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      <span>GUIDE PROGRESS</span>
+                      <span style={{ color: "var(--blue)" }}>
+                        Step {currentStep}/{totalSteps}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: "3px",
+                        background: "var(--bg-surface)",
+                        borderRadius: "3px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${stepProgress}%`,
+                          background: "var(--blue)",
+                          borderRadius: "3px",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Quiz score — COMPLETE */}
+                {lab.completed && lab.quizScore?.total > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "10px",
+                        fontFamily: "var(--font-display)",
+                        color: "var(--text-3)",
+                        letterSpacing: "0.08em",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      QUIZ SCORE
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: "3px",
+                        background: "var(--bg-surface)",
+                        borderRadius: "3px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${lab.quizScore.percent}%`,
+                          background:
+                            lab.quizScore.percent >= 75
+                              ? "var(--green)"
+                              : "var(--orange)",
+                          borderRadius: "3px",
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        fontFamily: "var(--font-display)",
+                        color:
+                          lab.quizScore.percent >= 75
+                            ? "var(--green)"
+                            : "var(--orange)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {lab.quizScore.correct}/{lab.quizScore.total}
+                    </div>
+                  </div>
+                )}
               </button>
             );
           })}

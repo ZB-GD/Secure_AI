@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { labService } from "../services/labService";
 
 const DEFAULT_RUNTIME = {
@@ -120,6 +120,8 @@ export function useLabRuntime(labId, options = {}) {
   const [runtime,       setRuntime]       = useState(DEFAULT_RUNTIME);
   const [logs,          setLogs]          = useState([]);
 
+  const restartAttemptsRef = useRef(0);
+
   // Refresh isolated runtime status.
   const refreshStatus = useCallback(async () => {
     if (!labId) return;
@@ -197,6 +199,7 @@ export function useLabRuntime(labId, options = {}) {
     setRemoteError("");
     setLogs([]);
     setRuntime(DEFAULT_RUNTIME);
+    restartAttemptsRef.current = 0;
 
     if (autoStart && labId) startRuntime();
     // startRuntime identity changes whenever labId changes (same trigger), so
@@ -206,9 +209,17 @@ export function useLabRuntime(labId, options = {}) {
 
   // Recover when a redeploy or cleanup stops the disposable lab while the page
   // remains open. Otherwise noVNC keeps reconnecting to a dead host port.
+  // Capped at 3 attempts to prevent an infinite restart loop when the container
+  // repeatedly fails to become ready.
   useEffect(() => {
     if (!autoStart || !labId || remoteLoading || remoteError) return;
-    if (runtime.statusLabel === "not found") startRuntime();
+    if (runtime.statusLabel !== "not found") {
+      restartAttemptsRef.current = 0;
+      return;
+    }
+    if (restartAttemptsRef.current >= 3) return;
+    restartAttemptsRef.current += 1;
+    startRuntime();
   }, [autoStart, labId, remoteLoading, remoteError, runtime.statusLabel, startRuntime]);
 
   // Poll isolated container logs.

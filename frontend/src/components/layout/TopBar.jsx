@@ -61,21 +61,33 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
       id: "home",
       label: "DASHBOARD",
       disabled: !investigationStarted,
+      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
     },
     {
       id: "scenarios",
       label: "PIPELINE",
       disabled: !investigationStarted || !pipelineUnlocked,
+      tooltip: !investigationStarted
+        ? "Complete the briefing to unlock"
+        : !pipelineUnlocked
+          ? "Complete Lab 1 to unlock the pipeline view"
+          : undefined,
     },
     {
       id: "labs",
       label: currentLabLabel,
-      disabled: !investigationStarted || !firstAvailableLab,
+      disabled: !investigationStarted || !lastUnlockedLab,
+      tooltip: !investigationStarted
+        ? "Complete the briefing to unlock"
+        : !lastUnlockedLab
+          ? "Start a lab from the Dashboard to unlock"
+          : undefined,
     },
     {
       id: "docs",
       label: "DOC",
       disabled: !investigationStarted,
+      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
     },
   ];
 
@@ -236,6 +248,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 type="button"
                 onClick={() => handleTabClick(tab)}
                 disabled={isDisabled}
+                title={tab.tooltip}
                 style={{
                   padding: "12px 24px",
                   border: "none",
