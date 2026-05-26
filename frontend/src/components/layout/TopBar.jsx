@@ -12,20 +12,26 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
   );
 
-  const [navView, setNavView] = useState("home");
-
   const investigationStarted = items.some(
     (item) => item.id === "scenario-0" && item.completed,
   );
 
   const unlockedLabs = labs.filter((lab) => lab.scenarioViewed);
-  const hasUnlockedLabs = unlockedLabs.length > 0;
   const lastUnlockedLab = unlockedLabs[unlockedLabs.length - 1] || null;
+
+  const firstAvailableLab =
+    labs.find((lab) => lab.guide?.steps?.length) || labs[0] || null;
+
+  const pipelineUnlocked = items.some(
+    (item) => item.id === "scenario-1" && item.completed,
+  );
 
   const currentLab =
     activeItem?.type === "lab"
       ? activeItem
-      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab;
+      : labs.find((lab) => lab.id === lastLabId) || lastUnlockedLab || null;
+
+  const labTabTarget = currentLab || lastUnlockedLab || firstAvailableLab;
 
   const isActuallyInsideLab = activeItem?.type === "lab";
 
@@ -34,98 +40,95 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
       ? `LAB - ${currentLab.shortTitle.replace(/^Lab\s*/i, "")} ${currentLab.title}`
       : "LABS";
 
+  const activeNavId =
+  activeItem?.type === "docs" || activeId === "docs"
+    ? "docs"
+    : activeItem?.type === "lab"
+      ? "labs"
+      : activeItem?.id === "scenario-1" || activeItem?.type === "pipeline"
+        ? "scenarios"
+        : "home";
+
   useEffect(() => {
     if (activeItem?.type !== "lab") return;
-
     setLastLabId(activeItem.id);
     localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
   }, [activeItem]);
 
-  useEffect(() => {
-    if (!activeId) return;
-
-    if (activeItem?.id === "scenario-1") {
-      setNavView("scenarios");
-      return;
-    }
-
-    if (activeItem?.type === "lab") {
-      setNavView("labs");
-      return;
-    }
-
-    if (activeItem?.type === "docs" || activeId === "docs") {
-      setNavView("docs");
-      return;
-    }
-
-    if (activeId === "dashboard" || activeItem?.type === "welcome") {
-      setNavView("home");
-    }
-  }, [activeId, activeItem?.type]);
 
   const navTabs = [
     {
       id: "home",
       label: "DASHBOARD",
       disabled: !investigationStarted,
+      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
     },
     {
       id: "scenarios",
       label: "PIPELINE",
-      disabled: !investigationStarted,
+      disabled: !investigationStarted || !pipelineUnlocked,
+      tooltip: !investigationStarted
+        ? "Complete the briefing to unlock"
+        : !pipelineUnlocked
+          ? "Complete Lab 1 to unlock the pipeline view"
+          : undefined,
     },
     {
       id: "labs",
       label: currentLabLabel,
-      disabled: !investigationStarted || !hasUnlockedLabs,
+      disabled: !investigationStarted || !lastUnlockedLab,
+      tooltip: !investigationStarted
+        ? "Complete the briefing to unlock"
+        : !lastUnlockedLab
+          ? "Start a lab from the Dashboard to unlock"
+          : undefined,
     },
     {
       id: "docs",
       label: "DOC",
       disabled: !investigationStarted,
+      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
     },
   ];
 
-  function goHome() {
-    if (investigationStarted) {
-      setNavView("home");
-      onSelectItem("dashboard");
-      return;
+    function goHome() {
+      if (investigationStarted) {
+        onSelectItem("dashboard");
+        return;
+      }
+
+      onSelectItem("scenario-0");
     }
 
-    setNavView("home");
-    onSelectItem("scenario-0");
-  }
+    function handleTabClick(tab) {
+      if (tab.disabled) return;
 
-  function handleTabClick(tab) {
-    if (tab.disabled) return;
+      if (tab.id === "home") {
+        onSelectItem("dashboard");
+        return;
+      }
 
-    if (tab.id === "home") {
-      setNavView("home");
-      onSelectItem("dashboard");
-      return;
+      if (tab.id === "scenarios") {
+        if (!pipelineUnlocked) return;
+        onSelectItem("scenario-1");
+        return;
+      }
+
+      if (tab.id === "labs") {
+        if (!labTabTarget) return;
+        onSelectItem(labTabTarget.id);
+        return;
+      }
+
+      if (tab.id === "docs") {
+        onSelectItem({
+          id: "docs",
+          type: "docs",
+          docPath: null,
+          docId: null,
+        });
+      }
     }
-
-    if (tab.id === "labs") {
-      if (!currentLab) return;
-
-      setNavView("labs");
-      onSelectItem(currentLab.id);
-      return;
-    }
-
-    if (tab.id === "scenarios") {
-      setNavView("scenarios");
-      onSelectItem("scenario-1");
-      return;
-    }
-
-    if (tab.id === "docs") {
-      setNavView("docs");
-      onSelectItem("docs");
-    }
-  }
 
   return (
     <header
@@ -226,7 +229,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           }}
         >
           {navTabs.map((tab, index) => {
-            const isActive = navView === tab.id;
+            const isActive = activeNavId === tab.id;
             const isScenarioTab = tab.id === "scenarios";
             const isDocsTab = tab.id === "docs";
             const isDisabled = Boolean(tab.disabled);
@@ -245,6 +248,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 type="button"
                 onClick={() => handleTabClick(tab)}
                 disabled={isDisabled}
+                title={tab.tooltip}
                 style={{
                   padding: "12px 24px",
                   border: "none",

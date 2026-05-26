@@ -20,7 +20,11 @@ export default function Sidebar(props) {
     >
       <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         {item.type === "scenario" ? (
-          <ScenarioGuide item={item} onComplete={props.onCompleteScenario} />
+          <ScenarioGuide
+          item={item}
+          onComplete={props.onCompleteScenario}
+          onSelectItem={props.onSelectItem}
+        />
         ) : (
           <LabGuide
             item={item}

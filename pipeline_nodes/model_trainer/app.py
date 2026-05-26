@@ -198,16 +198,12 @@ def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
     new_dist = poisoned.loc[idx, TARGET_COL].value_counts().to_dict()
 
     log.append(
-        f"[DRIFT] Pre-retrain tampering: {n_poison}/{len(df)} rows "
-        f"— traffic_volume scaled to {DRIFT_VOL_SCALE*100:.0f}% of original"
+        f"[DRIFT] {n_poison}/{len(df)} rows tampered — "
+        f"traffic_volume scaled to {DRIFT_VOL_SCALE*100:.0f}%"
     )
     log.append(
-        f"[DRIFT] Label shift on poisoned rows: "
+        f"[DRIFT] Label shift: "
         f"{dict(sorted(original_dist.items()))} → {dict(sorted(new_dist.items()))}"
-    )
-    log.append(
-        "[DRIFT] Effect: model will learn low volume = normal — "
-        "will predict 'free' or 'moderate' during actual heavy congestion"
     )
     return poisoned
 
@@ -232,14 +228,8 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
 
     # ── 2. Drift injection (vulnerable only) ─────────────────────────────────
     if mode == "vulnerable":
-        log.append(
-            "[SUPPLY CHAIN] /retrain endpoint has no authentication — "
-            "any client can replace the production model"
-        )
-        log.append(
-            "[SUPPLY CHAIN] No training data provenance check — "
-            "feature store integrity unverified before retrain"
-        )
+        log.append("[SUPPLY CHAIN] /retrain unauthenticated — any client can trigger retraining")
+        log.append("[SUPPLY CHAIN] No training data provenance check")
         log.append("[VULN] Skipping pre-retrain data integrity audit")
         df = _inject_drift(df, log)
     else:
@@ -285,9 +275,7 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
 
     if mode == "vulnerable":
         log.append(
-            "[SUPPLY CHAIN] SHA256 report updated to match poisoned artifact — "
-            "N3 integrity check will PASS despite degraded model behavior; "
-            "hash verification alone cannot detect training data poisoning"
+            "[SUPPLY CHAIN] SHA256 updated to match poisoned artifact — integrity check will pass"
         )
 
     log.append(
@@ -370,7 +358,13 @@ init_db()
 @server.post("/store")
 def store(req: StoreRequest):
     n = store_features(req.feature_rows)
-    return {"stored": n}
+    total = row_count()
+    log = [
+        f"[STORE] Received {len(req.feature_rows)} feature rows from Edge node",
+        f"[DB] {n} rows written — {total} total rows in feature store",
+        f"[DB] Path: {DB_PATH.name}",
+    ]
+    return {"stored": n, "total_rows": total, "log": log}
 
 
 @server.post("/retrain")

@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /node
 
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 120 --retries 10 -r requirements.txt
 
 # Copy only this node's files and local dataset
 COPY pipeline_nodes/sensor_data/app.py    ./app.py

@@ -220,29 +220,74 @@ function DocDetailView({ doc, onBack }) {
     </div>
   );
 }
+  function normalizeDocId(value) {
+  if (!value) return null;
 
-// ─── MAIN COMPONENT ─────────────
-export default function DocsPage() {
-  const [activeDoc, setActiveDoc] = useState(null);
+  // Si ya viene como "owasp-ml02"
+  if (!String(value).includes("?") && !String(value).includes("/")) {
+    return value;
+  }
+
+  // Si viene como "/docs?id=owasp-ml02"
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.searchParams.get("id");
+  } catch {
+    return null;
+  }
+}
+
+function getDocById(docId) {
+  if (!docId) return null;
+  return FRAMEWORK_DOCS.find((doc) => doc.id === docId) || null;
+}
+
+function getDocIdFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get("id");
+}
+
+export default function DocsPage({ initialDocPath = null, initialDocId = null }) {
+  const requestedDocId =
+    normalizeDocId(initialDocId) ||
+    normalizeDocId(initialDocPath) ||
+    getDocIdFromUrl();
+
+  const [activeDoc, setActiveDoc] = useState(() => getDocById(requestedDocId));
 
   useEffect(() => {
-    // 1. Leemos la URL buscando un "?id=..."
-    const urlParams = new URLSearchParams(window.location.search);
-    const docId = urlParams.get("id");
+    const nextDocId =
+      normalizeDocId(initialDocId) ||
+      normalizeDocId(initialDocPath) ||
+      getDocIdFromUrl();
 
-    // 2. Si hay un ID, buscamos esa vulnerabilidad en la base de datos
-    if (docId) {
-      const docToOpen = FRAMEWORK_DOCS.find((doc) => doc.id === docId);
-      // 3. Si la encontramos, la abrimos automáticamente
-      if (docToOpen) {
-        setActiveDoc(docToOpen);
-      }
+    setActiveDoc(getDocById(nextDocId));
+  }, [initialDocId, initialDocPath]);
+
+  useEffect(() => {
+    function syncDocFromUrl() {
+      setActiveDoc(getDocById(getDocIdFromUrl()));
     }
+
+    window.addEventListener("popstate", syncDocFromUrl);
+
+    return () => {
+      window.removeEventListener("popstate", syncDocFromUrl);
+    };
   }, []);
 
-  if (activeDoc) {
-    return <DocDetailView doc={activeDoc} onBack={() => setActiveDoc(null)} />;
-  }
+
+    if (activeDoc) {
+      return (
+        <DocDetailView
+          doc={activeDoc}
+          onBack={() => {
+            window.history.pushState({}, "", "/docs");
+            setActiveDoc(null);
+          }}
+        />
+      );
+    }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", background: "var(--bg-base)" }}>
@@ -264,7 +309,14 @@ export default function DocsPage() {
           gap: "24px"
         }}>
           {FRAMEWORK_DOCS.map((doc) => (
-            <FrameworkCard key={doc.id} doc={doc} onClick={() => setActiveDoc(doc)} />
+            <FrameworkCard
+            key={doc.id}
+            doc={doc}
+            onClick={() => {
+              window.history.pushState({}, "", `/docs?id=${doc.id}`);
+              setActiveDoc(doc);
+            }}
+          />
           ))}
         </div>
       </div>
