@@ -119,6 +119,8 @@ export default function RuntimeLogsPanel({
               <div
                 key={`${index}-${line}`}
                 style={{
+                  display: "flex",
+                  gap: "12px",
                   marginBottom: "4px",
                   color: line.includes("[ERROR]")
                     ? "var(--red)"
@@ -131,7 +133,18 @@ export default function RuntimeLogsPanel({
                         : "var(--text-2)",
                 }}
               >
-                {line}
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: "2.4em",
+                    textAlign: "right",
+                    color: "var(--text-3)",
+                    userSelect: "none",
+                  }}
+                >
+                  {String(index + 1).padStart(3, "0")}
+                </span>
+                <span>{line}</span>
               </div>
             ))
           ) : (

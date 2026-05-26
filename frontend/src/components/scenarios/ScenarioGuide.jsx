@@ -22,7 +22,7 @@ const THEORETICAL_BASES = {
   }
 };
 
-export default function ScenarioGuide({ item, onComplete }) {
+export default function ScenarioGuide({ item, onComplete, onSelectItem }) {
   // "briefing" shows the story & theory. "assessment" shows the question.
   const [view, setView] = useState("briefing"); 
   const [selectedOption, setSelectedOption] = useState(null);
@@ -45,6 +45,33 @@ export default function ScenarioGuide({ item, onComplete }) {
       setIsCorrect(option.correct);
     }
   };
+
+
+
+    function openTheoryDoc(event) {
+      if (!theory.link) return;
+
+      // Si no llega onSelectItem, dejamos que el href funcione como fallback.
+      if (!onSelectItem) return;
+
+      event.preventDefault();
+
+      const targetUrl = new URL(theory.link, window.location.origin);
+      const docId = targetUrl.searchParams.get("id");
+
+      onSelectItem({
+        id: "docs",
+        type: "docs",
+        docPath: docId,
+        docId: docId,
+      });
+
+      //BORARR LUEGO
+      console.log("Opening theory doc:", {
+        hasOnSelectItem: Boolean(onSelectItem),
+        theoryLink: theory.link,
+      });
+    }
 
   return (
     <div style={{
@@ -95,36 +122,37 @@ export default function ScenarioGuide({ item, onComplete }) {
                 <h3 style={{ margin: 0, fontSize: "10px", color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
                   <span>📚</span> Theoretical Foundation
                 </h3>
-               <a 
-                  href={theory.link}
-                  title="Open in Threat Intelligence Center"
-                  style={{ 
-                    fontSize: "9px", 
-                    background: "rgba(167,139,250,0.15)", 
-                    color: "#a78bfa", 
-                    padding: "3px 8px", 
-                    borderRadius: "10px", 
-                    fontFamily: "var(--font-mono)", 
-                    fontWeight: "bold",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                    border: "1px solid transparent",
-                    transition: "all 0.2s ease",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(167,139,250,0.25)";
-                    e.currentTarget.style.borderColor = "rgba(167,139,250,0.4)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(167,139,250,0.15)";
-                    e.currentTarget.style.borderColor = "transparent";
-                  }}
-                >
-                  {theory.reference} <span style={{fontSize: "11px"}}>→</span>
-                </a>
+                <a
+                href={theory.link || "/docs"}
+                onClick={openTheoryDoc}
+                title="Open in Threat Intelligence Center"
+                style={{
+                  fontSize: "9px",
+                  background: "rgba(167,139,250,0.15)",
+                  color: "#a78bfa",
+                  padding: "3px 8px",
+                  borderRadius: "10px",
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: "bold",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  border: "1px solid transparent",
+                  transition: "all 0.2s ease",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(167,139,250,0.25)";
+                  e.currentTarget.style.borderColor = "rgba(167,139,250,0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(167,139,250,0.15)";
+                  e.currentTarget.style.borderColor = "transparent";
+                }}
+              >
+                {theory.reference} <span style={{ fontSize: "11px" }}>→</span>
+              </a>
               </div>
               <strong style={{ display: "block", fontSize: "13px", color: "var(--text-1)", marginBottom: "6px" }}>
                 {theory.topic}
@@ -154,7 +182,6 @@ export default function ScenarioGuide({ item, onComplete }) {
             <button
               onClick={() => {
                 setView("briefing");
-                setShowHint(false); // Ocultamos la pista si volvemos atrás
               }}
               style={{
                 background: "transparent",
@@ -260,15 +287,15 @@ export default function ScenarioGuide({ item, onComplete }) {
                 disabled={!selectedOption}
                 style={{
                   flex: 1, padding: "16px", borderRadius: "8px", border: "none",
-                  background: selectedOption ? "var(--blue)" : "var(--bg-surface)", 
-                  color: selectedOption ? "#fff" : "var(--text-3)", 
+                  background: selectedOption ? "var(--blue)" : "var(--bg-surface)",
+                  color: selectedOption ? "#fff" : "var(--text-3)",
                   fontSize: "12px", fontWeight: 700, cursor: selectedOption ? "pointer" : "not-allowed",
                   textTransform: "uppercase", transition: "background 0.2s"
                 }}
               >
                 Submit Assessment
               </button>
-            ) : (
+            ) : isCorrect ? (
               <button
                 onClick={onComplete}
                 style={{
@@ -278,8 +305,23 @@ export default function ScenarioGuide({ item, onComplete }) {
                   textTransform: "uppercase", boxShadow: "0 4px 15px rgba(74,222,128,0.2)"
                 }}
               >
-                <span>{isCorrect ? "Complete Phase" : "Acknowledge & Continue"}</span>
+                <span>Complete Phase</span>
                 <span style={{ fontSize: "16px" }}>→</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedOption(null);
+                  setIsCorrect(null);
+                }}
+                style={{
+                  flex: 1, padding: "16px", borderRadius: "8px", border: "1px solid var(--orange-border)",
+                  background: "rgba(249,115,22,0.08)", color: "var(--orange)", fontSize: "12px", fontWeight: 700,
+                  cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px",
+                  textTransform: "uppercase",
+                }}
+              >
+                <span>← Try Again</span>
               </button>
             )}
           </div>

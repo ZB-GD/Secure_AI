@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
 
@@ -22,53 +22,93 @@ function isStepAnswerValid(step, answer) {
   if (!step) return false;
   const value = (answer || "").toLowerCase().trim();
   if (!value) return false;
-  return (step.expectedKeywords || []).some((kw) =>
-    value.includes(kw.toLowerCase()),
+  return (step.expectedKeywords || []).some(
+    (kw) => value === kw.toLowerCase().trim()
   );
 }
 
 export default function App() {
   const [items, setItems] = useState(() => bootJourney(seedJourney));
   const [activeItemId, setActiveItemId] = useState("scenario-0");
+  const [activeDocPath, setActiveDocPath] = useState(null);
 
-  const activeItem = useMemo(
-    () =>
-      activeItemId === "dashboard"
-        ? {
-            id: "dashboard",
-            type: "dashboard",
-            shortTitle: "Dashboard",
-            phase: "Lab Selection",
-            title: "SecLabs Dashboard",
-            subtitle: "Choose a lab to begin.",
-            threatStage: "E",
-          }
-        : items.find((item) => item.id === activeItemId) || items[0],
-    [items, activeItemId],
-  );
+  const activeItem = useMemo(() => {
+    if (activeItemId === "dashboard") {
+      return {
+        id: "dashboard",
+        type: "dashboard",
+        shortTitle: "Dashboard",
+        phase: "Lab Selection",
+        title: "SecLabs Dashboard",
+        subtitle: "Choose a lab to begin.",
+        threatStage: "E",
+      };
+    }
+    if (activeItemId === "docs") {
+      return {
+        id: "docs",
+        type: "docs",
+        shortTitle: "Docs",
+        phase: "Reference",
+        title: "Security Reference",
+        threatStage: null,
+        docPath: activeDocPath,
+      };
+    }
+    return items.find((item) => item.id === activeItemId) || items[0];
+  }, [items, activeItemId, activeDocPath]);
 
   function hasInvestigationStarted(list = items) {
     return list.some((item) => item.id === "scenario-0" && item.completed);
   }
 
-  function handleSelectItem(itemId) {
+  function handleSelectItem(rawId) {
     const investigationStarted = hasInvestigationStarted();
 
-    // Before pressing INITIALIZE INVESTIGATION, navigation is blocked.
-    if (!investigationStarted && itemId !== "scenario-0") {
+    // Support both string and object: { id, type, docPath? }
+    const isObject = rawId !== null && typeof rawId === "object";
+    const itemId = isObject ? rawId.id : rawId;
+
+    // Docs: lives outside the journey array
+    if (itemId === "docs" || (isObject && rawId.type === "docs")) {
+      if (!investigationStarted) return;
+
+      const docId = isObject
+        ? rawId.docId || rawId.docPath || null
+        : null;
+
+      setActiveDocPath(docId);
+      setActiveItemId("docs");
+
+      window.history.pushState(
+        {},
+        "",
+        docId ? `/docs?id=${encodeURIComponent(docId)}` : "/docs",
+      );
+
       return;
     }
 
+    // Before investigation starts, only scenario-0 is reachable
+    if (!investigationStarted && itemId !== "scenario-0") return;
+
     if (itemId === "dashboard") {
+      setActiveDocPath(null);
       setActiveItemId("dashboard");
+      window.history.pushState({}, "", "/");
       return;
     }
 
     const target = items.find((item) => item.id === itemId);
     if (!target || target.locked) return;
 
-    // Secondary scenarios (except scenario-1/pipeline) are opened only from
-    // their own lab flow, not from the top navigation.
+    // PIPELINE solo se puede abrir después de completar el escenario previo.
+    // Antes de eso, scenario-1 solo debe aparecer dentro del flujo del Lab 1.
+    if (target.id === "scenario-1" && !target.completed) {
+      return;
+    }
+
+    // Secondary scenarios only opened from their own lab flow
     if (
       target.type === "scenario" &&
       target.id !== "scenario-0" &&
@@ -79,23 +119,63 @@ export default function App() {
 
     if (target.type === "lab" && !target.guide?.steps?.length) return;
 
+    setActiveDocPath(null);
     setActiveItemId(itemId);
+    window.history.pushState({}, "", "/");
   }
 
-  function handleCompleteScenario() {
-    const currentId = activeItemId;
+    function getLabIdForScenarioId(scenarioId, list = items) {
+      const labId = scenarioId.replace(/^scenario-/, "lab-");
+      const labExists = list.some(
+        (item) => item.id === labId && item.type === "lab",
+      );
 
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === currentId ? { ...item, completed: true } : item,
-      ),
-    );
-
-    // Completing the welcome screen takes us straight to the dashboard.
-    if (currentId === "scenario-0") {
-      setActiveItemId("dashboard");
+      return labExists ? labId : null;
     }
-  }
+
+    function handleCompleteScenario() {
+      const currentId = activeItemId;
+
+      if (currentId === "scenario-0") {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === currentId ? { ...item, completed: true } : item,
+          ),
+        );
+
+        setActiveDocPath(null);
+        setActiveItemId("dashboard");
+        return;
+      }
+
+      const targetLabId = getLabIdForScenarioId(currentId);
+
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id === currentId) {
+            return {
+              ...item,
+              completed: true,
+            };
+          }
+
+          if (targetLabId && item.id === targetLabId) {
+            return {
+              ...item,
+              scenarioViewed: true,
+              startedAt: item.startedAt || new Date().toISOString(),
+            };
+          }
+
+          return item;
+        }),
+      );
+
+      if (targetLabId) {
+        setActiveDocPath(null);
+        setActiveItemId(targetLabId);
+      }
+    }
 
   function handleAnswerChange(stepId, value) {
     setItems((prev) =>
@@ -142,11 +222,7 @@ export default function App() {
       const isLast =
         current.currentStepIndex === current.guide.steps.length - 1;
       if (isLast) {
-        next[idx] = {
-          ...current,
-          guideCompleted: true,
-          showValidation: false,
-        };
+        next[idx] = { ...current, guideCompleted: true, showValidation: false };
         return next;
       }
 
@@ -173,22 +249,48 @@ export default function App() {
       ),
     );
   }
-
   function handleStartLab(itemId) {
+    const scenarioId = itemId.replace(/^lab-/, "scenario-");
+
     setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              scenarioViewed: true,
-              startedAt: item.startedAt || new Date().toISOString(),
-            }
-          : item,
-      ),
+      prev.map((item) => {
+        if (item.id === itemId) {
+          return {
+            ...item,
+            scenarioViewed: true,
+            startedAt: item.startedAt || new Date().toISOString(),
+          };
+        }
+
+        if (item.id === scenarioId) {
+          return {
+            ...item,
+            completed: true,
+          };
+        }
+
+        return item;
+      }),
     );
 
+    setActiveDocPath(null);
     setActiveItemId(itemId);
   }
+  // BUG 5: sync React state when the browser back/forward button changes the URL
+  useEffect(() => {
+    function handlePopState() {
+      const path = window.location.pathname;
+      if (path === "/docs" || path.startsWith("/docs/")) {
+        const params = new URLSearchParams(window.location.search);
+        setActiveDocPath(params.get("id") || null);
+        setActiveItemId("docs");
+      } else {
+        setActiveItemId("dashboard");
+      }
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const currentStep =
     activeItem.type === "lab"
@@ -205,11 +307,6 @@ export default function App() {
       ? isStepAnswerValid(currentStep, currentAnswer)
       : false;
 
-  // showValidation lives in the item state — pass it down so the guide
-  // can highlight the invalid answer field without duplicating state.
-  const showValidation =
-    activeItem.type === "lab" ? activeItem.showValidation ?? false : false;
-
   return (
     <MainLayout
       items={items}
@@ -217,7 +314,6 @@ export default function App() {
       currentStep={currentStep}
       currentAnswer={currentAnswer}
       currentAnswerValid={currentAnswerValid}
-      showValidation={showValidation}
       onSelectItem={handleSelectItem}
       onCompleteScenario={handleCompleteScenario}
       onAnswerChange={handleAnswerChange}

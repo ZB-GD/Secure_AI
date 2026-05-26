@@ -224,6 +224,7 @@ export default function RemoteDesktopPanel({
               key={iframeKey}
               title={`Remote Interface ${item.id}`}
               src={remoteUrl}
+              allow="clipboard-read; clipboard-write"
               style={{ width: "100%", height: "100%", border: "none" }}
             />
           </div>

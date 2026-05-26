@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import TopBar from "./TopBar";
 import Sidebar from "./Sidebar";
 import WorkspacePanel from "../workspace/WorkspacePanel";
 
-const SIDEBAR_MIN_WIDTH = 340;
-const SIDEBAR_MAX_WIDTH = 760;
-const SIDEBAR_DEFAULT_WIDTH = 480;
+const SIDEBAR_DEFAULT_WIDTH = 340;
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 600;
+
+function clampSidebarWidth(width) {
+  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), SIDEBAR_MAX_WIDTH);
+}
 
 function buildBreadcrumb(activeItem) {
   if (!activeItem) return ["Dashboard"];
@@ -48,7 +52,7 @@ function buildBreadcrumb(activeItem) {
   return ["Dashboard"];
 }
 
-function BreadcrumbStrip({ activeItem }) {
+function BreadcrumbStrip({ activeItem, onSelectItem }) {
   const crumbs = buildBreadcrumb(activeItem);
 
   return (
@@ -73,6 +77,7 @@ function BreadcrumbStrip({ activeItem }) {
     >
       {crumbs.map((crumb, index) => {
         const isLast = index === crumbs.length - 1;
+        const isDashboard = crumb === "Dashboard" && !isLast;
 
         return (
           <span
@@ -85,32 +90,36 @@ function BreadcrumbStrip({ activeItem }) {
               color: isLast ? "var(--text-1)" : "var(--text-3)",
             }}
           >
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {crumb}
-            </span>
+            {isDashboard ? (
+              <button
+                type="button"
+                onClick={() => onSelectItem?.("dashboard")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  color: "var(--text-3)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "10px",
+                  letterSpacing: "0.08em",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "3px",
+                }}
+              >
+                {crumb}
+              </button>
+            ) : (
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                {crumb}
+              </span>
+            )}
             {!isLast && <span style={{ color: "var(--text-3)" }}>{">"}</span>}
           </span>
         );
       })}
     </div>
   );
-}
-
-function clampSidebarWidth(width) {
-  const viewportMax =
-    typeof window === "undefined"
-      ? SIDEBAR_MAX_WIDTH
-      : Math.max(
-          SIDEBAR_MIN_WIDTH,
-          Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 520),
-        );
-
-  return Math.min(Math.max(width, SIDEBAR_MIN_WIDTH), viewportMax);
 }
 
 export default function MainLayout({
@@ -132,9 +141,22 @@ export default function MainLayout({
     return clampSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
   });
   const isResizingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
+  const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
   const isFullWidthBriefing = activeItem.id === "scenario-0";
-  const isScenario = activeItem.type === "scenario";
-  const showSidebar = !isFullWidthBriefing && isScenario;
+const isScenario = activeItem.type === "scenario";
+
+const isCompletedPipelineScenario =
+  activeItem.id === "scenario-1" && activeItem.completed;
+
+const showSidebar =
+  !isFullWidthBriefing && isScenario && !isCompletedPipelineScenario;
+
+  // Keep ref in sync so startResize always reads the latest width without deps
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
 
   const stopResize = useCallback(() => {
     if (!isResizingRef.current) return;
@@ -143,21 +165,19 @@ export default function MainLayout({
   }, []);
 
   const resizeGuide = useCallback((clientX) => {
-    setSidebarWidth((currentWidth) => {
-      const nextWidth = clampSidebarWidth(clientX);
-      return nextWidth === currentWidth ? currentWidth : nextWidth;
+    setSidebarWidth(() => {
+      const delta = clientX - dragStartXRef.current;
+      return clampSidebarWidth(dragStartWidthRef.current + delta);
     });
   }, []);
 
-  const startResize = useCallback(
-    (event) => {
-      event.preventDefault();
-      isResizingRef.current = true;
-      document.body.classList.add("is-resizing-layout");
-      resizeGuide(event.clientX);
-    },
-    [resizeGuide],
-  );
+  const startResize = useCallback((event) => {
+    event.preventDefault();
+    isResizingRef.current = true;
+    dragStartXRef.current = event.clientX;
+    dragStartWidthRef.current = sidebarWidthRef.current;
+    document.body.classList.add("is-resizing-layout");
+  }, []);
 
   useEffect(() => {
     function handlePointerMove(event) {
@@ -207,6 +227,8 @@ export default function MainLayout({
         onSelectItem={onSelectItem}
       />
 
+      <BreadcrumbStrip activeItem={activeItem} onSelectItem={onSelectItem} />
+
       <div
         style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}
       >
@@ -223,6 +245,7 @@ export default function MainLayout({
               onAnswerChange={onAnswerChange}
               onPrevStep={onPrevStep}
               onNextStep={onNextStep}
+              onSelectItem={onSelectItem}
             />
             <button
               type="button"
