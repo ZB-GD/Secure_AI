@@ -43,7 +43,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-from paths import MODELS_DIR, DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
+from paths import DB_PATH, CLEAN_MODEL_PATH, REPORT_PATH
 
 FEATURE_COLS = [
     "temp", "rain_1h", "snow_1h", "clouds_all",
