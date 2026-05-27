@@ -83,6 +83,7 @@ export default function WorkspacePanel({
         onPrevStep={onPrevStep}
         onNextStep={onNextStep}
         onCompleteLabQuiz={onCompleteLabQuiz}
+        onSelectItem={onSelectItem}
         onViewScenario={() => onSelectItem?.("scenario-1")}
       />
     );

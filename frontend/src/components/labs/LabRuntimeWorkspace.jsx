@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import RemoteDesktopPanel from "../workspace/RemoteDesktopPanel";
-import AttackControls from "./AttackControls";
 import LabMetrics from "./LabMetrics";
 import RuntimeLogsPanel from "./RuntimeLogsPanel";
 import { useLabRuntime } from "../../hooks/useLabRuntime";
@@ -73,13 +72,14 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
   );
 }
 
-function QuizTab({ item, phase, onComplete }) {
+function QuizTab({ item, phase, onComplete, onSelectItem }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [tutorFeedback, setTutorFeedback] = useState("");
   const [docLinks, setDocLinks] = useState([]);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorError, setTutorError] = useState("");
+  const [confirmRetry, setConfirmRetry] = useState(false);
 
   const feedbackRef = useRef(null);
 
@@ -189,6 +189,7 @@ function QuizTab({ item, phase, onComplete }) {
     setTutorFeedback("");
     setTutorError("");
     setDocLinks([]);
+    setConfirmRetry(false);
   }
 
   if (quiz.length === 0) {
@@ -302,10 +303,46 @@ function QuizTab({ item, phase, onComplete }) {
           >
             SUBMIT
           </button>
+        ) : confirmRetry ? (
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              type="button"
+              onClick={reset}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid var(--red)",
+                background: "var(--red-dim)",
+                color: "var(--red)",
+                fontSize: "10px",
+                fontFamily: "var(--font-display)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              YES, RETRY
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmRetry(false)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "6px",
+                border: "1px solid var(--border-dim)",
+                background: "transparent",
+                color: "var(--text-3)",
+                fontSize: "10px",
+                fontFamily: "var(--font-display)",
+                cursor: "pointer",
+              }}
+            >
+              CANCEL
+            </button>
+          </div>
         ) : (
           <button
             type="button"
-            onClick={reset}
+            onClick={() => item?.completed ? setConfirmRetry(true) : reset()}
             style={{
               padding: "8px 12px",
               borderRadius: "6px",
@@ -443,9 +480,17 @@ function QuizTab({ item, phase, onComplete }) {
                 }}
               >
                 {docLinks.map((link) => (
-                  <a
+                  <button
                     key={link.path}
-                    href={link.path}
+                    type="button"
+                    onClick={() =>
+                      onSelectItem?.({
+                        id: "docs",
+                        type: "docs",
+                        docId: link.path,
+                        docPath: link.path,
+                      })
+                    }
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -455,9 +500,11 @@ function QuizTab({ item, phase, onComplete }) {
                       background: "var(--bg-base)",
                       border: "1px solid var(--border-dim)",
                       color: "var(--blue)",
-                      textDecoration: "none",
                       fontSize: "10px",
                       fontFamily: "var(--font-display)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      width: "100%",
                     }}
                   >
                     <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
@@ -471,7 +518,7 @@ function QuizTab({ item, phase, onComplete }) {
                     >
                       docs →
                     </span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -500,6 +547,7 @@ function QuizTab({ item, phase, onComplete }) {
                 padding: "12px 14px",
                 borderBottom: "1px solid var(--border-dim)",
                 display: "flex",
+                alignItems: "flex-start",
                 justifyContent: "space-between",
                 gap: "12px",
               }}
@@ -511,6 +559,8 @@ function QuizTab({ item, phase, onComplete }) {
                   lineHeight: 1.6,
                   fontWeight: 600,
                   fontFamily: "var(--font-display)",
+                  flex: 1,
+                  minWidth: 0,
                 }}
               >
                 {questionIndex + 1}. {question.question}
@@ -519,28 +569,29 @@ function QuizTab({ item, phase, onComplete }) {
               {submitted && (
                 <span
                   style={{
-                    fontSize: "10px",
+                    fontSize: "12px",
                     fontWeight: 700,
-                    padding: "4px 10px",
-                    borderRadius: "12px",
+                    padding: "5px 14px",
+                    borderRadius: "6px",
                     flexShrink: 0,
+                    letterSpacing: "0.06em",
                     background:
                       selectedAnswer === question.correctAnswerIndex
-                        ? "var(--green-dim)"
-                        : "var(--red-dim)",
+                        ? "rgba(34,197,94,0.18)"
+                        : "rgba(248,113,113,0.18)",
                     color:
                       selectedAnswer === question.correctAnswerIndex
-                        ? "var(--green)"
-                        : "var(--red)",
+                        ? "#4ade80"
+                        : "#f87171",
                     border:
                       selectedAnswer === question.correctAnswerIndex
-                        ? "1px solid var(--green-border)"
-                        : "1px solid rgba(248,113,113,0.28)",
+                        ? "1px solid rgba(34,197,94,0.45)"
+                        : "1px solid rgba(248,113,113,0.45)",
                   }}
                 >
                   {selectedAnswer === question.correctAnswerIndex
-                    ? "CORRECT"
-                    : "WRONG"}
+                    ? "✓ CORRECT"
+                    : "✗ WRONG"}
                 </span>
               )}
             </div>
@@ -657,6 +708,7 @@ export default function LabRuntimeWorkspace({
   onPrevStep,
   onNextStep,
   onCompleteLabQuiz,
+  onSelectItem,
 }) {
   const [activeTab, setActiveTab] = useState("guide");
   const containerRef = useRef(null);
@@ -824,6 +876,7 @@ useEffect(() => {
                 item={item}
                 phase={item?.phase}
                 onComplete={onCompleteLabQuiz}
+                onSelectItem={onSelectItem}
               />
             )}
           </div>
