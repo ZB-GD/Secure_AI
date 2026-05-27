@@ -15,32 +15,38 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  // Tracks whether the quiz for the current activeItem has already been injected
+  const quizSentRef = useRef(false);
 
   // Auto-scroll al final del chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isOpen]);
 
-  // Manejo de los Quizzes automáticos
+  // Reset quiz injection flag when the active item changes
   useEffect(() => {
-    if (isOpen && activeItem?.quizzes?.length > 0) {
-      const hasQuizBeenSent = messages.some(m => m.type === "quiz");
-      if (!hasQuizBeenSent) {
-        const firstQuiz = activeItem.quizzes[0]; 
-        setMessages(prev => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "quiz",
-            question: firstQuiz.question,
-            options: firstQuiz.options,
-            correctAnswerIndex: firstQuiz.correctAnswerIndex,
-            explanation: firstQuiz.explanation
-          }
-        ]);
-      }
-    }
-  }, [isOpen, activeItem, messages]);
+    quizSentRef.current = false;
+  }, [activeItem?.id]);
+
+  // Inject the first quiz question once when the tutor opens (BUG 6: removed
+  // `messages` from deps to avoid re-running on every new chat message)
+  useEffect(() => {
+    if (!isOpen || quizSentRef.current) return;
+    if (!(activeItem?.quizzes?.length > 0)) return;
+    quizSentRef.current = true;
+    const firstQuiz = activeItem.quizzes[0];
+    setMessages(prev => [
+      ...prev,
+      {
+        role: "assistant",
+        type: "quiz",
+        question: firstQuiz.question,
+        options: firstQuiz.options,
+        correctAnswerIndex: firstQuiz.correctAnswerIndex,
+        explanation: firstQuiz.explanation,
+      },
+    ]);
+  }, [isOpen, activeItem]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -78,7 +84,7 @@ export default function RagTutorWidget({ phase, activeItem, placement = "floatin
     }
   };
 
-  const handleQuizAnswer = (messageIndex, selectedOptionIndex, correctOptionIndex, feedbackExp) => {
+  const handleQuizAnswer = (_messageIndex, selectedOptionIndex, correctOptionIndex, feedbackExp) => {
     const isCorrect = selectedOptionIndex === correctOptionIndex;
     setMessages((prev) => [
       ...prev,
@@ -142,8 +148,8 @@ const panelStyle = isTopbar
                           key={optIdx}
                           onClick={() => handleQuizAnswer(idx, optIdx, msg.correctAnswerIndex, msg.explanation)}
                           style={{ textAlign: "left", padding: "8px", background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "4px", color: "var(--text-2)", fontSize: "10px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseOver={(e) => e.target.style.borderColor = "var(--orange)"}
-                          onMouseOut={(e) => e.target.style.borderColor = "var(--border-dim)"}
+                          onMouseOver={(e) => e.currentTarget.style.borderColor = "var(--orange)"}
+                          onMouseOut={(e) => e.currentTarget.style.borderColor = "var(--border-dim)"}
                         >
                           {opt}
                         </button>
