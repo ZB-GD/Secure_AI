@@ -165,8 +165,11 @@ function DocDetailView({ doc, onBack }) {
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", background: "var(--bg-base)" }}>
       {/* Floating Top Bar */}
       <div style={{ position: "sticky", top: 0, padding: "16px 24px", background: "rgba(15,23,42,0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-dim)", zIndex: 10, display: "flex", alignItems: "center" }}>
-        <button onClick={onBack} style={{ background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "8px", padding: "8px 16px", color: "var(--text-1)", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", fontSize: "12px" }}>
-          <span>←</span> Back to Threat Center
+        <button onClick={onBack} style={{ background: "var(--bg-panel)", border: "1px solid var(--border-dim)", borderRadius: "8px", padding: "8px 16px", color: "var(--text-1)", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, fontSize: "14px", fontFamily: "var(--font-display)" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back to Threat Center
         </button>
       </div>
 
