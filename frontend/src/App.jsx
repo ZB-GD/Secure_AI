@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
+import LoginPage from "./pages/LoginPage";
+import { useAuth } from "./context/AuthContext";
+import ProfilePage from "./pages/ProfilePage";
 
 function bootJourney(items) {
   return items.map((item) => ({
@@ -28,11 +31,18 @@ function isStepAnswerValid(step, answer) {
 }
 
 export default function App() {
+  const { user } = useAuth();
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState("scenario-0");
+  const [activeItemId, setActiveItemId] = useState("dashboard");
   const [activeDocPath, setActiveDocPath] = useState(null);
 
   const activeItem = useMemo(() => {
+    if (activeItemId === "profile") {
+      return { id: "profile", type: "profile", shortTitle: "Profile", phase: "Account", title: "My Profile", threatStage: null };
+    }
+    if (activeItemId === "admin") {
+      return { id: "admin", type: "admin", shortTitle: "Admin", phase: "Admin", title: "Admin Panel", threatStage: null };
+    }
     if (activeItemId === "dashboard") {
       return {
         id: "dashboard",
@@ -58,44 +68,46 @@ export default function App() {
     return items.find((item) => item.id === activeItemId) || items[0];
   }, [items, activeItemId, activeDocPath]);
 
-  function hasInvestigationStarted(list = items) {
-    return list.some((item) => item.id === "scenario-0" && item.completed);
-  }
-
   function handleSelectItem(rawId) {
-    const investigationStarted = hasInvestigationStarted();
-
     // Support both string and object: { id, type, docPath? }
     const isObject = rawId !== null && typeof rawId === "object";
     const itemId = isObject ? rawId.id : rawId;
 
+    // Welcome screen: always navigable (e.g. logo click before investigation)
+    if (itemId === "welcome") {
+      setActiveDocPath(null);
+      setActiveItemId("welcome");
+      return;
+    }
+
+    // Profile: always accessible to logged-in users
+    if (itemId === "profile") {
+      setActiveDocPath(null);
+      setActiveItemId("profile");
+      return;
+    }
+
+    // Admin panel: always accessible to admin users (role check is server-side)
+    if (itemId === "admin") {
+      setActiveDocPath(null);
+      setActiveItemId("admin");
+      return;
+    }
+
     // Docs: lives outside the journey array
     if (itemId === "docs" || (isObject && rawId.type === "docs")) {
-      if (!investigationStarted) return;
-
       const docId = isObject
         ? rawId.docId || rawId.docPath || null
         : null;
 
       setActiveDocPath(docId);
       setActiveItemId("docs");
-
-      window.history.pushState(
-        {},
-        "",
-        docId ? `/docs?id=${encodeURIComponent(docId)}` : "/docs",
-      );
-
       return;
     }
-
-    // Before investigation starts, only scenario-0 is reachable
-    if (!investigationStarted && itemId !== "scenario-0") return;
 
     if (itemId === "dashboard") {
       setActiveDocPath(null);
       setActiveItemId("dashboard");
-      window.history.pushState({}, "", "/");
       return;
     }
 
@@ -109,11 +121,7 @@ export default function App() {
     }
 
     // Secondary scenarios only opened from their own lab flow
-    if (
-      target.type === "scenario" &&
-      target.id !== "scenario-0" &&
-      target.id !== "scenario-1"
-    ) {
+    if (target.type === "scenario" && target.id !== "scenario-1") {
       return;
     }
 
@@ -121,7 +129,6 @@ export default function App() {
 
     setActiveDocPath(null);
     setActiveItemId(itemId);
-    window.history.pushState({}, "", "/");
   }
 
     function getLabIdForScenarioId(scenarioId, list = items) {
@@ -135,18 +142,6 @@ export default function App() {
 
     function handleCompleteScenario() {
       const currentId = activeItemId;
-
-      if (currentId === "scenario-0") {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.id === currentId ? { ...item, completed: true } : item,
-          ),
-        );
-
-        setActiveDocPath(null);
-        setActiveItemId("dashboard");
-        return;
-      }
 
       const targetLabId = getLabIdForScenarioId(currentId);
 
@@ -276,21 +271,8 @@ export default function App() {
     setActiveDocPath(null);
     setActiveItemId(itemId);
   }
-  // BUG 5: sync React state when the browser back/forward button changes the URL
-  useEffect(() => {
-    function handlePopState() {
-      const path = window.location.pathname;
-      if (path === "/docs" || path.startsWith("/docs/")) {
-        const params = new URLSearchParams(window.location.search);
-        setActiveDocPath(params.get("id") || null);
-        setActiveItemId("docs");
-      } else {
-        setActiveItemId("dashboard");
-      }
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+
+  if (!user) return <LoginPage />;
 
   const currentStep =
     activeItem.type === "lab"

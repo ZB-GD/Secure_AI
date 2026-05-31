@@ -129,8 +129,8 @@ function FrameworkCard({ doc, onClick }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <span style={{
-            fontSize: "10px", fontWeight: 800, fontFamily: "var(--font-mono)",
-            letterSpacing: "0.15em", color: isOwasp ? "var(--text-1)" : c.text,
+            fontSize: "12px", fontWeight: 800, fontFamily: "var(--font-mono)",
+            color: isOwasp ? "var(--text-1)" : c.text,
             background: isOwasp ? "rgba(255,255,255,0.1)" : c.bg,
             padding: "4px 10px", borderRadius: "20px", width: "fit-content"
           }}>
@@ -144,14 +144,14 @@ function FrameworkCard({ doc, onClick }) {
 
       <div>
         <h3 style={{ fontSize: "18px", margin: "0 0 8px 0", color: "var(--text-1)" }}>{doc.title}</h3>
-        <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-3)", margin: 0, lineHeight: 1.65, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: "var(--font-display)" }}>
           {doc.summary}
         </p>
       </div>
 
       <div style={{ marginTop: "auto", paddingTop: "16px", borderTop: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "8px" }}>
         <span style={{ fontSize: "14px" }}>🔬</span>
-        <span style={{ fontSize: "11px", color: "var(--text-2)", fontFamily: "var(--font-mono)" }}>{doc.lab}</span>
+        <span style={{ fontSize: "13px", color: "var(--text-2)", fontFamily: "var(--font-display)" }}>{doc.lab}</span>
       </div>
     </button>
   );
@@ -173,7 +173,7 @@ function DocDetailView({ doc, onBack }) {
       <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", width: "100%" }}>
         {/* Document Header */}
         <div style={{ marginBottom: "40px" }}>
-          <span style={{ fontSize: "12px", fontWeight: 800, fontFamily: "var(--font-mono)", letterSpacing: "0.15em", color: c.text }}>
+          <span style={{ fontSize: "12px", fontWeight: 800, fontFamily: "var(--font-mono)", color: c.text }}>
             {doc.framework} STANDARD REFERENCE
           </span>
           <h1 style={{ fontSize: "42px", margin: "12px 0", color: "var(--text-1)", fontFamily: "var(--font-display)", lineHeight: 1.1 }}>
@@ -296,7 +296,7 @@ export default function DocsPage({ initialDocPath = null, initialDocId = null })
         <h1 style={{ margin: "0 0 10px 0", fontSize: "36px", fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text-1)", display: "flex", alignItems: "center", gap: "12px" }}>
           Threat Intelligence Center
         </h1>
-        <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "var(--text-3)", fontFamily: "var(--font-mono)", maxWidth: "600px", lineHeight: 1.6 }}>
+        <p style={{ margin: "0 0 20px 0", fontSize: "15px", color: "var(--text-2)", fontFamily: "var(--font-display)", lineHeight: 1.65 }}>
           Official repository of Artificial Intelligence vulnerabilities. All CityFlow labs are mapped and audited against international industry standards (OWASP and MITRE).
         </p>
       </div>

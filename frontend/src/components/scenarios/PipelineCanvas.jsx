@@ -70,10 +70,9 @@ export default function PipelineCanvas({
         <div
           style={{
             color: "var(--text-3)",
-            fontSize: 11,
+            fontSize: "14px",
             fontWeight: 600,
             fontFamily: "var(--font-mono)",
-            letterSpacing: "0.1em",
           }}
         >
           PIPELINE
@@ -89,24 +88,30 @@ export default function PipelineCanvas({
           padding: "4px 20px 10px",
         }}
       >
-        {phases.map((p, idx) => (
-          <div
-            key={p.id}
-            style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}
-          >
-            <PipelineNodeCard
-              node={p}
-              isActive={p.id === activeNodeId}
-              onClick={() => onNodeClick?.(p.id)}
-            />
-            {idx < phases.length - 1 && (
+        {phases.flatMap((p, idx) => {
+          const items = [
+            <div
+              key={p.id}
+              style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}
+            >
+              <PipelineNodeCard
+                node={p}
+                isActive={p.id === activeNodeId}
+                onClick={() => onNodeClick?.(p.id)}
+              />
+            </div>,
+          ];
+          if (idx < phases.length - 1) {
+            items.push(
               <Connector
+                key={`c-${p.id}`}
                 fromStatus={p.status}
                 toStatus={phases[idx + 1].status}
               />
-            )}
-          </div>
-        ))}
+            );
+          }
+          return items;
+        })}
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from typing import Any
-import json
 
 from api.services import pipeline_service
 
@@ -26,14 +25,6 @@ def proxy_retrain(payload: dict | None = None) -> Any:
 @router.get("/status")
 def proxy_status() -> Any:
     """Proxy a status/metrics request to the Trainer node."""
-    try:
-        # Perform a simple GET to the trainer's /status endpoint
-        import urllib.request
-        target = f"{pipeline_service._normalize_base_url(pipeline_service.TRAINER_URL)}/status"
-        with urllib.request.urlopen(target, timeout=5) as resp:
-            raw = resp.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return pipeline_service._get_json(
+        f"{pipeline_service._normalize_base_url(pipeline_service.TRAINER_URL)}/status"
+    )
