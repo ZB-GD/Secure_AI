@@ -46,25 +46,18 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                 : isActive
                   ? "var(--text-1)"
                   : "var(--text-3)",
-              fontSize: "10px",
-              letterSpacing: "0.10em",
+              fontSize: "14px",
+              fontWeight: 700,
               fontFamily: "var(--font-display)",
               cursor: locked ? "not-allowed" : "pointer",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              gap: "3px",
+              justifyContent: "center",
               transition: "all 0.15s",
               opacity: locked ? 0.4 : 1,
             }}
           >
-            <span style={{ fontSize: "14px" }}>{tab.icon}</span>
             {tab.label.toUpperCase()}
-            {tab.id === "quiz" && !quizUnlocked && (
-              <span style={{ fontSize: "10px", color: "var(--text-3)" }}>
-                LOCKED
-              </span>
-            )}
           </button>
         );
       })}
@@ -79,40 +72,39 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
   const [docLinks, setDocLinks] = useState([]);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorError, setTutorError] = useState("");
+  const [currentQ, setCurrentQ] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [confirmRetry, setConfirmRetry] = useState(false);
 
-  const feedbackRef = useRef(null);
-
   const quiz = Array.isArray(item?.quiz) ? item.quiz : [];
+  const question = quiz[currentQ];
+  const isLast = currentQ === quiz.length - 1;
 
   const answeredCount = quiz.filter((_, i) =>
     Object.prototype.hasOwnProperty.call(answers, i),
   ).length;
-
   const allAnswered = quiz.length > 0 && answeredCount === quiz.length;
-
   const correctCount = quiz.filter(
     (q, i) => answers[i] === q.correctAnswerIndex,
   ).length;
-
   const scoreRatio = quiz.length > 0 ? correctCount / quiz.length : 0;
 
-  function getOptions(question) {
-    if (Array.isArray(question?.options)) return question.options;
-    if (Array.isArray(question?.choices)) return question.choices;
-    if (Array.isArray(question?.answers)) return question.answers;
+  function getOptions(q) {
+    if (Array.isArray(q?.options)) return q.options;
+    if (Array.isArray(q?.choices)) return q.choices;
+    if (Array.isArray(q?.answers)) return q.answers;
     return [];
   }
 
-  function selectAnswer(questionIndex, optionIndex) {
+  function selectAnswer(optionIndex) {
     if (submitted) return;
-    setAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }));
+    setAnswers((prev) => ({ ...prev, [currentQ]: optionIndex }));
   }
 
   async function handleSubmit() {
     if (!allAnswered) return;
-
     setSubmitted(true);
+    setShowFeedback(true);
 
     if (scoreRatio >= 0.75) {
       onComplete?.(item.id, {
@@ -130,17 +122,15 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
     setDocLinks([]);
 
     const wrongAnswers = quiz
-      .map((question, index) => {
-        const options = getOptions(question);
+      .map((q, index) => {
+        const opts = getOptions(q);
         const selectedIndex = answers[index];
-
-        if (selectedIndex === question.correctAnswerIndex) return null;
-
+        if (selectedIndex === q.correctAnswerIndex) return null;
         return {
-          question: question.question,
-          student_answer: options[selectedIndex] ?? "No answer",
-          correct_answer: options[question.correctAnswerIndex] ?? "Unknown",
-          explanation: question.explanation ?? null,
+          question: q.question,
+          student_answer: opts[selectedIndex] ?? "No answer",
+          correct_answer: opts[q.correctAnswerIndex] ?? "Unknown",
+          explanation: q.explanation ?? null,
         };
       })
       .filter(Boolean);
@@ -156,28 +146,10 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
           wrong_answers: wrongAnswers,
         }),
       });
-
-      console.log("QUIZ FEEDBACK RESPONSE:", data);
-
       setTutorFeedback(data?.feedback ?? "");
       setDocLinks(Array.isArray(data?.doc_links) ? data.doc_links : []);
-
-      setTimeout(() => {
-        feedbackRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 150);
     } catch (err) {
-      console.error("QUIZ FEEDBACK ERROR:", err);
       setTutorError(`Tutor feedback unavailable: ${err.message}`);
-
-      setTimeout(() => {
-        feedbackRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 150);
     } finally {
       setTutorLoading(false);
     }
@@ -189,512 +161,212 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
     setTutorFeedback("");
     setTutorError("");
     setDocLinks([]);
+    setCurrentQ(0);
+    setShowFeedback(false);
     setConfirmRetry(false);
   }
 
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== "Enter" || submitted || showFeedback) return;
+      if (isLast) {
+        if (allAnswered) handleSubmit();
+      } else {
+        setCurrentQ((q) => Math.min(quiz.length - 1, q + 1));
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [submitted, showFeedback, isLast, allAnswered, currentQ, quiz.length]);
+
   if (quiz.length === 0) {
     return (
-      <div
-        style={{
-          padding: "32px 20px",
-          textAlign: "center",
-          color: "var(--text-3)",
-          fontSize: "14px",
-        }}
-      >
+      <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-3)", fontSize: "14px" }}>
         No questions are configured for this lab.
       </div>
     );
   }
 
+  const options = getOptions(question);
+  const selectedAnswer = answers[currentQ];
+
   return (
-    <div
-      style={{
-        height: "100%",
-        overflowY: "auto",
-        padding: "16px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "14px",
-      }}
-    >
-      {/* ── Header bar with score + submit/retry ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          padding: "12px 14px",
-          background: "var(--bg-elevated)",
-          borderRadius: "8px",
-          border: "1px solid var(--border-dim)",
-          position: "sticky",
-          top: 0,
-          zIndex: 5,
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: "20px",
-              fontWeight: 700,
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {submitted
-              ? `${correctCount}/${quiz.length}`
-              : `${answeredCount}/${quiz.length}`}
-          </div>
+    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-          <div
-            style={{
-              fontSize: "10px",
-              color: "var(--text-3)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {submitted ? "correct" : "answered"}
-          </div>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            height: "4px",
-            background: "var(--bg-surface)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: submitted
-                ? `${Math.round(scoreRatio * 100)}%`
-                : `${Math.round((answeredCount / quiz.length) * 100)}%`,
-              background: submitted
-                ? scoreRatio >= 0.75
-                  ? "var(--green)"
-                  : "var(--orange)"
-                : "var(--orange)",
-              transition: "width 0.25s ease",
-            }}
-          />
-        </div>
-
-        {!submitted ? (
+      {/* ── Progress header ── */}
+      <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        {quiz.map((_, i) => {
+          let bg = "var(--border-mid)";
+          if (answers[i] !== undefined && !submitted) bg = "var(--orange)";
+          if (submitted) bg = answers[i] === quiz[i].correctAnswerIndex ? "var(--green)" : "var(--red)";
+          if (!submitted && i === currentQ) bg = "var(--text-2)";
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setCurrentQ(i)}
+              style={{ width: "8px", height: "8px", borderRadius: "50%", background: bg, border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
+            />
+          );
+        })}
+        <span style={{ marginLeft: "auto", fontSize: "14px", color: "var(--text-3)", fontFamily: "var(--font-display)" }}>
+          {currentQ + 1} / {quiz.length}
+        </span>
+        {submitted && (
           <button
             type="button"
-            onClick={handleSubmit}
-            disabled={!allAnswered}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "none",
-              background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
-              color: allAnswered ? "#fff" : "var(--text-3)",
-              fontSize: "10px",
-              fontWeight: 700,
-              fontFamily: "var(--font-display)",
-              cursor: allAnswered ? "pointer" : "not-allowed",
-              whiteSpace: "nowrap",
-            }}
+            onClick={() => setShowFeedback(true)}
+            style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid var(--orange-border)", background: "var(--orange-dim)", color: "var(--orange)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-display)", cursor: "pointer" }}
           >
-            SUBMIT
+            Tutor Feedback
           </button>
+        )}
+      </div>
+
+      {/* ── Question + options ── */}
+      <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: "10px", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+          <div style={{ fontSize: "14px", color: "var(--text-1)", lineHeight: 1.65, fontWeight: 600, fontFamily: "var(--font-display)", flex: 1 }}>
+            {question.question}
+          </div>
+          {submitted && (
+            <span style={{
+              fontSize: "14px", fontWeight: 700, padding: "4px 12px", borderRadius: "6px", flexShrink: 0,
+              background: selectedAnswer === question.correctAnswerIndex ? "rgba(34,197,94,0.18)" : "rgba(248,113,113,0.18)",
+              color: selectedAnswer === question.correctAnswerIndex ? "#4ade80" : "#f87171",
+              border: selectedAnswer === question.correctAnswerIndex ? "1px solid rgba(34,197,94,0.45)" : "1px solid rgba(248,113,113,0.45)",
+            }}>
+              {selectedAnswer === question.correctAnswerIndex ? "✓ CORRECT" : "✗ WRONG"}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {options.map((option, optionIndex) => {
+            const isSelected = selectedAnswer === optionIndex;
+            const isCorrect = optionIndex === question.correctAnswerIndex;
+            let background = "var(--bg-base)";
+            let border = "var(--border-dim)";
+            let color = "var(--text-2)";
+            if (!submitted && isSelected) { background = "var(--orange-dim)"; border = "var(--orange-border)"; color = "var(--text-1)"; }
+            if (submitted && isCorrect) { background = "var(--green-dim)"; border = "var(--green-border)"; color = "var(--green)"; }
+            if (submitted && isSelected && !isCorrect) { background = "var(--red-dim)"; border = "rgba(248,113,113,0.28)"; color = "var(--red)"; }
+            return (
+              <button
+                key={optionIndex}
+                type="button"
+                onClick={() => selectAnswer(optionIndex)}
+                disabled={submitted}
+                style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left", padding: "10px 12px", borderRadius: "7px", border: `1px solid ${border}`, background, color, fontSize: "14px", lineHeight: 1.55, fontFamily: "var(--font-display)", cursor: submitted ? "default" : "pointer" }}
+              >
+                <span style={{ width: "20px", height: "20px", borderRadius: "999px", border: `1px solid ${isSelected ? "var(--orange)" : "var(--border-mid)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "14px", color: isSelected ? "var(--orange)" : "var(--text-3)" }}>
+                  {String.fromCharCode(65 + optionIndex)}
+                </span>
+                <span>{option}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {submitted && question.explanation && (
+          <div style={{ padding: "10px 14px", borderRadius: "7px", border: "1px solid var(--border-dim)", background: "rgba(56,189,248,0.04)", fontSize: "14px", color: "var(--text-2)", lineHeight: 1.65 }}>
+            {question.explanation}
+          </div>
+        )}
+      </div>
+
+      {/* ── Navigation footer ── */}
+      <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => setCurrentQ((q) => Math.max(0, q - 1))}
+          disabled={currentQ === 0}
+          style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: currentQ === 0 ? "var(--text-3)" : "var(--text-2)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-display)", cursor: currentQ === 0 ? "not-allowed" : "pointer", opacity: currentQ === 0 ? 0.4 : 1, display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}><polyline points="15 18 9 12 15 6"/></svg> PREV
+        </button>
+        <div style={{ flex: 1 }} />
+        {!submitted ? (
+          isLast ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!allAnswered}
+              style={{ padding: "8px 16px", borderRadius: "6px", border: "none", background: allAnswered ? "var(--orange)" : "var(--bg-surface)", color: allAnswered ? "#fff" : "var(--text-3)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-display)", cursor: allAnswered ? "pointer" : "not-allowed" }}
+            >
+              SUBMIT
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCurrentQ((q) => Math.min(quiz.length - 1, q + 1))}
+              style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-display)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+            >
+              NEXT <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )
         ) : confirmRetry ? (
           <div style={{ display: "flex", gap: "6px" }}>
-            <button
-              type="button"
-              onClick={reset}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid var(--red)",
-                background: "var(--red-dim)",
-                color: "var(--red)",
-                fontSize: "10px",
-                fontFamily: "var(--font-display)",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              YES, RETRY
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmRetry(false)}
-              style={{
-                padding: "8px 10px",
-                borderRadius: "6px",
-                border: "1px solid var(--border-dim)",
-                background: "transparent",
-                color: "var(--text-3)",
-                fontSize: "10px",
-                fontFamily: "var(--font-display)",
-                cursor: "pointer",
-              }}
-            >
-              CANCEL
-            </button>
+            <button type="button" onClick={reset} style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--red)", background: "var(--red-dim)", color: "var(--red)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>YES, RETRY</button>
+            <button type="button" onClick={() => setConfirmRetry(false)} style={{ padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-3)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>CANCEL</button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => item?.completed ? setConfirmRetry(true) : reset()}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid var(--border-dim)",
-              background: "transparent",
-              color: "var(--text-2)",
-              fontSize: "10px",
-              fontFamily: "var(--font-display)",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <button type="button" onClick={() => (item?.completed ? setConfirmRetry(true) : reset())} style={{ padding: "8px 12px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>
             RETRY
           </button>
         )}
       </div>
 
-      {/* ── Tutor feedback block ── */}
-      {submitted && (
-        <div
-          ref={feedbackRef}
-          style={{
-            border: "1px solid var(--border-dim)",
-            borderRadius: "10px",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 14px",
-              background: "var(--bg-elevated)",
-              borderBottom: "1px solid var(--border-dim)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: tutorFeedback
-                  ? "var(--green)"
-                  : tutorLoading
-                    ? "var(--orange)"
-                    : tutorError
-                      ? "var(--red)"
-                      : "var(--text-3)",
-              }}
-            />
-
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "var(--text-1)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              TUTOR — Personalized feedback
+      {/* ── Tutor feedback overlay ── */}
+      {showFeedback && (
+        <div style={{ position: "absolute", inset: 0, background: "var(--bg-panel)", zIndex: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, background: "var(--bg-elevated)" }}>
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0, background: tutorFeedback ? "var(--green)" : tutorLoading ? "var(--orange)" : tutorError ? "var(--red)" : "var(--text-3)" }} />
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-display)" }}>TUTOR FEEDBACK</span>
+            <span style={{ marginLeft: "auto", fontSize: "14px", color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)", fontFamily: "var(--font-display)" }}>
+              {correctCount}/{quiz.length} — {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
             </span>
-
-            <span
-              style={{
-                marginLeft: "auto",
-                fontSize: "10px",
-                color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              {Math.round(scoreRatio * 100)}% —{" "}
-              {scoreRatio >= 0.75 ? "PASSED" : "REVIEW NEEDED"}
-            </span>
+            <button type="button" onClick={() => setShowFeedback(false)} style={{ width: "28px", height: "28px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-3)", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
           </div>
 
-          <div style={{ padding: "14px 16px", minHeight: "80px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
             {tutorLoading && (
-              <div
-                style={{
-                  color: "var(--text-3)",
-                  fontSize: "14px",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                Analyzing your answers...
-              </div>
+              <div style={{ color: "var(--text-3)", fontSize: "14px", fontFamily: "var(--font-display)" }}>Analyzing your answers...</div>
             )}
-
             {tutorError && (
-              <div
-                style={{
-                  color: "var(--red)",
-                  fontSize: "14px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {tutorError}
-              </div>
+              <div style={{ color: "var(--red)", fontSize: "14px", lineHeight: 1.6 }}>{tutorError}</div>
             )}
-
             {tutorFeedback && (
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--text-1)",
-                  lineHeight: 1.75,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {tutorFeedback}
+              <div style={{ fontSize: "14px", color: "var(--text-1)", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>{tutorFeedback}</div>
+            )}
+            {docLinks.length > 0 && (
+              <div>
+                <div style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "8px" }}>FURTHER READING</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {docLinks.map((link) => (
+                    <button key={link.path} type="button" onClick={() => { setShowFeedback(false); onSelectItem?.({ id: "docs", type: "docs", docId: link.path, docPath: link.path }); }} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "6px", background: "var(--bg-base)", border: "1px solid var(--border-dim)", color: "var(--blue)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer", textAlign: "left", width: "100%" }}>
+                      <span style={{ opacity: 0.6 }}>◈</span>
+                      {link.title}
+                      <span style={{ marginLeft: "auto", fontSize: "14px", color: "var(--text-3)" }}>
+                        docs <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}><polyline points="9 18 15 12 9 6"/></svg>
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {docLinks.length > 0 && (
-            <div style={{ padding: "0 16px 14px" }}>
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "var(--text-3)",
-                  letterSpacing: "0.12em",
-                  marginBottom: "8px",
-                }}
-              >
-                FURTHER READING
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
-                {docLinks.map((link) => (
-                  <button
-                    key={link.path}
-                    type="button"
-                    onClick={() =>
-                      onSelectItem?.({
-                        id: "docs",
-                        type: "docs",
-                        docId: link.path,
-                        docPath: link.path,
-                      })
-                    }
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      background: "var(--bg-base)",
-                      border: "1px solid var(--border-dim)",
-                      color: "var(--blue)",
-                      fontSize: "10px",
-                      fontFamily: "var(--font-display)",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      width: "100%",
-                    }}
-                  >
-                    <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
-                    {link.title}
-                    <span
-                      style={{
-                        marginLeft: "auto",
-                        fontSize: "10px",
-                        color: "var(--text-3)",
-                      }}
-                    >
-                      docs →
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border-dim)", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
+            <button type="button" onClick={() => setShowFeedback(false)} style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>
+              Review Answers
+            </button>
+            <button type="button" onClick={reset} style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>
+              RETRY
+            </button>
+          </div>
         </div>
       )}
-
-      {/* ── Questions ── */}
-      {quiz.map((question, questionIndex) => {
-        const options = getOptions(question);
-        const selectedAnswer = answers[questionIndex];
-
-        return (
-          <section
-            key={`${question.question}-${questionIndex}`}
-            style={{
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-dim)",
-              borderRadius: "10px",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: "12px 14px",
-                borderBottom: "1px solid var(--border-dim)",
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "12px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--text-1)",
-                  lineHeight: 1.6,
-                  fontWeight: 600,
-                  fontFamily: "var(--font-display)",
-                  flex: 1,
-                  minWidth: 0,
-                }}
-              >
-                {questionIndex + 1}. {question.question}
-              </div>
-
-              {submitted && (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    padding: "5px 14px",
-                    borderRadius: "6px",
-                    flexShrink: 0,
-                    letterSpacing: "0.06em",
-                    background:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "rgba(34,197,94,0.18)"
-                        : "rgba(248,113,113,0.18)",
-                    color:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "#4ade80"
-                        : "#f87171",
-                    border:
-                      selectedAnswer === question.correctAnswerIndex
-                        ? "1px solid rgba(34,197,94,0.45)"
-                        : "1px solid rgba(248,113,113,0.45)",
-                  }}
-                >
-                  {selectedAnswer === question.correctAnswerIndex
-                    ? "✓ CORRECT"
-                    : "✗ WRONG"}
-                </span>
-              )}
-            </div>
-
-            <div
-              style={{
-                padding: "12px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-            >
-              {options.map((option, optionIndex) => {
-                const isSelected = selectedAnswer === optionIndex;
-                const isCorrect = optionIndex === question.correctAnswerIndex;
-
-                let background = "var(--bg-base)";
-                let border = "var(--border-dim)";
-                let color = "var(--text-2)";
-
-                if (!submitted && isSelected) {
-                  background = "var(--orange-dim)";
-                  border = "var(--orange-border)";
-                  color = "var(--text-1)";
-                }
-
-                if (submitted && isCorrect) {
-                  background = "var(--green-dim)";
-                  border = "var(--green-border)";
-                  color = "var(--green)";
-                }
-
-                if (submitted && isSelected && !isCorrect) {
-                  background = "var(--red-dim)";
-                  border = "rgba(248,113,113,0.28)";
-                  color = "var(--red)";
-                }
-
-                return (
-                  <button
-                    key={`${questionIndex}-${optionIndex}`}
-                    type="button"
-                    onClick={() => selectAnswer(questionIndex, optionIndex)}
-                    disabled={submitted}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "10px",
-                      textAlign: "left",
-                      padding: "10px 12px",
-                      borderRadius: "7px",
-                      border: `1px solid ${border}`,
-                      background,
-                      color,
-                      fontSize: "14px",
-                      lineHeight: 1.55,
-                      fontFamily: "var(--font-display)",
-                      cursor: submitted ? "default" : "pointer",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "999px",
-                        border: `1px solid ${
-                          isSelected ? "var(--orange)" : "var(--border-mid)"
-                        }`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        fontSize: "10px",
-                        color: isSelected ? "var(--orange)" : "var(--text-3)",
-                      }}
-                    >
-                      {String.fromCharCode(65 + optionIndex)}
-                    </span>
-
-                    <span>{option}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {submitted && question.explanation && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  borderTop: "1px solid var(--border-dim)",
-                  background: "rgba(56,189,248,0.04)",
-                  fontSize: "14px",
-                  color: "var(--text-2)",
-                  lineHeight: 1.65,
-                }}
-              >
-                {question.explanation}
-              </div>
-            )}
-          </section>
-        );
-      })}
     </div>
   );
 }
@@ -727,33 +399,27 @@ export default function LabRuntimeWorkspace({
   );
   useInitialRightWidth(containerRef, hasUserResized, setRightWidth);
 
-  const {
-    remoteUrl,
-    remoteLoading,
-    remoteError,
-    retryRuntime,
-    runtime,
-    logs,
-  } = useLabRuntime(item?.id, {
-    autoStart: true,
-    pollIntervalMs: 3000,
-    logPollIntervalMs: 1200,
-    logLimit: 200,
-  });
+  const { remoteUrl, remoteLoading, remoteError, retryRuntime, runtime, logs } =
+    useLabRuntime(item?.id, {
+      autoStart: true,
+      pollIntervalMs: 3000,
+      logPollIntervalMs: 1200,
+      logLimit: 200,
+    });
 
   const quizUnlocked = Boolean(item?.guideCompleted);
 
   const previousGuideCompleted = useRef(Boolean(item?.guideCompleted));
 
-useEffect(() => {
-  const isNowCompleted = Boolean(item?.guideCompleted);
+  useEffect(() => {
+    const isNowCompleted = Boolean(item?.guideCompleted);
 
-  if (!previousGuideCompleted.current && isNowCompleted) {
-    setActiveTab("quiz");
-  }
+    if (!previousGuideCompleted.current && isNowCompleted) {
+      setActiveTab("quiz");
+    }
 
-  previousGuideCompleted.current = isNowCompleted;
-}, [item?.guideCompleted]);
+    previousGuideCompleted.current = isNowCompleted;
+  }, [item?.guideCompleted]);
 
   return (
     <div
@@ -868,9 +534,7 @@ useEffect(() => {
                 statusLabel={runtime.statusLabel}
               />
             )}
-            {activeTab === "metrics" && (
-              <LabMetrics runtime={runtime} />
-            )}
+            {activeTab === "metrics" && <LabMetrics runtime={runtime} />}
             {activeTab === "quiz" && quizUnlocked && (
               <QuizTab
                 item={item}

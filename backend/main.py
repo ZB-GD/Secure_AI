@@ -3,30 +3,17 @@ from pathlib import Path
 import subprocess
 import sys
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from api.routes import health, labs, logs, pipeline, trainer, tutor
 from api.services import docker_service
+from api.auth.database import init_db
+from api.auth.dependencies import get_current_user
+from api.auth.router import router as auth_router
+from api.auth.service import seed_admin
 
 app = FastAPI(title="SecLabs Backend API", version="0.1.0")
-
-# ── API key protection ────────────────────────────────────────────────────────
-_API_KEY = os.getenv("API_KEY", "")
-
-
-@app.middleware("http")
-async def verify_api_key(request: Request, call_next):
-    if not _API_KEY:
-        return await call_next(request)
-    # Allow CORS preflight and the health probe used for URL resolution
-    if request.method == "OPTIONS" or request.url.path == "/health":
-        return await call_next(request)
-    if request.headers.get("X-API-Key") != _API_KEY:
-        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
-    return await call_next(request)
-
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 _raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
@@ -35,7 +22,7 @@ _origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -67,15 +54,29 @@ def _ensure_models_ready() -> None:
 
 
 @app.on_event("startup")
-def _startup_bootstrap_models() -> None:
+def _startup() -> None:
+    init_db()
+
+    admin_email = os.getenv("ADMIN_EMAIL", "")
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    if admin_email and admin_password:
+        seed_admin(admin_email, admin_password)
+    else:
+        print("[AUTH] ADMIN_EMAIL / ADMIN_PASSWORD not set — admin account not seeded.")
+
     _ensure_models_ready()
     docker_service.start_lab_cleanup_thread()
 
 
 # ── Routers ───────────────────────────────────────────────────────────────────
+# Public: auth (login/register handled internally) and health probe.
+app.include_router(auth_router)
 app.include_router(health.router, tags=["Health"])
-app.include_router(labs.router, prefix="/labs", tags=["Labs"])
-app.include_router(logs.router, prefix="/logs", tags=["Logs"])
-app.include_router(pipeline.router, prefix="/api")
-app.include_router(tutor.router, prefix="/api/rag", tags=["Tutor RAG"])
-app.include_router(trainer.router, prefix="/api/trainer", tags=["Trainer"])
+
+# All operational routes require a valid JWT.
+_auth = [Depends(get_current_user)]
+app.include_router(labs.router, prefix="/labs", tags=["Labs"], dependencies=_auth)
+app.include_router(logs.router, prefix="/logs", tags=["Logs"], dependencies=_auth)
+app.include_router(pipeline.router, prefix="/api", dependencies=_auth)
+app.include_router(tutor.router, prefix="/api/rag", tags=["Tutor RAG"], dependencies=_auth)
+app.include_router(trainer.router, prefix="/api/trainer", tags=["Trainer"], dependencies=_auth)
