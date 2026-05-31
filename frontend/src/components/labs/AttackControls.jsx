@@ -19,9 +19,8 @@ export default function AttackControls({
     >
       <div
         style={{
-          fontSize: "10px",
+          fontSize: "12px",
           color: "var(--red)",
-          letterSpacing: "0.15em",
           marginBottom: "12px",
           fontWeight: "bold",
         }}
@@ -47,7 +46,7 @@ export default function AttackControls({
             <div style={{ flex: 1 }}>
               <label
                 style={{
-                  fontSize: "10px",
+                  fontSize: "12px",
                   color: "var(--text-3)",
                   marginBottom: "4px",
                   display: "block",
@@ -65,7 +64,7 @@ export default function AttackControls({
                   color: "var(--text-3)",
                   padding: "8px",
                   borderRadius: "6px",
-                  fontSize: "10px",
+                  fontSize: "12px",
                   fontFamily: "var(--font-display)",
                 }}
               />
@@ -74,7 +73,7 @@ export default function AttackControls({
             <div style={{ width: "140px" }}>
               <label
                 style={{
-                  fontSize: "10px",
+                  fontSize: "12px",
                   color: "var(--text-3)",
                   marginBottom: "4px",
                   display: "block",
@@ -92,7 +91,7 @@ export default function AttackControls({
                   color: "var(--red)",
                   padding: "8px",
                   borderRadius: "6px",
-                  fontSize: "10px",
+                  fontSize: "12px",
                   fontFamily: "var(--font-display)",
                   textAlign: "center",
                   fontWeight: "bold",
@@ -132,7 +131,7 @@ export default function AttackControls({
         >
           <div
             style={{
-              fontSize: "10px",
+              fontSize: "12px",
               color: "var(--red)",
               fontWeight: "bold",
               marginBottom: "6px",

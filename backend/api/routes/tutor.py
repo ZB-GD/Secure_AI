@@ -18,6 +18,21 @@ class ChatRequest(BaseModel):
     context: str = ""
 
 
+class WrongAnswer(BaseModel):
+    question: str
+    student_answer: str
+    correct_answer: str
+    explanation: str | None = None
+
+
+class QuizFeedbackRequest(BaseModel):
+    lab_id: str
+    phase: str
+    score: int
+    total: int
+    wrong_answers: list[WrongAnswer]
+
+
 def _post_json(url: str, payload: dict[str, Any]) -> dict:
     body = json.dumps(payload).encode("utf-8")
     request = Request(
@@ -43,3 +58,8 @@ def _post_json(url: str, payload: dict[str, Any]) -> dict:
 @router.post("/chat")
 async def chat_with_tutor(request: ChatRequest):
     return _post_json(f"{RAG_SERVICE_URL}/chat", request.model_dump())
+
+
+@router.post("/quiz-feedback")
+async def quiz_feedback(request: QuizFeedbackRequest):
+    return _post_json(f"{RAG_SERVICE_URL}/quiz-feedback", request.model_dump())

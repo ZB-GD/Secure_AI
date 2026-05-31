@@ -7,8 +7,6 @@ const API_BASE_URL_CANDIDATES = [
   "http://localhost:8000",
 ].filter((u) => u !== undefined && u !== null);
 
-const _API_KEY = import.meta.env.VITE_API_KEY || "";
-
 // ── Runtime identity ──────────────────────────────────────────────────────────
 let runtimeSessionId = "";
 
@@ -62,14 +60,20 @@ export async function request(path, options = {}) {
   const baseUrl = await getApiBaseUrl();
   const { headers, ...restOptions } = options;
 
+  const token = localStorage.getItem("seclabs:token") || "";
+
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(_API_KEY ? { "X-API-Key": _API_KEY } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers || {}),
     },
     ...restOptions,
   });
+
+  if (response.status === 401) {
+    window.dispatchEvent(new CustomEvent("seclabs:auth:expired"));
+  }
 
   if (!response.ok) {
     let message = `Error ${response.status}`;

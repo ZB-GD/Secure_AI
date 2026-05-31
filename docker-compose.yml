@@ -135,12 +135,17 @@ services:
       - PYTHONUNBUFFERED=1
       - RAG_SERVICE_URL=http://tutor-rag:8010
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
-      - API_KEY=${API_KEY:-}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE_HOURS=${JWT_EXPIRE_HOURS:-8}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@seclabs.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - AUTH_DB_DIR=/app/auth-db
       - MAX_CONCURRENT_LABS=${MAX_CONCURRENT_LABS:-20}
       - LAB_HEARTBEAT_TIMEOUT_SECONDS=${LAB_HEARTBEAT_TIMEOUT_SECONDS:-180}
       - LAB_CLEANUP_INTERVAL_SECONDS=${LAB_CLEANUP_INTERVAL_SECONDS:-30}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - auth-db:/app/auth-db
     networks:
       - seclabs-network
     depends_on:
@@ -225,3 +230,4 @@ networks:
 volumes:
   model-store:
   trainer-db:
+  auth-db:
