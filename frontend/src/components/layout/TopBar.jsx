@@ -1,19 +1,184 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import RagTutorWidget from "../workspace/RagTutorWidget";
+import { useAuth } from "../../context/AuthContext";
 
 const LAST_LAB_STORAGE_KEY = "seclabs:last-lab-id";
 
-export default function TopBar({ items, activeItem, onSelectItem }) {
+function AccountMenu({ user, isAdmin, onSelectItem, logout }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const initial = user?.email?.[0]?.toUpperCase() || "?";
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const menuItem = (label, onClick, opts = {}) => (
+    <button
+      key={label}
+      type="button"
+      onClick={() => {
+        onClick();
+        setOpen(false);
+      }}
+      style={{
+        width: "100%",
+        padding: "11px 18px",
+        border: "none",
+        background: "transparent",
+        color: opts.danger ? "#f87171" : "var(--text-1)",
+        fontFamily: "var(--font-display)",
+        fontSize: "15px",
+        textAlign: "left",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        transition: "background 0.1s",
+        borderRadius: "6px",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = opts.danger
+          ? "rgba(239,68,68,0.08)"
+          : "rgba(255,255,255,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      {opts.icon && (
+        <span style={{ fontSize: "17px", opacity: 0.7 }}>{opts.icon}</span>
+      )}
+      {label}
+    </button>
+  );
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      {/* Avatar button */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title={user?.email}
+        style={{
+          width: "44px",
+          height: "44px",
+          borderRadius: "50%",
+          border: open
+            ? "2px solid var(--orange)"
+            : "2px solid var(--border-dim)",
+          background: open ? "var(--orange-dim)" : "rgba(255,255,255,0.05)",
+          color: open ? "var(--orange)" : "var(--text-2)",
+          fontFamily: "var(--font-display)",
+          fontSize: "17px",
+          fontWeight: 700,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.15s",
+          flexShrink: 0,
+        }}
+      >
+        {initial}
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            right: 0,
+            width: "260px",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: "10px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
+            zIndex: 100,
+            overflow: "hidden",
+          }}
+        >
+          {/* User info header */}
+          <div
+            style={{
+              padding: "16px 20px",
+              borderBottom: "1px solid var(--border-dim)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "15px",
+                fontWeight: 600,
+                color: "var(--text-1)",
+                fontFamily: "var(--font-display)",
+                marginBottom: "6px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {user?.email}
+            </div>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "3px 10px",
+                borderRadius: "4px",
+                background: isAdmin
+                  ? "rgba(249,115,22,0.12)"
+                  : "rgba(56,189,248,0.08)",
+                color: isAdmin ? "var(--orange)" : "var(--blue)",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              {isAdmin ? "Admin" : "Student"}
+            </span>
+          </div>
+
+          {/* Menu items */}
+          <div style={{ padding: "6px" }}>
+            {menuItem("Profile", () => onSelectItem("profile"), { icon: "◎" })}
+            {isAdmin &&
+              menuItem("Admin panel", () => onSelectItem("admin"), {
+                icon: "⚙",
+              })}
+            <div
+              style={{
+                height: "1px",
+                background: "var(--border-dim)",
+                margin: "6px 0",
+              }}
+            />
+            {menuItem("Sign out", logout, { icon: "›", danger: true })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function TopBar({
+  items,
+  activeItem,
+  onSelectItem,
+}) {
+  const { user, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
   const labs = items.filter((i) => i.type === "lab");
 
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
 
   const [lastLabId, setLastLabId] = useState(
     () => localStorage.getItem(LAST_LAB_STORAGE_KEY) || "",
-  );
-
-  const investigationStarted = items.some(
-    (item) => item.id === "scenario-0" && item.completed,
   );
 
   const unlockedLabs = labs.filter((lab) => lab.scenarioViewed);
@@ -41,13 +206,13 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
       : "LABS";
 
   const activeNavId =
-  activeItem?.type === "docs" || activeId === "docs"
-    ? "docs"
-    : activeItem?.type === "lab"
-      ? "labs"
-      : activeItem?.id === "scenario-1" || activeItem?.type === "pipeline"
-        ? "scenarios"
-        : "home";
+    activeItem?.type === "docs" || activeId === "docs"
+      ? "docs"
+      : activeItem?.type === "lab"
+        ? "labs"
+        : activeItem?.id === "scenario-1" || activeItem?.type === "pipeline"
+          ? "scenarios"
+          : "home";
 
   useEffect(() => {
     if (activeItem?.type !== "lab") return;
@@ -55,80 +220,61 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
     localStorage.setItem(LAST_LAB_STORAGE_KEY, activeItem.id);
   }, [activeItem]);
 
-
   const navTabs = [
     {
       id: "home",
       label: "DASHBOARD",
-      disabled: !investigationStarted,
-      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
-    },
-    {
-      id: "scenarios",
-      label: "PIPELINE",
-      disabled: !investigationStarted || !pipelineUnlocked,
-      tooltip: !investigationStarted
-        ? "Complete the briefing to unlock"
-        : !pipelineUnlocked
-          ? "Complete Lab 1 to unlock the pipeline view"
-          : undefined,
     },
     {
       id: "labs",
       label: currentLabLabel,
-      disabled: !investigationStarted || !lastUnlockedLab,
-      tooltip: !investigationStarted
-        ? "Complete the briefing to unlock"
-        : !lastUnlockedLab
-          ? "Start a lab from the Dashboard to unlock"
-          : undefined,
+      disabled: !lastUnlockedLab,
+      tooltip: !lastUnlockedLab
+        ? "Start a lab from the Dashboard to unlock"
+        : undefined,
+    },
+    {
+      id: "scenarios",
+      label: "PIPELINE",
+      disabled: !pipelineUnlocked,
+      tooltip: !pipelineUnlocked
+        ? "Complete Lab 1 to unlock the pipeline view"
+        : undefined,
     },
     {
       id: "docs",
-      label: "DOC",
-      disabled: !investigationStarted,
-      tooltip: !investigationStarted ? "Complete the briefing to unlock" : undefined,
+      label: "DOCS",
     },
   ];
 
-    function goHome() {
-      if (investigationStarted) {
-        onSelectItem("dashboard");
-        return;
-      }
+  function goHome() {
+    onSelectItem("dashboard");
+  }
 
-      onSelectItem("scenario-0");
+  function handleTabClick(tab) {
+    if (tab.disabled) return;
+
+    if (tab.id === "home") {
+      onSelectItem("dashboard");
+      return;
     }
 
-    function handleTabClick(tab) {
-      if (tab.disabled) return;
-
-      if (tab.id === "home") {
-        onSelectItem("dashboard");
-        return;
-      }
-
-      if (tab.id === "scenarios") {
-        if (!pipelineUnlocked) return;
-        onSelectItem("scenario-1");
-        return;
-      }
-
-      if (tab.id === "labs") {
-        if (!labTabTarget) return;
-        onSelectItem(labTabTarget.id);
-        return;
-      }
-
-      if (tab.id === "docs") {
-        onSelectItem({
-          id: "docs",
-          type: "docs",
-          docPath: null,
-          docId: null,
-        });
-      }
+    if (tab.id === "scenarios") {
+      if (!pipelineUnlocked) return;
+      onSelectItem("scenario-1");
+      return;
     }
+
+    if (tab.id === "labs") {
+      if (!labTabTarget) return;
+      onSelectItem(labTabTarget.id);
+      return;
+    }
+
+    if (tab.id === "docs") {
+      onSelectItem({ id: "docs", type: "docs", docPath: null, docId: null });
+    }
+  }
 
   return (
     <header
@@ -147,6 +293,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           gap: "22px",
         }}
       >
+        {/* Logo */}
         <button
           type="button"
           onClick={goHome}
@@ -189,7 +336,6 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
               AI
             </span>
           </div>
-
           <div>
             <div
               style={{
@@ -197,18 +343,15 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                 fontWeight: 700,
                 fontFamily: "var(--font-display)",
                 color: "var(--text-1)",
-                letterSpacing: "0.14em",
               }}
             >
               SEC<span style={{ color: "var(--orange)" }}>LABS</span>
             </div>
-
             <div
               style={{
-                fontSize: "11px",
+                fontSize: "12px",
                 color: "var(--text-3)",
                 fontFamily: "var(--font-mono)",
-                letterSpacing: "0.12em",
               }}
             >
               AI SECURITY TRAINING
@@ -216,6 +359,7 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           </div>
         </button>
 
+        {/* Nav tabs */}
         <nav
           aria-label="Main navigation"
           style={{
@@ -262,10 +406,9 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
                     : isDisabled
                       ? "var(--text-2)"
                       : "var(--text-1)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "13px",
+                  fontWeight: 600,
                   cursor: isDisabled ? "not-allowed" : "pointer",
                   opacity: isDisabled && !isActive ? 0.65 : 1,
                   whiteSpace: "nowrap",
@@ -282,11 +425,13 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
           })}
         </nav>
 
+        {/* Right: tutor + account */}
         <div
           style={{
             display: "flex",
+            alignItems: "center",
             justifyContent: "flex-end",
-            minWidth: "180px",
+            gap: "12px",
           }}
         >
           <RagTutorWidget
@@ -294,6 +439,12 @@ export default function TopBar({ items, activeItem, onSelectItem }) {
             phase={activeItem?.phase}
             activeItem={activeItem}
             placement="topbar"
+          />
+          <AccountMenu
+            user={user}
+            isAdmin={isAdmin}
+            onSelectItem={onSelectItem}
+            logout={logout}
           />
         </div>
       </div>
