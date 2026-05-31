@@ -4,6 +4,8 @@ import LabRuntimeWorkspace from "../labs/LabRuntimeWorkspace";
 import LabDashboard from "../labs/LabDashboard";
 import LabScenarioIntro from "../labs/LabScenarioIntro";
 import DocsPage from "../../data/DocsPage";
+import AdminPage from "../../pages/AdminPage";
+import ProfilePage from "../../pages/ProfilePage";
 
 export default function WorkspacePanel({
   items,
@@ -32,18 +34,16 @@ export default function WorkspacePanel({
 
   if (!item) return null;
 
-  if (item.type === "dashboard") {
-    return <LabDashboard items={items || []} onSelectItem={onSelectItem} />;
+  if (item.type === "profile") {
+    return <ProfilePage />;
   }
 
-  if (item.type === "welcome") {
-    return (
-      <ScenarioWorkspace
-        item={item}
-        onCompleteScenario={onCompleteScenario}
-        onSelectItem={onSelectItem}
-      />
-    );
+  if (item.type === "admin") {
+    return <AdminPage />;
+  }
+
+  if (item.type === "dashboard") {
+    return <LabDashboard items={items || []} onSelectItem={onSelectItem} />;
   }
 
   if (item.type === "scenario") {
