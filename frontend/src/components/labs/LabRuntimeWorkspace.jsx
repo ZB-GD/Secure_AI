@@ -46,25 +46,18 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                 : isActive
                   ? "var(--text-1)"
                   : "var(--text-3)",
-              fontSize: "10px",
-              letterSpacing: "0.10em",
+              fontSize: "14px",
+              fontWeight: 700,
               fontFamily: "var(--font-display)",
               cursor: locked ? "not-allowed" : "pointer",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              gap: "3px",
+              justifyContent: "center",
               transition: "all 0.15s",
               opacity: locked ? 0.4 : 1,
             }}
           >
-            <span style={{ fontSize: "14px" }}>{tab.icon}</span>
             {tab.label.toUpperCase()}
-            {tab.id === "quiz" && !quizUnlocked && (
-              <span style={{ fontSize: "10px", color: "var(--text-3)" }}>
-                LOCKED
-              </span>
-            )}
           </button>
         );
       })}
@@ -249,9 +242,8 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
 
           <div
             style={{
-              fontSize: "10px",
+              fontSize: "14px",
               color: "var(--text-3)",
-              letterSpacing: "0.08em",
             }}
           >
             {submitted ? "correct" : "answered"}
@@ -294,7 +286,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
               border: "none",
               background: allAnswered ? "var(--orange)" : "var(--bg-surface)",
               color: allAnswered ? "#fff" : "var(--text-3)",
-              fontSize: "10px",
+              fontSize: "14px",
               fontWeight: 700,
               fontFamily: "var(--font-display)",
               cursor: allAnswered ? "pointer" : "not-allowed",
@@ -314,7 +306,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
                 border: "1px solid var(--red)",
                 background: "var(--red-dim)",
                 color: "var(--red)",
-                fontSize: "10px",
+                fontSize: "14px",
                 fontFamily: "var(--font-display)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
@@ -331,7 +323,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
                 border: "1px solid var(--border-dim)",
                 background: "transparent",
                 color: "var(--text-3)",
-                fontSize: "10px",
+                fontSize: "14px",
                 fontFamily: "var(--font-display)",
                 cursor: "pointer",
               }}
@@ -342,14 +334,14 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
         ) : (
           <button
             type="button"
-            onClick={() => item?.completed ? setConfirmRetry(true) : reset()}
+            onClick={() => (item?.completed ? setConfirmRetry(true) : reset())}
             style={{
               padding: "8px 12px",
               borderRadius: "6px",
               border: "1px solid var(--border-dim)",
               background: "transparent",
               color: "var(--text-2)",
-              fontSize: "10px",
+              fontSize: "14px",
               fontFamily: "var(--font-display)",
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -398,7 +390,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
 
             <span
               style={{
-                fontSize: "10px",
+                fontSize: "14px",
                 fontWeight: 600,
                 color: "var(--text-1)",
                 fontFamily: "var(--font-display)",
@@ -410,7 +402,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
             <span
               style={{
                 marginLeft: "auto",
-                fontSize: "10px",
+                fontSize: "14px",
                 color: scoreRatio >= 0.75 ? "var(--green)" : "var(--orange)",
                 fontFamily: "var(--font-display)",
               }}
@@ -463,9 +455,8 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
             <div style={{ padding: "0 16px 14px" }}>
               <div
                 style={{
-                  fontSize: "10px",
+                  fontSize: "14px",
                   color: "var(--text-3)",
-                  letterSpacing: "0.12em",
                   marginBottom: "8px",
                 }}
               >
@@ -500,23 +491,23 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
                       background: "var(--bg-base)",
                       border: "1px solid var(--border-dim)",
                       color: "var(--blue)",
-                      fontSize: "10px",
+                      fontSize: "14px",
                       fontFamily: "var(--font-display)",
                       cursor: "pointer",
                       textAlign: "left",
                       width: "100%",
                     }}
                   >
-                    <span style={{ fontSize: "10px", opacity: 0.6 }}>◈</span>
+                    <span style={{ fontSize: "14px", opacity: 0.6 }}>◈</span>
                     {link.title}
                     <span
                       style={{
                         marginLeft: "auto",
-                        fontSize: "10px",
+                        fontSize: "14px",
                         color: "var(--text-3)",
                       }}
                     >
-                      docs →
+                      docs <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}><polyline points="9 18 15 12 9 6"/></svg>
                     </span>
                   </button>
                 ))}
@@ -569,12 +560,11 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
               {submitted && (
                 <span
                   style={{
-                    fontSize: "12px",
+                    fontSize: "14px",
                     fontWeight: 700,
                     padding: "5px 14px",
                     borderRadius: "6px",
                     flexShrink: 0,
-                    letterSpacing: "0.06em",
                     background:
                       selectedAnswer === question.correctAnswerIndex
                         ? "rgba(34,197,94,0.18)"
@@ -665,7 +655,7 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        fontSize: "10px",
+                        fontSize: "14px",
                         color: isSelected ? "var(--orange)" : "var(--text-3)",
                       }}
                     >
@@ -727,33 +717,27 @@ export default function LabRuntimeWorkspace({
   );
   useInitialRightWidth(containerRef, hasUserResized, setRightWidth);
 
-  const {
-    remoteUrl,
-    remoteLoading,
-    remoteError,
-    retryRuntime,
-    runtime,
-    logs,
-  } = useLabRuntime(item?.id, {
-    autoStart: true,
-    pollIntervalMs: 3000,
-    logPollIntervalMs: 1200,
-    logLimit: 200,
-  });
+  const { remoteUrl, remoteLoading, remoteError, retryRuntime, runtime, logs } =
+    useLabRuntime(item?.id, {
+      autoStart: true,
+      pollIntervalMs: 3000,
+      logPollIntervalMs: 1200,
+      logLimit: 200,
+    });
 
   const quizUnlocked = Boolean(item?.guideCompleted);
 
   const previousGuideCompleted = useRef(Boolean(item?.guideCompleted));
 
-useEffect(() => {
-  const isNowCompleted = Boolean(item?.guideCompleted);
+  useEffect(() => {
+    const isNowCompleted = Boolean(item?.guideCompleted);
 
-  if (!previousGuideCompleted.current && isNowCompleted) {
-    setActiveTab("quiz");
-  }
+    if (!previousGuideCompleted.current && isNowCompleted) {
+      setActiveTab("quiz");
+    }
 
-  previousGuideCompleted.current = isNowCompleted;
-}, [item?.guideCompleted]);
+    previousGuideCompleted.current = isNowCompleted;
+  }, [item?.guideCompleted]);
 
   return (
     <div
@@ -868,9 +852,7 @@ useEffect(() => {
                 statusLabel={runtime.statusLabel}
               />
             )}
-            {activeTab === "metrics" && (
-              <LabMetrics runtime={runtime} />
-            )}
+            {activeTab === "metrics" && <LabMetrics runtime={runtime} />}
             {activeTab === "quiz" && quizUnlocked && (
               <QuizTab
                 item={item}
