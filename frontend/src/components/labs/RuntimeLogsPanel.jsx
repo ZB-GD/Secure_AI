@@ -65,22 +65,21 @@ export default function RuntimeLogsPanel({
         <div>
           <div
             style={{
-              fontSize: "10px",
+              fontSize: "14px",
               color: "var(--text-3)",
-              letterSpacing: "0.14em",
               marginBottom: "4px",
             }}
           >
             ISOLATED CONTAINER LOG STREAM
           </div>
-          <div style={{ fontSize: "12px", color: "var(--text-2)" }}>
+          <div style={{ fontSize: "14px", color: "var(--text-2)" }}>
             Live Docker output from the lab container
           </div>
         </div>
 
         <span
           style={{
-            fontSize: "10px",
+            fontSize: "12px",
             color: statusColor,
             border: `1px solid ${statusColor}`,
             borderRadius: "999px",
@@ -108,7 +107,7 @@ export default function RuntimeLogsPanel({
             overflowY: "auto",
             padding: "14px 16px",
             fontFamily: "var(--font-mono)",
-            fontSize: "12px",
+            fontSize: "14px",
             lineHeight: "1.7",
             color: "var(--text-2)",
             whiteSpace: "pre-wrap",
@@ -124,7 +123,8 @@ export default function RuntimeLogsPanel({
                   marginBottom: "4px",
                   color: line.includes("[ERROR]")
                     ? "var(--red)"
-                    : line.includes("REJECTED") || line.includes("ATTACK BLOCKED")
+                    : line.includes("REJECTED") ||
+                        line.includes("ATTACK BLOCKED")
                       ? "var(--green)"
                       : line.includes("[RESULT]") ||
                           line.includes("ATTACK SUCCESSFUL") ||
@@ -168,7 +168,7 @@ export default function RuntimeLogsPanel({
               background: "rgba(15,23,42,0.94)",
               color: "var(--orange)",
               fontFamily: "var(--font-display)",
-              fontSize: "10px",
+              fontSize: "14px",
               fontWeight: 700,
               cursor: "pointer",
               boxShadow: "0 10px 24px rgba(0,0,0,0.3)",

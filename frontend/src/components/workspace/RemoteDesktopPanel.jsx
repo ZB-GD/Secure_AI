@@ -26,37 +26,6 @@ export default function RemoteDesktopPanel({
           background: "var(--bg-panel)",
         }}
       >
-        <header
-          style={{
-            flexShrink: 0,
-            borderBottom: "1px solid var(--border-dim)",
-            padding: "16px 20px",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "10px",
-              fontFamily: "var(--font-display)",
-              textTransform: "uppercase",
-              letterSpacing: "0.35em",
-              color: "var(--text-3)",
-            }}
-          >
-            LIVE ENVIRONMENT
-          </p>
-          <h3
-            style={{
-              marginTop: "4px",
-              fontSize: "20px",
-              fontWeight: "600",
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {item.envKey} · {item.title}
-          </h3>
-        </header>
-
         <div
           style={{
             flex: 1,
@@ -94,37 +63,6 @@ export default function RemoteDesktopPanel({
           background: "var(--bg-panel)",
         }}
       >
-        <header
-          style={{
-            flexShrink: 0,
-            borderBottom: "1px solid var(--border-dim)",
-            padding: "16px 20px",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "10px",
-              fontFamily: "var(--font-display)",
-              textTransform: "uppercase",
-              letterSpacing: "0.35em",
-              color: "var(--text-3)",
-            }}
-          >
-            LIVE ENVIRONMENT
-          </p>
-          <h3
-            style={{
-              marginTop: "4px",
-              fontSize: "20px",
-              fontWeight: "600",
-              color: "var(--text-1)",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            {item.envKey} · {item.title}
-          </h3>
-        </header>
-
         <div
           style={{
             flex: 1,
@@ -170,37 +108,6 @@ export default function RemoteDesktopPanel({
         background: "var(--bg-panel)",
       }}
     >
-      <header
-        style={{
-          flexShrink: 0,
-          borderBottom: "1px solid var(--border-dim)",
-          padding: "16px 20px",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "10px",
-            fontFamily: "var(--font-display)",
-            textTransform: "uppercase",
-            letterSpacing: "0.35em",
-            color: "var(--text-3)",
-          }}
-        >
-          LIVE ENVIRONMENT
-        </p>
-        <h3
-          style={{
-            marginTop: "4px",
-            fontSize: "20px",
-            fontWeight: "600",
-            color: "var(--text-1)",
-            fontFamily: "var(--font-display)",
-          }}
-        >
-          {item.envKey} · {item.title}
-        </h3>
-      </header>
-
       <div
         style={{
           flex: 1,

@@ -26,9 +26,8 @@ export default function PipelineLegend() {
           <span
             style={{
               color: "var(--text-3)",
-              fontSize: 10,
+              fontSize: "12px",
               fontFamily: "var(--font-display)",
-              letterSpacing: "0.06em",
             }}
           >
             {label}
