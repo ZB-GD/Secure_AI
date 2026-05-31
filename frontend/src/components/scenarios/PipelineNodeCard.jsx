@@ -66,7 +66,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         alignItems: "center",
         flex: 1,
         minWidth: 0,
-        minHeight: "114px",
+        height: "120px",
         padding: 0,
         borderRadius: "10px",
         border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.55 : 0.2})`,
@@ -111,7 +111,7 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         <div
           style={{
             color: lit ? "var(--text-1)" : "var(--text-2)",
-            fontSize: "12px",
+            fontSize: "14px",
             fontWeight: 700,
             fontFamily: "var(--font-display)",
             lineHeight: 1.3,
@@ -128,54 +128,14 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
             border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.6 : 0.3})`,
             background: `rgba(${cfg.colorRaw}, ${lit ? 0.15 : 0.07})`,
             color: cfg.color,
-            fontSize: "10px",
-            fontWeight: 700,
+            fontSize: "14px",
             fontFamily: "var(--font-display)",
-            letterSpacing: "0.14em",
           }}
         >
           {cfg.label}
         </span>
       </div>
 
-      {/* Footer */}
-      <div
-        style={{
-          padding: "6px 12px",
-          borderTop: `1px solid rgba(255,255,255,0.05)`,
-          background: lit ? `rgba(${cfg.colorRaw}, 0.07)` : "rgba(0,0,0,0.25)",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
-          flexShrink: 0,
-          transition: "background 0.18s",
-        }}
-      >
-        <div
-          style={{
-            width: "5px",
-            height: "5px",
-            borderRadius: "50%",
-            background: cfg.color,
-            flexShrink: 0,
-            opacity: node.status === "healthy" ? 0.6 : 1,
-            boxShadow: node.status !== "healthy" ? `0 0 6px ${cfg.color}` : "none",
-          }}
-        />
-        <span
-          style={{
-            fontSize: "10px",
-            fontFamily: "var(--font-display)",
-            letterSpacing: "0.12em",
-            color: "var(--text-3)",
-            fontWeight: 600,
-          }}
-        >
-          {node.code}
-        </span>
-      </div>
     </button>
   );
 }

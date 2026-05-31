@@ -1,4 +1,4 @@
-export default function PipelineLogBlock({ value, title = "PIPELINE LOGS" }) {
+export default function PipelineLogBlock({ value }) {
   const lines = value ? value.split("\n") : [];
 
   if (!lines.length) {
@@ -11,8 +11,6 @@ export default function PipelineLogBlock({ value, title = "PIPELINE LOGS" }) {
 
   return (
     <div className="scenario-log-block">
-      <div className="scenario-log-block__header">{title}</div>
-
       <div className="scenario-log-block__body">
         {lines.map((line, index) => {
           const isError =
