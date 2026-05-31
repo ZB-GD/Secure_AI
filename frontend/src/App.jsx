@@ -33,8 +33,24 @@ function isStepAnswerValid(step, answer) {
 export default function App() {
   const { user } = useAuth();
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState("dashboard");
-  const [activeDocPath, setActiveDocPath] = useState(null);
+  const [activeItemId, setActiveItemId] = useState(() => {
+    if (window.location.pathname.startsWith("/docs")) return "docs";
+    return "dashboard";
+  });
+  const [activeDocPath, setActiveDocPath] = useState(() => {
+    if (window.location.pathname.startsWith("/docs")) {
+      return new URLSearchParams(window.location.search).get("id") || null;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (activeItemId === "docs") {
+      window.history.replaceState({}, "", "/docs");
+    } else {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [activeItemId]);
 
   const activeItem = useMemo(() => {
     if (activeItemId === "profile") {
