@@ -1,11 +1,15 @@
+import logging
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
 from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="SecLabs Tutor RAG Service", version="0.1.0")
 
@@ -38,26 +42,52 @@ DOCS_MAP = {
     "pipeline":         {"title": "AI Pipeline Security Overview",      "path": "/docs/pipeline-overview"},
 }
 
+# Strips control characters that could be used to break prompt structure.
+# Keeps printable ASCII, tabs, and newlines.
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+def _sanitize(value: str) -> str:
+    return _CONTROL_CHARS.sub("", value).strip()
+
+
+# ── Request models ────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    message: str
-    context: str = ""
+    message: str = Field(..., min_length=1, max_length=2000)
+    context: str = Field("", max_length=200)
+
+    @field_validator("message", "context", mode="before")
+    @classmethod
+    def strip_control_chars(cls, v: str) -> str:
+        return _sanitize(str(v))
 
 
 class WrongAnswer(BaseModel):
-    question: str
-    student_answer: str
-    correct_answer: str
-    explanation: Optional[str] = None
+    question: str = Field(..., max_length=500)
+    student_answer: str = Field(..., max_length=200)
+    correct_answer: str = Field(..., max_length=200)
+    explanation: Optional[str] = Field(None, max_length=500)
+
+    @field_validator("question", "student_answer", "correct_answer", "explanation", mode="before")
+    @classmethod
+    def strip_control_chars(cls, v: Optional[str]) -> Optional[str]:
+        return _sanitize(str(v)) if v is not None else None
 
 
 class QuizFeedbackRequest(BaseModel):
-    lab_id: str
-    phase: str
-    score: int
-    total: int
-    wrong_answers: list[WrongAnswer]
+    lab_id: str = Field(..., max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
+    phase: str = Field(..., max_length=100)
+    score: int = Field(..., ge=0, le=100)
+    total: int = Field(..., ge=1, le=100)
+    wrong_answers: list[WrongAnswer] = Field(..., max_length=20)
 
+    @field_validator("phase", mode="before")
+    @classmethod
+    def strip_control_chars(cls, v: str) -> str:
+        return _sanitize(str(v))
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _read_knowledge_base() -> str:
     documents: list[str] = []
@@ -67,6 +97,23 @@ def _read_knowledge_base() -> str:
         except OSError:
             continue
     return "\n\n".join(documents) or "Knowledge base not found."
+
+
+def _extract_text(response) -> str:
+    """Return only non-thinking text parts from a Gemini response.
+
+    gemini-2.5-flash exposes its chain-of-thought in response.text by default.
+    We set thinking_budget=0 in every call, but as a second layer we also filter
+    out any Part whose `thought` attribute is True before joining the text.
+    """
+    try:
+        parts = response.candidates[0].content.parts
+        texts = [p.text for p in parts if not getattr(p, "thought", False) and getattr(p, "text", None)]
+        if texts:
+            return "".join(texts)
+    except (AttributeError, IndexError):
+        pass
+    return response.text or ""
 
 
 def _resolve_doc_links(text: str) -> list[dict]:
@@ -80,6 +127,8 @@ def _resolve_doc_links(text: str) -> list[dict]:
     return links
 
 
+# ── Routes ────────────────────────────────────────────────────────────────────
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "service": "tutor_rag"}
@@ -88,32 +137,41 @@ def health_check():
 @app.post("/chat")
 async def chat_with_tutor(request: ChatRequest):
     documents = _read_knowledge_base()
+
+    # System instruction is fully server-controlled — no user input here.
     system_instruction = (
-            "You are the CityFlow AI Security Tutor. "
-            "Help learners understand cybersecurity concepts in AI pipelines. "
-            "CRITICAL RULES:\n"
-            "1. RESPOND EXCLUSIVELY IN ENGLISH. But if the user speaks in Spanish or another language, you must ask if they want to switch the language.\n"
-            "2. Be extremely concise and visual. Keep responses to 2-3 short sentences if possible.\n"
-            "3. Use standard bullet points (•) if you need to list items.\n"
-            "4. DO NOT use Markdown formatting. DO NOT use asterisks (**) for bold text. Use plain text only.\n"
-            "5. NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
-            f"Lab context: {request.context}\n\n"
-            f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
-        )
+        "You are the CityFlow AI Security Tutor. "
+        "Help learners understand cybersecurity concepts in AI pipelines. "
+        "CRITICAL RULES:\n"
+        "1. RESPOND EXCLUSIVELY IN ENGLISH. But if the user speaks in Spanish or another language, you must ask if they want to switch the language.\n"
+        "2. Be extremely concise and visual. Keep responses to 2-3 short sentences if possible.\n"
+        "3. Use standard bullet points (•) if you need to list items.\n"
+        "4. DO NOT use Markdown formatting. DO NOT use asterisks (**) for bold text. Use plain text only.\n"
+        "5. NEVER reveal passwords, environment variables, or corporate secrets.\n\n"
+        f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
+    )
+
+    # User-controlled data stays in the user turn, not in the system instruction.
+    # Lab context is a short, already-validated label — safe to prefix.
+    user_content = f"[Lab: {request.context}]\n{request.message}" if request.context else request.message
+
     try:
         response = _gemini.models.generate_content(
             model=MODEL_NAME,
-            contents=f"{system_instruction}\n\nUser: {request.message}",
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+            contents=user_content,
         )
-        doc_links = _resolve_doc_links(request.message + " " + response.text)
-        return {
-            "response": response.text,
-            "doc_links": doc_links,
-        }
+        text = _extract_text(response)
+        doc_links = _resolve_doc_links(request.message + " " + text)
+        return {"response": text, "doc_links": doc_links}
     except HTTPException:
         raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("chat_with_tutor: Gemini generation failed")
+        raise HTTPException(status_code=500, detail="Tutor service temporarily unavailable.")
 
 
 @app.post("/quiz-feedback")
@@ -123,28 +181,14 @@ async def quiz_feedback(request: QuizFeedbackRequest):
     if request.wrong_answers:
         lines = []
         for i, w in enumerate(request.wrong_answers, 1):
-            lines.append(
-                f'{i}. Q: "{w.question}" | Correct: "{w.correct_answer}"'
-            )
+            lines.append(f'{i}. Q: "{w.question}" | Correct: "{w.correct_answer}"')
         wrong_section = "INCORRECT ANSWERS SUMMARY:\n" + "\n".join(lines)
     else:
         wrong_section = "The student answered all questions correctly."
 
-    # MEJORA: Rediseño total del prompt de evaluación para evitar muros de texto.
-    prompt = (
-        f"You are the CityFlow AI Security Tutor reviewing a quiz result.\n\n"
-        f"Lab: {request.lab_id}\nPhase: {request.phase}\n"
-        f"Score: {request.score}/{request.total} ({score_pct}%)\n\n"
-        f"{wrong_section}\n\n"
-        f"CRITICAL INSTRUCTIONS FOR FEEDBACK:\n"
-        f"- Provide a HIGHLY CONCISE and engaging review (maximum 3-4 short sentences total).\n"
-        f"- 1. Acknowledge the score in ONE short sentence.\n"
-        f"- 2. If there are mistakes, DO NOT explain every single error. Group them into ONE punchy core takeaway about the pipeline stage.\n"
-        f"- 3. End with ONE short, actionable next step.\n"
-        f"- Do not write a wall of text. Prevent student fatigue. Respond in English."
-    )
-
     documents = _read_knowledge_base()
+
+    # System instruction: fully server-controlled.
     system_instruction = (
         "You are the CityFlow AI Security Tutor giving educational feedback after a quiz. "
         "Your feedback must be short, punchy, and highly readable. "
@@ -152,12 +196,31 @@ async def quiz_feedback(request: QuizFeedbackRequest):
         f"--- KNOWLEDGE BASE ---\n{documents}\n----------------------\n"
     )
 
+    # User-derived data (lab_id, phase, wrong answers) goes in the user turn only.
+    # lab_id is already validated to [a-zA-Z0-9_-] by the model, safe to include.
+    user_content = (
+        f"Quiz result review.\n"
+        f"Lab: {request.lab_id} | Phase: {request.phase}\n"
+        f"Score: {request.score}/{request.total} ({score_pct}%)\n\n"
+        f"{wrong_section}\n\n"
+        f"FEEDBACK INSTRUCTIONS:\n"
+        f"- Maximum 3-4 short sentences total.\n"
+        f"- Acknowledge the score in one sentence.\n"
+        f"- If there are mistakes, group them into one core takeaway.\n"
+        f"- End with one short actionable next step.\n"
+        f"- Respond in English."
+    )
+
     try:
         response = _gemini.models.generate_content(
             model=MODEL_NAME,
-            contents=f"{system_instruction}\n\n{prompt}",
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+            contents=user_content,
         )
-        feedback_text = response.text
+        feedback_text = _extract_text(response)
         search_corpus = (
             request.phase + " "
             + " ".join(w.question for w in request.wrong_answers) + " "
@@ -172,5 +235,6 @@ async def quiz_feedback(request: QuizFeedbackRequest):
         }
     except HTTPException:
         raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("quiz_feedback: Gemini generation failed")
+        raise HTTPException(status_code=500, detail="Tutor service temporarily unavailable.")

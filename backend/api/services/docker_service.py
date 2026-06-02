@@ -19,7 +19,7 @@ LAB_TMPFS = {
     "/run": "",
     "/home/lab": "rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755",
 }
-LAB_CAPABILITIES = ["CHOWN", "SETUID", "SETGID"]
+LAB_CAPABILITIES = ["CHOWN"]
 
 _heartbeat_lock = threading.Lock()
 _last_seen_by_container: dict[str, float] = {}
@@ -63,8 +63,11 @@ def _wait_for_novnc(container, timeout_seconds: int = 45) -> None:
         if container.status != "running":
             raise HTTPException(status_code=500, detail="Lab container stopped before noVNC became ready.")
 
-        if container.exec_run(http_check).exit_code == 0 and container.exec_run(vnc_check).exit_code == 0:
-            return
+        try:
+            if container.exec_run(http_check).exit_code == 0 and container.exec_run(vnc_check).exit_code == 0:
+                return
+        except docker.errors.APIError:
+            pass  # container stopped between reload() and exec_run(); next iteration handles it
         time.sleep(1)
 
     raise HTTPException(status_code=504, detail="Timed out waiting for noVNC to become ready.")
@@ -86,7 +89,10 @@ def _ensure_lab_log(container, lab: dict) -> None:
         f"printf '%s\\n' '{initial_text}' > {quoted_path}; "
         "fi"
     )
-    container.exec_run(["sh", "-lc", command])
+    try:
+        container.exec_run(["sh", "-lc", command])
+    except docker.errors.APIError:
+        pass  # container may have exited; _wait_for_novnc will detect and report this
 
 
 def _get_local_lab_metrics(container, lab: dict) -> dict:
@@ -286,6 +292,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
 
     try:
         existing = client.containers.get(container_name)
+        existing.reload()  # always fetch fresh state, .status can be stale
         if existing.status == "running":
             _record_heartbeat(container_name)
             _ensure_lab_log(existing, lab)
@@ -295,6 +302,12 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
                 "container_id": existing.id,
                 "terminal_url": _build_novnc_url(host_port, request_host),
             }
+        else:
+            # Stopped/exited container with same name — remove it so we can start fresh.
+            try:
+                existing.remove(force=True)
+            except docker.errors.APIError:
+                pass
     except docker.errors.NotFound:
         pass
 
@@ -306,7 +319,6 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
             detach=True,
             remove=True,
             ports={f"{NOVNC_PORT}/tcp": None},
-            security_opt=["no-new-privileges:true"],
             cap_drop=["ALL"],
             cap_add=LAB_CAPABILITIES,
             read_only=True,
