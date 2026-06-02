@@ -26,7 +26,7 @@ services:
       dockerfile: pipeline_nodes/sensor_data/Dockerfile
     container_name: seclabs-sensor
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     networks:
       - seclabs-network
     restart: unless-stopped
@@ -44,7 +44,7 @@ services:
       dockerfile: pipeline_nodes/edge_preprocessing/Dockerfile
     container_name: seclabs-edge
     ports:
-      - "8002:8002"
+      - "127.0.0.1:8002:8002"
     depends_on:
       sensor:
         condition: service_healthy
@@ -65,7 +65,7 @@ services:
       dockerfile: pipeline_nodes/actuator/Dockerfile
     container_name: seclabs-actuator
     ports:
-      - "8003:8003"
+      - "127.0.0.1:8003:8003"
     depends_on:
       model-init:
         condition: service_completed_successfully
@@ -92,7 +92,7 @@ services:
       dockerfile: pipeline_nodes/model_trainer/Dockerfile
     container_name: seclabs-trainer
     ports:
-      - "8004:8004"
+      - "127.0.0.1:8004:8004"
     depends_on:
       model-init:
         condition: service_completed_successfully
@@ -138,6 +138,7 @@ services:
       - LAB_HEARTBEAT_TIMEOUT_SECONDS=${LAB_HEARTBEAT_TIMEOUT_SECONDS:-180}
       - LAB_CLEANUP_INTERVAL_SECONDS=${LAB_CLEANUP_INTERVAL_SECONDS:-30}
       - NOVNC_HOST=${NOVNC_HOST:-localhost}
+      - NOVNC_PORT_POOL=${NOVNC_PORT_POOL:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - auth-db:/app/auth-db
@@ -189,7 +190,7 @@ services:
         - VITE_API_KEY=${VITE_API_KEY:-}
     container_name: seclabs-frontend
     ports:
-      - "3000:80"
+      - "8080:80"
     networks:
       - seclabs-network
     depends_on:
