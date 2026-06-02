@@ -19,9 +19,10 @@ LAB_TMPFS = {
     "/run": "",
     "/home/lab": "rw,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=755",
 }
-LAB_CAPABILITIES = ["CHOWN"]
+LAB_CAPABILITIES: list[str] = []
 
 _heartbeat_lock = threading.Lock()
+_cleanup_thread_lock = threading.Lock()
 _last_seen_by_container: dict[str, float] = {}
 _cleanup_thread_started = False
 
@@ -252,10 +253,10 @@ def _record_heartbeat(container_name: str) -> None:
 
 def start_lab_cleanup_thread() -> None:
     global _cleanup_thread_started
-    if _cleanup_thread_started:
-        return
-
-    _cleanup_thread_started = True
+    with _cleanup_thread_lock:
+        if _cleanup_thread_started:
+            return
+        _cleanup_thread_started = True
 
     def _run() -> None:
         while True:
