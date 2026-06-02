@@ -1,12 +1,6 @@
 x-lab-security: &lab-security
-  security_opt:
-    - no-new-privileges:true
   cap_drop:
     - ALL
-  cap_add:
-    - CHOWN
-    - SETUID
-    - SETGID
   read_only: true
   tmpfs:
     - /tmp
@@ -143,6 +137,7 @@ services:
       - MAX_CONCURRENT_LABS=${MAX_CONCURRENT_LABS:-20}
       - LAB_HEARTBEAT_TIMEOUT_SECONDS=${LAB_HEARTBEAT_TIMEOUT_SECONDS:-180}
       - LAB_CLEANUP_INTERVAL_SECONDS=${LAB_CLEANUP_INTERVAL_SECONDS:-30}
+      - NOVNC_HOST=${NOVNC_HOST:-localhost}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - auth-db:/app/auth-db
