@@ -65,6 +65,7 @@ def _startup() -> None:
         print("[AUTH] ADMIN_EMAIL / ADMIN_PASSWORD not set — admin account not seeded.")
 
     _ensure_models_ready()
+    docker_service.init_novnc_pool()
     docker_service.start_lab_cleanup_thread()
 
 
