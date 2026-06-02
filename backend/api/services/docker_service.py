@@ -26,10 +26,91 @@ _cleanup_thread_lock = threading.Lock()
 _last_seen_by_container: dict[str, float] = {}
 _cleanup_thread_started = False
 
+# noVNC port pool — populated at startup from NOVNC_PORT_POOL env var.
+# Each entry is (internal_host_port, external_nat_port).
+# When the env var is empty the pool is unused and Docker assigns random ports.
+_novnc_pool: list[tuple[int, int]] = []
+_novnc_pool_lock = threading.Lock()
+_novnc_ports_in_use: set[int] = set()
 
-def _build_novnc_url(host_port: str, request_host: str | None = None):
+
+def _parse_novnc_pool() -> list[tuple[int, int]]:
+    raw = os.getenv("NOVNC_PORT_POOL", "").strip()
+    if not raw:
+        return []
+    pairs: list[tuple[int, int]] = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if ":" in entry:
+            internal_s, external_s = entry.split(":", 1)
+            pairs.append((int(internal_s), int(external_s)))
+        else:
+            port = int(entry)
+            pairs.append((port, port))
+    return pairs
+
+
+def init_novnc_pool() -> None:
+    """Parse NOVNC_PORT_POOL and pre-claim ports held by containers that survived a restart."""
+    global _novnc_pool
+    _novnc_pool = _parse_novnc_pool()
+    if not _novnc_pool:
+        return
+
+    print(f"[NOVNC-POOL] Initialized: {_novnc_pool}", flush=True)
+
+    pool_internal = {ip for ip, _ in _novnc_pool}
+    try:
+        client = docker.from_env()
+        for container in _running_managed_containers(client):
+            try:
+                bindings = container.ports.get(f"{NOVNC_PORT}/tcp") or []
+                for binding in bindings:
+                    hp = binding.get("HostPort")
+                    if hp and int(hp) in pool_internal:
+                        with _novnc_pool_lock:
+                            _novnc_ports_in_use.add(int(hp))
+                        print(f"[NOVNC-POOL] Pre-claimed port {hp} for {container.name}", flush=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _acquire_novnc_port() -> tuple[int, int] | None:
+    """Return (internal, external) from the pool, or None if no pool is configured (random port).
+
+    Raises 503 when all pool slots are occupied.
+    """
+    if not _novnc_pool:
+        return None
+    with _novnc_pool_lock:
+        for internal, external in _novnc_pool:
+            if internal not in _novnc_ports_in_use:
+                _novnc_ports_in_use.add(internal)
+                return internal, external
+    raise HTTPException(
+        status_code=503,
+        detail="All noVNC ports are in use. Try again after another lab is stopped.",
+    )
+
+
+def _release_novnc_port(host_port: str | int) -> None:
+    with _novnc_pool_lock:
+        _novnc_ports_in_use.discard(int(host_port))
+
+
+def _build_novnc_url(host_port: str, request_host: str | None = None) -> str:
     host = request_host or os.getenv("NOVNC_HOST", "localhost")
-    return f"http://{host}:{host_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1&compression=2&quality=6&show_dot=true"
+    # Map internal host port to external NAT port when a pool is configured.
+    external_port = host_port
+    for internal, external in _novnc_pool:
+        if str(internal) == host_port:
+            external_port = str(external)
+            break
+    return f"http://{host}:{external_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1&compression=2&quality=6&show_dot=true"
 
 
 def _get_host_port_or_500(container):
@@ -219,6 +300,10 @@ def _prune_stale_lab_containers(client=None) -> None:
                 f"{container.name}; idle_for={int(now - last_seen)}s",
                 flush=True,
             )
+            try:
+                _release_novnc_port(_get_host_port_or_500(container))
+            except HTTPException:
+                pass
             container.stop()
         except docker.errors.APIError:
             print(
@@ -314,26 +399,33 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
 
     try:
         _ensure_concurrency_available(client, container_name)
-        container = client.containers.run(
-            image,
-            name=container_name,
-            detach=True,
-            remove=True,
-            ports={f"{NOVNC_PORT}/tcp": None},
-            cap_drop=["ALL"],
-            cap_add=LAB_CAPABILITIES,
-            read_only=True,
-            tmpfs=LAB_TMPFS,
-            user=LAB_RUNTIME_USER,
-            mem_limit="768m",
-            nano_cpus=1_000_000_000,
-            pids_limit=200,
-            labels={
-                "seclabs.lab": "true",
-                "seclabs.node": node,
-                "seclabs.session": session_id,
-            },
-        )
+        port_allocation = _acquire_novnc_port()
+        host_port_binding = port_allocation[0] if port_allocation else None
+        try:
+            container = client.containers.run(
+                image,
+                name=container_name,
+                detach=True,
+                remove=True,
+                ports={f"{NOVNC_PORT}/tcp": host_port_binding},
+                cap_drop=["ALL"],
+                cap_add=LAB_CAPABILITIES,
+                read_only=True,
+                tmpfs=LAB_TMPFS,
+                user=LAB_RUNTIME_USER,
+                mem_limit="768m",
+                nano_cpus=1_000_000_000,
+                pids_limit=200,
+                labels={
+                    "seclabs.lab": "true",
+                    "seclabs.node": node,
+                    "seclabs.session": session_id,
+                },
+            )
+        except Exception:
+            if port_allocation:
+                _release_novnc_port(port_allocation[0])
+            raise
         _record_heartbeat(container_name)
         _ensure_lab_log(container, lab)
         _wait_for_novnc(container)
@@ -354,6 +446,10 @@ def stop_lab_container(node: str, session_id: str = "shared"):
 
     try:
         container = client.containers.get(container_name)
+        try:
+            _release_novnc_port(_get_host_port_or_500(container))
+        except HTTPException:
+            pass
         container.stop()
         with _heartbeat_lock:
             _last_seen_by_container.pop(container_name, None)
