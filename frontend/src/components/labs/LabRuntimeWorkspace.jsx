@@ -171,13 +171,13 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
       if (e.key !== "Enter" || submitted || showFeedback) return;
       if (isLast) {
         if (allAnswered) handleSubmit();
-      } else {
+      } else if (answers[currentQ] !== undefined) {
         setCurrentQ((q) => Math.min(quiz.length - 1, q + 1));
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [submitted, showFeedback, isLast, allAnswered, currentQ, quiz.length]);
+  }, [submitted, showFeedback, isLast, allAnswered, currentQ, quiz.length, answers]);
 
   if (quiz.length === 0) {
     return (
