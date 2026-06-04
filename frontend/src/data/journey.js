@@ -119,8 +119,8 @@ export const journey = [
             "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
-          placeholder: "e.g., Authentication, Signature, Token...",
-          hint: "If anyone can connect to the system and send data without a password, token or signed identity, what is missing?",
+          placeholder: "e.g., Password, Certificate, Access control...",
+          hint: "Think about what a door requires before letting someone in. When a node accepts data from any source with no verification whatsoever, it's missing a fundamental security layer — the process that confirms the sender is who they claim to be.",
           expectedKeywords: [
             "authentication",
             "signature",
@@ -138,8 +138,8 @@ export const journey = [
             "After running the script, switch to LOGS and METRICS. LOGS show the event chain; METRICS summarize the impact: accepted poisoned readings, negative congestion_score, drift risk, and model trust.",
           question:
             "What congestion_score does the Edge Node produce when it receives traffic_volume = -5000?",
-          placeholder: "e.g., -0.625",
-          hint: "Look at the LOGS tab after running the script. Find the Edge Node section and its congestion_score.",
+          placeholder: "e.g., 0.75, -1.0, 1.5...",
+          hint: "Open the LOGS tab after running the attack. Find the 'Edge Pre-processing Node' section and read the congestion_score value — write it exactly as it appears, including its sign.",
           expectedKeywords: ["-0.625", "-0.6", "negative", "negativo"],
         },
         {
@@ -162,8 +162,8 @@ export const journey = [
             "The baseline mean and std are calculated automatically from the lab sample data. A score of -0.625 should produce a very high Z value, far outside normal range.",
           question:
             "If a data point is flagged as highly anomalous by the Z-Score, what action should the pipeline take instead of forwarding it to the Actuator Node?",
-          placeholder: "e.g., Quarantine it, Drop it...",
-          hint: "We should isolate it for human review, not delete it, not forward it.",
+          placeholder: "e.g., Log it, Flag it, Alert it...",
+          hint: "In security, suspicious data that can't be forwarded or deleted is placed in a controlled holding zone for human review — the same concept used in biology when a threat needs to be contained before spreading.",
           expectedKeywords: [
             "quarantine",
             "drop",
@@ -182,8 +182,8 @@ export const journey = [
             "When the script reports ✅ for all 3 steps, your defense logic is ready. Next you will enable it in the local target and rerun the same attack.",
           question:
             "What mechanism should be automatically triggered if the drift score exceeds the threshold?",
-          placeholder: "e.g., Halt retraining, Pause training...",
-          hint: "The system should stop updating the model until a human reviews the data.",
+          placeholder: "e.g., Log it, Notify, Adjust weights...",
+          hint: "When drift signals the training data may be compromised, the safest response is to freeze the automatic retraining pipeline entirely until a human validates the data. Think of a single verb that means 'bring to a halt'.",
           expectedKeywords: [
             "halt",
             "pause",
@@ -202,8 +202,8 @@ export const journey = [
             "This closes the loop: the first run demonstrates the vulnerability, and the second run proves that your validation gate blocks the poisoned input before it reaches feature engineering.",
           question:
             "After enabling defense, what should the Sensor Node do with the poisoned traffic_volume=-5000 reading?",
-          placeholder: "e.g., Reject it, block it...",
-          hint: "Look for REJECTED or ATTACK BLOCKED in the LOGS tab.",
+          placeholder: "e.g., Log it, Validate it, Flag it...",
+          hint: "Run the attack again and check the LOGS tab. The Sensor Node's response to the poisoned value is printed in uppercase — that word is your answer.",
           expectedKeywords: [
             "reject",
             "rejected",
