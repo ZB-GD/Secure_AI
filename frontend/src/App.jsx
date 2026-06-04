@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { journey as seedJourney } from "./data/journey";
 import MainLayout from "./components/layout/MainLayout";
 import LoginPage from "./pages/LoginPage";
@@ -32,9 +32,34 @@ function isStepAnswerValid(step, answer) {
 
 export default function App() {
   const { user } = useAuth();
+  const prevUserEmail = useRef(null);
   const [items, setItems] = useState(() => bootJourney(seedJourney));
-  const [activeItemId, setActiveItemId] = useState("dashboard");
-  const [activeDocPath, setActiveDocPath] = useState(null);
+  const [activeItemId, setActiveItemId] = useState(() => {
+    if (window.location.pathname.startsWith("/docs")) return "docs";
+    return "dashboard";
+  });
+  const [activeDocPath, setActiveDocPath] = useState(() => {
+    if (window.location.pathname.startsWith("/docs")) {
+      return new URLSearchParams(window.location.search).get("id") || null;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (activeItemId === "docs") {
+      window.history.replaceState({}, "", "/docs");
+    } else {
+      window.history.replaceState({}, "", "/");
+    }
+  }, [activeItemId]);
+
+  useEffect(() => {
+    const email = user?.email ?? null;
+    if (email && email !== prevUserEmail.current) {
+      setActiveItemId("dashboard");
+    }
+    prevUserEmail.current = email;
+  }, [user]);
 
   const activeItem = useMemo(() => {
     if (activeItemId === "profile") {

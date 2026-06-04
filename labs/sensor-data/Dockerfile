@@ -53,4 +53,4 @@ COPY start-lab.sh /usr/local/bin/start-lab.sh
 RUN chmod +x /usr/local/bin/start-lab.sh
 
 WORKDIR /home/lab
-CMD ["/usr/local/bin/start-lab.sh"]
+CMD ["sh", "/usr/local/bin/start-lab.sh"]

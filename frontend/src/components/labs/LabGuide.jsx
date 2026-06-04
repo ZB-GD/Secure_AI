@@ -569,6 +569,7 @@ export default function LabGuide({
                 if (e.key !== "Enter") return;
 
                 e.preventDefault();
+                e.stopPropagation();
 
                 if (!answerValid) {
                   setAnswerTouched(true);
