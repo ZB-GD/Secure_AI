@@ -156,6 +156,13 @@ services:
       tutor-rag:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   tutor-rag:
     env_file:
