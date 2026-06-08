@@ -3,44 +3,40 @@ set -euo pipefail
 
 # SecLabs deployment script
 #
-# Use this after editing the local project files.
-# It does six things:
-#   1. Stops disposable lab containers and long-running platform services.
-#   2. Patches known lab image issues before building.
-#   3. Rebuilds the main platform images and the lab images from local files.
-#   4. Starts only the long-running platform services with fresh containers.
-#   5. Removes dangling build layers/images left behind by rebuilds.
-#   6. Smoke-tests the lab1 container with production security flags.
+# FIRST DEPLOYMENT — run once in order:
+#   1. Edit .env (or: cp .env.virtech.example .env and replace XXX with your
+#      VM's last IP octet). Make sure JWT_SECRET and ADMIN_PASSWORD are set.
+#   2. Add your GOOGLE_API_KEY to backend/.env.
+#   3. ./deploy.sh
 #
-# The lab images are built through the `labs-build` Compose profile, but the
-# lab containers themselves are not kept running. The backend starts disposable
-# lab containers dynamically when a student opens a lab from the web UI.
-#
-# Usage:
-#   chmod +x deploy.sh
-#   ./deploy.sh
+# REDEPLOYMENT — after editing source files:
+#   ./deploy.sh                    # rebuild everything (cache on, fast)
+#   NO_CACHE=1 ./deploy.sh         # clean rebuild (when deps / base images change)
+#   TARGET=frontend ./deploy.sh    # rebuild only the frontend
+#   TARGET=backend  ./deploy.sh    # rebuild only the backend
+#   TARGET=lab      ./deploy.sh    # rebuild only lab images
+#   TARGET=rag      ./deploy.sh    # rebuild only the tutor-rag service
+#   TARGET=pipeline ./deploy.sh    # rebuild only pipeline nodes
 #
 # Optional environment flags:
-#   TARGET=all           What to rebuild: all, frontend, backend, lab, pipeline, rag.
-#   NO_CACHE=0           Reuse Docker build cache. Default is 1.
-#   PULL_BASE=1          Pull public Docker base images before building.
-#   PRUNE_IMAGES=0       Skip dangling Docker image cleanup. Default is 1.
-#   PRUNE_BUILD_CACHE=0  Skip Docker build-cache cleanup. Default is 1.
-#   SMOKE_TEST=0         Skip lab container smoke test after build. Default is 1.
-#
-# After it finishes:
-#   Frontend: http://<server-ip>:3000
-#   Backend health check: http://<server-ip>:8000/health
+#   TARGET=all           What to rebuild: all, frontend, backend, lab, pipeline, rag. (default: all)
+#   NO_CACHE=0           Use Docker build cache. Set 1 for a clean build. (default: 0)
+#   PULL_BASE=0          Pull latest public base images before building. (default: 0)
+#   PRUNE_IMAGES=1       Remove dangling Docker images after build. (default: 1)
+#   PRUNE_BUILD_CACHE=0  Remove Docker build cache after build. (default: 0)
+#   SMOKE_TEST=1         Run lab container smoke test after build. (default: 1)
+#   WAIT_HEALTHY=1       Wait for platform services to pass healthchecks. (default: 1)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-NO_CACHE="${NO_CACHE:-1}"
+NO_CACHE="${NO_CACHE:-0}"
 PULL_BASE="${PULL_BASE:-0}"
 PRUNE_IMAGES="${PRUNE_IMAGES:-1}"
-PRUNE_BUILD_CACHE="${PRUNE_BUILD_CACHE:-1}"
+PRUNE_BUILD_CACHE="${PRUNE_BUILD_CACHE:-0}"
 TARGET="${TARGET:-all}"
 SMOKE_TEST="${SMOKE_TEST:-1}"
+WAIT_HEALTHY="${WAIT_HEALTHY:-1}"
 
 public_build_args=()
 local_build_args=()
@@ -55,6 +51,68 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1" >&2
+    exit 1
+  fi
+}
+
+# Validate .env exists and required variables are set.
+# Generates JWT_SECRET automatically when missing.
+check_env() {
+  if [ ! -f "$ROOT_DIR/.env" ]; then
+    echo "" >&2
+    echo "ERROR: .env not found." >&2
+    echo "" >&2
+    echo "  Local deployment:    copy .env.virtech.example → .env, clear the" >&2
+    echo "  Virtech-specific lines, and fill in JWT_SECRET + ADMIN_PASSWORD." >&2
+    echo "" >&2
+    echo "  Virtech (nattech):   cp .env.virtech.example .env  and replace" >&2
+    echo "  XXX with the last octet of your VM's IP (e.g. 33 for 172.168.4.33)." >&2
+    echo "" >&2
+    exit 1
+  fi
+
+  local jwt_secret admin_password novnc_port_pool
+  jwt_secret=$(grep -E '^JWT_SECRET=' "$ROOT_DIR/.env" | cut -d= -f2- | tr -d '"' || true)
+  admin_password=$(grep -E '^ADMIN_PASSWORD=' "$ROOT_DIR/.env" | cut -d= -f2- | tr -d '"' || true)
+  novnc_port_pool=$(grep -E '^NOVNC_PORT_POOL=' "$ROOT_DIR/.env" | cut -d= -f2- | tr -d '"' || true)
+
+  local ok=1
+
+  if [ -z "$jwt_secret" ]; then
+    echo "  JWT_SECRET not set — generating a random secret and writing it to .env..."
+    local new_secret
+    new_secret=$(python3 -c "import secrets; print(secrets.token_hex(32))" 2>/dev/null \
+      || openssl rand -hex 32 2>/dev/null \
+      || head -c 32 /dev/urandom | xxd -p | tr -d '\n')
+    if grep -qE '^JWT_SECRET=' "$ROOT_DIR/.env" 2>/dev/null; then
+      sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$new_secret|" "$ROOT_DIR/.env"
+    else
+      echo "JWT_SECRET=$new_secret" >> "$ROOT_DIR/.env"
+    fi
+    echo "  JWT_SECRET written to .env."
+  fi
+
+  if [ -z "$admin_password" ]; then
+    echo "" >&2
+    echo "ERROR: ADMIN_PASSWORD is not set in .env." >&2
+    echo "  Add:  ADMIN_PASSWORD=<your-password>" >&2
+    ok=0
+  fi
+
+  if [ -n "$novnc_port_pool" ] && echo "$novnc_port_pool" | grep -q 'XX'; then
+    echo ""
+    echo "WARNING: NOVNC_PORT_POOL still contains the 'XX' placeholder in .env."
+    echo "  Replace XXX with the last octet of your VM's IP before students open labs."
+  fi
+
+  if [ ! -f "$ROOT_DIR/backend/.env" ]; then
+    echo ""
+    echo "WARNING: backend/.env not found."
+    echo "  The RAG tutor will fail without GOOGLE_API_KEY."
+    echo "  Create backend/.env with:  GOOGLE_API_KEY=<your-key>"
+  fi
+
+  if [ "$ok" = "0" ]; then
     exit 1
   fi
 }
@@ -140,6 +198,35 @@ patch_lab_files() {
   fi
 }
 
+# Poll until all core platform containers report healthy or the timeout expires.
+# Non-fatal: prints a warning and continues so the smoke test can give more detail.
+wait_for_healthy() {
+  local timeout=120
+  local services=(seclabs-sensor seclabs-edge seclabs-actuator seclabs-trainer seclabs-tutor-rag seclabs-backend)
+  local deadline=$((SECONDS + timeout))
+
+  echo "  Waiting up to ${timeout}s for services to become healthy..."
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    local all_healthy=1
+    for svc in "${services[@]}"; do
+      local state
+      state=$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null || echo "missing")
+      if [ "$state" != "healthy" ]; then
+        all_healthy=0
+        break
+      fi
+    done
+    if [ "$all_healthy" = "1" ]; then
+      echo "  All services healthy."
+      return 0
+    fi
+    sleep 3
+  done
+
+  echo "  WARNING: one or more services did not become healthy within ${timeout}s."
+  echo "  Check with: docker compose ps"
+}
+
 # Start the lab1 image with the exact same security flags the backend uses and
 # wait up to 45 seconds for noVNC to serve /vnc.html. Prints container logs on
 # failure so the root cause is visible without a separate docker logs call.
@@ -205,7 +292,28 @@ smoke_test_lab() {
   return 1
 }
 
+# Print access URLs from .env (NOVNC_HOST for external host, port 8080 for frontend).
+print_urls() {
+  local host
+  host=$(grep -E '^NOVNC_HOST=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+  local admin_email
+  admin_email=$(grep -E '^ADMIN_EMAIL=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "admin@seclabs.local")
+
+  echo "SecLabs is running."
+  if [ -n "$host" ] && [ "$host" != "localhost" ]; then
+    echo "  Frontend:   http://${host}:8080"
+    echo "              (if behind NAT, use the mapped external port instead of 8080)"
+  else
+    echo "  Frontend:   http://localhost:8080"
+  fi
+  echo "  Backend:    http://localhost:8000/health"
+  echo "  Admin user: ${admin_email}"
+}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 require_command docker
+check_env
 
 echo "[1/6] Stopping current runtime..."
 if [ "$TARGET" = "all" ] || [ "$TARGET" = "lab" ] || [ "$TARGET" = "lab-base" ]; then
@@ -225,6 +333,9 @@ build_target
 
 echo "[4/6] Starting SecLabs platform services with fresh containers..."
 docker compose up -d --force-recreate --remove-orphans
+if [ "$WAIT_HEALTHY" = "1" ]; then
+  wait_for_healthy
+fi
 
 if [ "$PRUNE_IMAGES" = "1" ]; then
   echo "[5/6] Cleaning dangling Docker images..."
@@ -234,11 +345,11 @@ else
 fi
 
 if [ "$PRUNE_BUILD_CACHE" = "1" ]; then
-  echo "[6/6] Cleaning dangling Docker build cache..."
+  echo "[6/6] Cleaning Docker build cache..."
   docker builder prune -f --filter "type=exec.cachemount" >/dev/null 2>&1 || true
   docker builder prune -f >/dev/null 2>&1 || true
 else
-  echo "[6/6] Skipping Docker build-cache cleanup because PRUNE_BUILD_CACHE=0."
+  echo "[6/6] Skipping Docker build-cache cleanup (PRUNE_BUILD_CACHE=0)."
 fi
 
 if [ "$SMOKE_TEST" = "1" ] && { [ "$TARGET" = "all" ] || [ "$TARGET" = "lab" ]; }; then
@@ -247,7 +358,5 @@ if [ "$SMOKE_TEST" = "1" ] && { [ "$TARGET" = "all" ] || [ "$TARGET" = "lab" ]; 
   smoke_test_lab
 fi
 
-echo
-echo "SecLabs is running."
-echo "Frontend: http://localhost:3000"
-echo "Backend health: http://localhost:8000/health"
+echo ""
+print_urls
