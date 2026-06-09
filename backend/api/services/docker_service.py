@@ -307,7 +307,7 @@ def _reconcile_novnc_pool(client) -> None:
         stale = _novnc_ports_in_use - active_ports
         if stale:
             print(f"[NOVNC-POOL] Reconciling: releasing stale ports {stale}", flush=True)
-            _novnc_ports_in_use -= stale
+            _novnc_ports_in_use.difference_update(stale)
 
 
 def _prune_stale_lab_containers(client=None) -> None:
