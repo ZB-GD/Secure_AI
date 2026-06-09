@@ -289,8 +289,30 @@ def _container_started_at_epoch(container) -> float | None:
     except ValueError:
         return None
 
+def _reconcile_novnc_pool(client) -> None:
+    """Release pool slots whose containers have already exited (remove=True auto-removal)."""
+    if not _novnc_pool:
+        return
+    pool_internal = {ip for ip, _ in _novnc_pool}
+    active_ports: set[int] = set()
+    for container in _running_managed_containers(client):
+        try:
+            for binding in (container.ports.get(f"{NOVNC_PORT}/tcp") or []):
+                hp = binding.get("HostPort")
+                if hp and int(hp) in pool_internal:
+                    active_ports.add(int(hp))
+        except Exception:
+            pass
+    with _novnc_pool_lock:
+        stale = _novnc_ports_in_use - active_ports
+        if stale:
+            print(f"[NOVNC-POOL] Reconciling: releasing stale ports {stale}", flush=True)
+            _novnc_ports_in_use -= stale
+
+
 def _prune_stale_lab_containers(client=None) -> None:
     client = client or _client()
+    _reconcile_novnc_pool(client)
     now = time.time()
 
     for container in _running_managed_containers(client):
