@@ -38,7 +38,7 @@ const sectionLabel = {
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
-  const initial = user?.email?.[0]?.toUpperCase() || "?";
+  const initial = user?.username?.[0]?.toUpperCase() || "?";
 
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -119,7 +119,7 @@ export default function ProfilePage() {
 
         <div>
           <div style={{ fontSize: "18px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-1)", marginBottom: "6px", wordBreak: "break-all" }}>
-            {user?.email}
+            {user?.username}
           </div>
           <span
             style={{
@@ -154,8 +154,8 @@ export default function ProfilePage() {
             <div style={sectionLabel}>Account</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div>
-                <div style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-display)", marginBottom: "4px" }}>EMAIL</div>
-                <div style={{ fontSize: "13px", color: "var(--text-1)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>{user?.email}</div>
+                <div style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-display)", marginBottom: "4px" }}>USERNAME</div>
+                <div style={{ fontSize: "13px", color: "var(--text-1)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>{user?.username}</div>
               </div>
               <div>
                 <div style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-display)", marginBottom: "4px" }}>ROLE</div>
