@@ -116,6 +116,16 @@ export const labService = {
     });
   },
 
+  async resetLabById(labId) {
+    const stage = getStageForLabId(labId);
+    if (!stage) throw new Error(`No stage configured for ${labId}`);
+
+    return request(`/labs/${stage}/reset?${sessionParam()}`, {
+      method: "POST",
+      cache: "no-store",
+    });
+  },
+
   async getLogsById(labId, limit = 200) {
     const stage = getStageForLabId(labId);
     if (!stage) throw new Error(`No stage configured for ${labId}`);

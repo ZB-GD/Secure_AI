@@ -527,6 +527,36 @@ def run_lab_attack(node: str, session_id: str = "shared"):
         raise HTTPException(status_code=500, detail=f"Error while running attack: {e}")
 
 
+def run_lab_reset(node: str, session_id: str = "shared"):
+    lab = _get_lab_or_404(node)
+    command = lab.get("reset_command")
+    if not command:
+        raise HTTPException(status_code=400, detail=f"Node '{node}' has no reset command.")
+
+    container_name = session_container_name(lab["container_name"], session_id)
+    client = _client()
+
+    try:
+        container = client.containers.get(container_name)
+        result = container.exec_run(command)
+        output = result.output.decode("utf-8", errors="replace") if result.output else ""
+        if result.exit_code != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Reset command failed with exit code {result.exit_code}: {output}",
+            )
+        return {
+            "node": node,
+            "container": container_name,
+            "status": "reset",
+            "lines": [line for line in output.splitlines() if line.strip()],
+        }
+    except docker.errors.NotFound:
+        raise HTTPException(status_code=404, detail=f"Node '{node}' is not running.")
+    except docker.errors.APIError as e:
+        raise HTTPException(status_code=500, detail=f"Error while resetting lab: {e}")
+
+
 def inject_command_to_terminal(node: str, text: str, session_id: str = "shared") -> dict:
     """Type text into the xfce4-terminal running in the lab container via xdotool."""
     lab = _get_lab_or_404(node)

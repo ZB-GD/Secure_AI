@@ -109,12 +109,12 @@ export const journey = [
     },
     guide: {
       objective:
-        "Attack the intentionally vulnerable local ingestion node, observe the impact, implement three defensive layers, then rerun the same attack and prove it is blocked.",
+        "Attack the intentionally vulnerable local ingestion node, observe the impact, implement three defensive layers, then rerun the same attack and prove it is blocked. Use the RESET button at the top of this panel at any point to restore the lab to its initial state.",
       steps: [
         {
           id: "step-1-1",
           title: "Inspect the Local Target",
-          body: "Open a terminal and confirm the target is running:\n\n  curl http://127.0.0.1:5000/health\n\nThen open vulnerable_app.py from the Desktop. Find the POST /ingest endpoint and look at what it checks before accepting data. What is it missing?\n\nNext open poison_data.py. It POSTs directly to that endpoint with traffic_volume=-5000. Why is it able to do that without any prior step?\n\nTo reset the lab at any point:\n\n  python3 /home/lab/Desktop/Lab1/reset_lab.py",
+          body: "Open a terminal and confirm the target is running:\n\n  curl http://127.0.0.1:5000/health\n\nThen open vulnerable_app.py from the Desktop. Find the POST /ingest endpoint and look at what it checks before accepting data. What is it missing?\n\nNext open poison_data.py. It POSTs directly to that endpoint with traffic_volume=-5000. Why is it able to do that without any prior step?",
           observation:
             "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
