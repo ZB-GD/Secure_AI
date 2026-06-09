@@ -2,22 +2,28 @@ from pydantic import BaseModel, field_validator
 
 
 class LoginRequest(BaseModel):
-    email: str
+    username: str
     password: str
 
-    @field_validator("email")
+    @field_validator("username")
     @classmethod
     def normalise(cls, v: str) -> str:
         return v.lower().strip()
 
 
 class RegisterRequest(BaseModel):
+    username: str
     email: str
     password: str
 
+    @field_validator("username")
+    @classmethod
+    def normalise_username(cls, v: str) -> str:
+        return v.lower().strip()
+
     @field_validator("email")
     @classmethod
-    def normalise(cls, v: str) -> str:
+    def normalise_email(cls, v: str) -> str:
         return v.lower().strip()
 
     @field_validator("password")
