@@ -15,7 +15,7 @@ const TABS = [
 ];
 
 // ─── Sub-component: TabBar ───────────────────────────────────────────────────
-function TabBar({ activeTab, onSelect, quizUnlocked }) {
+function TabBar({ activeTab, onSelect, quizUnlocked, onReset, resetLoading }) {
   return (
     <div
       style={{
@@ -23,16 +23,15 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
         borderBottom: "1px solid var(--border-dim)",
         background: "var(--bg-panel)",
         flexShrink: 0,
+        alignItems: "stretch",
       }}
     >
-      {TABS.map((tab) => {
-        const locked = tab.id === "quiz" && !quizUnlocked;
+      {TABS.filter((tab) => tab.id !== "quiz" || quizUnlocked).map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <button
             key={tab.id}
-            onClick={() => !locked && onSelect(tab.id)}
-            title={locked ? "Complete the lab to unlock" : undefined}
+            onClick={() => onSelect(tab.id)}
             style={{
               flex: 1,
               padding: "11px 8px",
@@ -41,26 +40,61 @@ function TabBar({ activeTab, onSelect, quizUnlocked }) {
                 ? "2px solid var(--orange)"
                 : "2px solid transparent",
               background: isActive ? "var(--bg-elevated)" : "transparent",
-              color: locked
-                ? "var(--text-3)"
-                : isActive
-                  ? "var(--text-1)"
-                  : "var(--text-3)",
+              color: isActive ? "var(--text-1)" : "var(--text-3)",
               fontSize: "14px",
               fontWeight: 700,
               fontFamily: "var(--font-display)",
-              cursor: locked ? "not-allowed" : "pointer",
+              cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               transition: "all 0.15s",
-              opacity: locked ? 0.4 : 1,
             }}
           >
             {tab.label.toUpperCase()}
           </button>
         );
       })}
+      <button
+        type="button"
+        onClick={onReset}
+        disabled={resetLoading}
+        title="Reset lab to initial state"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "5px",
+          padding: "0 12px",
+          border: "none",
+          borderLeft: "1px solid var(--border-dim)",
+          background: "transparent",
+          color: resetLoading ? "var(--text-3)" : "var(--text-2)",
+          fontSize: "12px",
+          fontWeight: 700,
+          fontFamily: "var(--font-display)",
+          cursor: resetLoading ? "not-allowed" : "pointer",
+          flexShrink: 0,
+          opacity: resetLoading ? 0.5 : 1,
+          letterSpacing: "0.05em",
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ flexShrink: 0 }}
+        >
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        {resetLoading ? "..." : "RESET"}
+      </button>
     </div>
   );
 }
@@ -399,7 +433,7 @@ export default function LabRuntimeWorkspace({
   );
   useInitialRightWidth(containerRef, hasUserResized, setRightWidth);
 
-  const { remoteUrl, remoteLoading, remoteError, retryRuntime, runtime, logs } =
+  const { remoteUrl, remoteLoading, remoteError, retryRuntime, resetLab, resetLoading, runtime, logs } =
     useLabRuntime(item?.id, {
       autoStart: true,
       pollIntervalMs: 3000,
@@ -506,6 +540,8 @@ export default function LabRuntimeWorkspace({
             activeTab={activeTab}
             onSelect={setActiveTab}
             quizUnlocked={quizUnlocked}
+            onReset={resetLab}
+            resetLoading={resetLoading}
           />
 
           <div
