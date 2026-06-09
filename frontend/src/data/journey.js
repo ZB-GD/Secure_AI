@@ -119,7 +119,7 @@ export const journey = [
             "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
-          placeholder: "e.g., Password, Certificate, Access control...",
+          placeholder: "e.g., Authentication, Token, Credentials...",
           hint: "Think about what a door requires before letting someone in. When a node accepts data from any source with no verification whatsoever, it's missing a fundamental security layer: the process that confirms the sender is who they claim to be.",
           expectedKeywords: [
             "authentication",
@@ -166,8 +166,10 @@ export const journey = [
           hint: "In security, suspicious data that can't be forwarded or deleted is placed in a controlled holding zone for human review, the same concept used in biology when a threat needs to be contained before spreading.",
           expectedKeywords: [
             "quarantine",
+            "quarantined",
             "drop",
             "reject",
+            "rejected",
             "block",
             "discard",
             "isolate",
