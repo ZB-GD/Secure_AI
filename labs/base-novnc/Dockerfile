@@ -17,6 +17,10 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd --gid 1000 lab && \
     useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash lab
 
+# Redirect root to vnc.html so navigating to the bare port shows the desktop, not a file listing
+RUN echo '<meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=1&resize=scale&reconnect=1">' \
+    > /usr/share/novnc/index.html
+
 # Configuración de supervisord: arranca todos los procesos necesarios
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

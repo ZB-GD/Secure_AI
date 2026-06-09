@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import shlex
 import threading
 import time
@@ -102,7 +103,7 @@ def _release_novnc_port(host_port: str | int) -> None:
         _novnc_ports_in_use.discard(int(host_port))
 
 
-def _build_novnc_url(host_port: str, request_host: str | None = None) -> str:
+def _build_novnc_url(host_port: str, request_host: str | None = None, password: str | None = None) -> str:
     host = request_host or os.getenv("NOVNC_HOST", "localhost")
     # Map internal host port to external NAT port when a pool is configured.
     external_port = host_port
@@ -110,7 +111,18 @@ def _build_novnc_url(host_port: str, request_host: str | None = None) -> str:
         if str(internal) == host_port:
             external_port = str(external)
             break
-    return f"http://{host}:{external_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1&compression=2&quality=6&show_dot=true"
+    url = f"http://{host}:{external_port}/vnc.html?autoconnect=1&resize=scale&reconnect=1&compression=2&quality=6&show_dot=true"
+    if password:
+        url += f"&password={password}"
+    return url
+
+
+def _get_container_vnc_password(container) -> str | None:
+    container.reload()
+    for entry in container.attrs.get("Config", {}).get("Env") or []:
+        if entry.startswith("VNC_PASSWORD="):
+            return entry.split("=", 1)[1]
+    return None
 
 
 def _get_host_port_or_500(container):
@@ -386,7 +398,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
             host_port = _get_host_port_or_500(existing)
             return {
                 "container_id": existing.id,
-                "terminal_url": _build_novnc_url(host_port, request_host),
+                "terminal_url": _build_novnc_url(host_port, request_host, _get_container_vnc_password(existing)),
             }
         else:
             # Stopped/exited container with same name — remove it so we can start fresh.
@@ -401,6 +413,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
         _ensure_concurrency_available(client, container_name)
         port_allocation = _acquire_novnc_port()
         host_port_binding = port_allocation[0] if port_allocation else None
+        vnc_password = secrets.token_hex(8)
         try:
             container = client.containers.run(
                 image,
@@ -416,6 +429,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
                 mem_limit="768m",
                 nano_cpus=1_000_000_000,
                 pids_limit=200,
+                environment={"VNC_PASSWORD": vnc_password},
                 labels={
                     "seclabs.lab": "true",
                     "seclabs.node": node,
@@ -432,7 +446,7 @@ def start_lab_container(node: str, request_host: str | None = None, session_id: 
         host_port = _get_host_port_or_500(container)
         return {
             "container_id": container.id,
-            "terminal_url": _build_novnc_url(host_port, request_host),
+            "terminal_url": _build_novnc_url(host_port, request_host, vnc_password),
         }
     except docker.errors.ImageNotFound:
         raise HTTPException(status_code=404, detail=f"Docker image '{image}' not found. Build it first.")
