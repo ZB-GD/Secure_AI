@@ -8,7 +8,7 @@ function AccountMenu({ user, isAdmin, onSelectItem, logout }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  const initial = user?.email?.[0]?.toUpperCase() || "?";
+  const initial = user?.username?.[0]?.toUpperCase() || "?";
 
   useEffect(() => {
     if (!open) return;
@@ -65,7 +65,7 @@ function AccountMenu({ user, isAdmin, onSelectItem, logout }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={user?.email}
+        title={user?.username}
         style={{
           width: "44px",
           height: "44px",
@@ -124,7 +124,7 @@ function AccountMenu({ user, isAdmin, onSelectItem, logout }) {
                 whiteSpace: "nowrap",
               }}
             >
-              {user?.email}
+              {user?.username}
             </div>
             <span
               style={{
