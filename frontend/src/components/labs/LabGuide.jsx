@@ -228,11 +228,11 @@ export default function LabGuide({
     setShowHint(false);
     setAnswerTouched(false);
     setTutorOpen(false);
-    setTutorQuestion(currentStep?.title || "");
+    setTutorQuestion(currentStep?.question || "");
     setTutorAnswer("");
     setTutorError("");
     contentScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [currentStep?.id, currentStep?.title]);
+  }, [currentStep?.id]);
 
   if (!item || !item.guide || !item.guide.steps || !currentStep) {
     return (
@@ -249,11 +249,10 @@ export default function LabGuide({
   const answerValid = isValid(currentStep, currentAnswer);
 
   async function askTutor() {
-    const message = tutorQuestion.trim() || currentStep.title;
+    const message = tutorQuestion.trim() || currentStep.question;
     setTutorLoading(true);
     setTutorError("");
     setTutorAnswer("");
-
     try {
       const data = await request("/api/rag/chat", {
         method: "POST",
@@ -438,109 +437,6 @@ export default function LabGuide({
 
         <div
           style={{
-            border: "1px solid rgba(56,189,248,0.22)",
-            borderRadius: "8px",
-            background: "rgba(56,189,248,0.04)",
-            overflow: "hidden",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setTutorOpen((open) => !open);
-              if (!tutorQuestion) setTutorQuestion(currentStep.title);
-            }}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 14px",
-              border: "none",
-              background: "transparent",
-              color: "var(--blue)",
-              fontFamily: "var(--font-display)",
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            <span>ASK TUTOR</span>
-            <span>{tutorOpen ? "HIDE" : "OPEN"}</span>
-          </button>
-
-          {tutorOpen && (
-            <div
-              style={{
-                borderTop: "1px solid rgba(56,189,248,0.16)",
-                padding: "12px 14px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <textarea
-                value={tutorQuestion}
-                onChange={(event) => setTutorQuestion(event.target.value)}
-                rows={3}
-                style={{
-                  resize: "vertical",
-                  width: "100%",
-                  border: "1px solid var(--border-mid)",
-                  borderRadius: "6px",
-                  background: "var(--bg-base)",
-                  color: "var(--text-1)",
-                  padding: "10px 12px",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                  outline: "none",
-                  fontFamily: "var(--font-mono)",
-                }}
-              />
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={askTutor}
-                  disabled={tutorLoading}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    border: "1px solid rgba(56,189,248,0.28)",
-                    background: tutorLoading
-                      ? "var(--bg-surface)"
-                      : "rgba(56,189,248,0.10)",
-                    color: "var(--blue)",
-                    fontFamily: "var(--font-display)",
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    cursor: tutorLoading ? "wait" : "pointer",
-                  }}
-                >
-                  {tutorLoading ? "ASKING..." : "SEND"}
-                </button>
-              </div>
-              {tutorError && (
-                <div style={{ color: "var(--red)", fontSize: "14px" }}>
-                  {tutorError}
-                </div>
-              )}
-              {tutorAnswer && (
-                <div
-                  style={{
-                    color: "var(--text-2)",
-                    fontSize: "14px",
-                    lineHeight: 1.65,
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {tutorAnswer}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
             marginTop: "auto",
             paddingTop: "4px",
           }}
@@ -595,7 +491,7 @@ export default function LabGuide({
                       : "var(--border-mid)"
                 }`,
                 borderRadius: "6px",
-                padding: "12px 14px",
+                padding: answerValid ? "12px 96px 12px 14px" : "12px 48px 12px 14px",
                 fontSize: "14px",
                 color: "var(--text-1)",
                 outline: "none",
@@ -607,16 +503,111 @@ export default function LabGuide({
               <span
                 style={{
                   position: "absolute",
-                  right: "12px",
-                  top: "12px",
+                  right: "40px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
                   color: "var(--green)",
                   fontSize: "14px",
+                  pointerEvents: "none",
                 }}
               >
                 ✓ Correct
               </span>
             )}
+
+            <button
+              type="button"
+              title="Ask tutor"
+              onClick={() => {
+                setTutorOpen((open) => !open);
+                if (!tutorQuestion) setTutorQuestion(currentStep.question);
+              }}
+              style={{
+                position: "absolute",
+                right: "8px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                border: tutorOpen ? "1px solid rgba(56,189,248,0.65)" : "1px solid rgba(56,189,248,0.4)",
+                background: tutorOpen
+                  ? "linear-gradient(135deg, rgba(56,189,248,0.22), rgba(249,115,22,0.12))"
+                  : "linear-gradient(135deg, rgba(56,189,248,0.15), rgba(15,23,42,0.95))",
+                color: tutorOpen ? "var(--blue)" : "var(--text-1)",
+                boxShadow: tutorOpen ? "0 0 14px rgba(56,189,248,0.28)" : "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                transition: "all 0.15s",
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+              </svg>
+            </button>
           </div>
+
+          {tutorOpen && (
+            <div
+              style={{
+                marginTop: "8px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              <textarea
+                value={tutorQuestion}
+                onChange={(e) => setTutorQuestion(e.target.value)}
+                rows={2}
+                style={{
+                  resize: "vertical",
+                  width: "100%",
+                  border: "1px solid rgba(56,189,248,0.28)",
+                  borderRadius: "6px",
+                  background: "var(--bg-base)",
+                  color: "var(--text-1)",
+                  padding: "8px 12px",
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                  outline: "none",
+                  fontFamily: "var(--font-mono)",
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={askTutor}
+                  disabled={tutorLoading}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(56,189,248,0.28)",
+                    background: tutorLoading ? "var(--bg-surface)" : "rgba(56,189,248,0.10)",
+                    color: "var(--blue)",
+                    fontFamily: "var(--font-display)",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    cursor: tutorLoading ? "wait" : "pointer",
+                  }}
+                >
+                  {tutorLoading ? "ASKING..." : "SEND"}
+                </button>
+              </div>
+              {tutorError && (
+                <div style={{ color: "var(--red)", fontSize: "13px" }}>{tutorError}</div>
+              )}
+              {tutorAnswer && (
+                <div style={{ color: "var(--text-2)", fontSize: "13px", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+                  {tutorAnswer}
+                </div>
+              )}
+            </div>
+          )}
 
           {answerTouched && !!currentAnswer && !answerValid && (
             <div

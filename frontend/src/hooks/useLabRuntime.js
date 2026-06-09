@@ -117,6 +117,7 @@ export function useLabRuntime(labId, options = {}) {
   const [remoteLoading, setRemoteLoading] = useState(Boolean(autoStart));
   const [remoteError,   setRemoteError]   = useState("");
   const [attackLoading, setAttackLoading] = useState(false);
+  const [resetLoading,  setResetLoading]  = useState(false);
   const [runtime,       setRuntime]       = useState(DEFAULT_RUNTIME);
   const [logs,          setLogs]          = useState([]);
 
@@ -249,6 +250,17 @@ export function useLabRuntime(labId, options = {}) {
     return () => window.clearInterval(timer);
   }, [labId]);
 
+  const resetLab = useCallback(async () => {
+    if (!labId) return;
+    setResetLoading(true);
+    try {
+      await labService.resetLabById(labId);
+      await Promise.all([refreshLogs(), refreshStatus()]);
+    } finally {
+      setResetLoading(false);
+    }
+  }, [labId, refreshLogs, refreshStatus]);
+
   // Browser-scoped runtime: closing or navigating away from the page discards
   // the lab container instead of preserving progress for a later visit.
   useEffect(() => {
@@ -270,6 +282,8 @@ export function useLabRuntime(labId, options = {}) {
     refreshStatus,
     triggerAttack,
     attackLoading,
+    resetLab,
+    resetLoading,
     runtime,
     logs,
   };

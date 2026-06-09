@@ -113,6 +113,66 @@ export default function PipelineCanvas({
           return items;
         })}
       </div>
+
+      {/* Feedback loop: Trainer → Actuator (retrained model)
+          marginTop: -16px bridges the 10px bottom-padding of the nodes row
+          + 6px flex gap so the bracket legs connect to the card bottoms. */}
+      <div
+        style={{
+          position: "relative",
+          padding: "0 20px",
+          height: "56px",
+          flexShrink: 0,
+          marginTop: "-16px",
+        }}
+      >
+        {/* U-shaped bracket */}
+        <div
+          style={{
+            position: "absolute",
+            left: "calc(63% - 5px)",
+            right: "calc(11% + 5px)",
+            top: 0,
+            bottom: "20px",
+            borderLeft: "1.5px dashed rgba(249,115,22,0.45)",
+            borderRight: "1.5px dashed rgba(249,115,22,0.45)",
+            borderBottom: "1.5px dashed rgba(249,115,22,0.45)",
+            borderRadius: "0 0 6px 6px",
+          }}
+        />
+
+        {/* Upward arrowhead at Actuator (destination) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "calc(63% - 5px)",
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "5px solid transparent",
+            borderRight: "5px solid transparent",
+            borderBottom: "7px solid rgba(249,115,22,0.55)",
+          }}
+        />
+
+        <span
+          style={{
+            position: "absolute",
+            top: "40px",
+            left: "calc(76% - 10px)",
+            transform: "translateX(-50%)",
+            fontSize: "10px",
+            color: "rgba(249,115,22,0.5)",
+            fontFamily: "var(--font-mono)",
+            letterSpacing: "0.05em",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
+          retrained model
+        </span>
+      </div>
     </div>
   );
 }

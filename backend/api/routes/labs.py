@@ -32,6 +32,11 @@ def run_lab_attack(node: str, session_id: str = Query(default="shared")):
     return docker_service.run_lab_attack(node, session_id)
 
 
+@router.post("/{node}/reset")
+def reset_lab(node: str, session_id: str = Query(default="shared")):
+    return docker_service.run_lab_reset(node, session_id)
+
+
 class InjectCommandBody(BaseModel):
     text: str
 
