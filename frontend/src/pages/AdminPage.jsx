@@ -288,7 +288,7 @@ export default function AdminPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-display)", fontSize: "14px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                      {["Email", "Role", "Joined"].map((h) => (
+                      {["Username", "Email", "Role", "Joined"].map((h) => (
                         <th
                           key={h}
                           style={{
@@ -306,10 +306,13 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(({ email, role, created_at }) => (
-                      <tr key={email} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    {users.map(({ username, email, role, created_at }) => (
+                      <tr key={username} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                         <td style={{ padding: "14px 40px 14px 0", color: "var(--text-1)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
-                          {email}
+                          {username}
+                        </td>
+                        <td style={{ padding: "14px 40px 14px 0", color: "var(--text-3)", fontFamily: "var(--font-mono)", fontSize: "13px" }}>
+                          {email || "—"}
                         </td>
                         <td style={{ padding: "14px 40px 14px 0" }}>
                           <span style={{
