@@ -169,6 +169,7 @@ function NodeCanvas() {
 export default function LoginPage() {
   const { login } = useAuth();
   const [tab, setTab] = useState("login");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -185,9 +186,15 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const path = tab === "login" ? "/auth/login" : "/auth/register";
-      const data = await callAuth(path, { email, password });
-      login(data.access_token, { email: data.email, role: data.role });
+      if (tab === "login") {
+        const data = await callAuth("/auth/login", { username, password });
+        login(data.access_token, { email: data.email, role: data.role });
+      } else {
+        await callAuth("/auth/register", { username, email, password });
+        setTab("login");
+        setUsername(""); setEmail(""); setPassword(""); setConfirm("");
+        setError("");
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -307,7 +314,7 @@ export default function LoginPage() {
           <p style={{ margin: "0 0 28px", fontSize: 13, color: "var(--text-3)", fontFamily: "var(--font-display)" }}>
             {tab === "login"
               ? "Welcome back. Enter your credentials to continue."
-              : "Use the university email you submitted in the sign-up form."}
+              : "Fill in the details to create a new user account."}
           </p>
 
           <div style={{ display: "flex", gap: "24px", borderBottom: "1px solid var(--border-dim)", marginBottom: "28px" }}>
@@ -317,15 +324,27 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div>
-              <label style={labelStyle}>Email</label>
+              <label style={labelStyle}>Username</label>
               <input
-                type="email" required value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
-                placeholder="you@university.edu"
-                style={inputStyle("email")} autoComplete="email"
+                type="text" required value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onFocus={() => setFocused("username")} onBlur={() => setFocused(null)}
+                placeholder="e.g. user01"
+                style={inputStyle("username")} autoComplete="username"
               />
             </div>
+            {tab === "register" && (
+              <div>
+                <label style={labelStyle}>Email</label>
+                <input
+                  type="email" required value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
+                  placeholder="you@university.edu"
+                  style={inputStyle("email")} autoComplete="email"
+                />
+              </div>
+            )}
             <div>
               <label style={labelStyle}>Password</label>
               <input
