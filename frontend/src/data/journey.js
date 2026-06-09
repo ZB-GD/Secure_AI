@@ -109,18 +109,18 @@ export const journey = [
     },
     guide: {
       objective:
-        "Attack the intentionally vulnerable local ingestion node, observe the impact, implement three defensive layers, then rerun the same attack and prove it is blocked.",
+        "Attack the intentionally vulnerable local ingestion node, observe the impact, implement three defensive layers, then rerun the same attack and prove it is blocked. Use the RESET button at the top of this panel at any point to restore the lab to its initial state.",
       steps: [
         {
           id: "step-1-1",
           title: "Inspect the Local Target",
-          body: "Open a terminal and confirm the target is running:\n\n  curl http://127.0.0.1:5000/health\n\nThen read the two key files:\n\n  cat /home/lab/Desktop/Lab1/vulnerable_app.py\n  cat /home/lab/Desktop/Lab1/poison_data.py\n\nvulnerable_app.py is a Flask app on port 5000, its POST /ingest endpoint accepts any JSON with no auth and no validation.\npoison_data.py is the attack script, it POSTs traffic_volume=-5000 directly to that endpoint.\n\nTo reset the lab at any point:\n\n  python3 /home/lab/Desktop/Lab1/reset_lab.py",
+          body: "Open a terminal and confirm the target is running:\n\n  curl http://127.0.0.1:5000/health\n\nThen open vulnerable_app.py from the Desktop. Find the POST /ingest endpoint and look at what it checks before accepting data. What is it missing?\n\nNext open poison_data.py. It POSTs directly to that endpoint with traffic_volume=-5000. Why is it able to do that without any prior step?",
           observation:
             "The target runs only inside this Lab 1 container. It accepts telemetry without authentication, signatures, or sanity checks, so it models a broken ingestion node without touching the real pipeline.",
           question:
             "What missing security control allows the script to push data without proving its identity?",
           placeholder: "e.g., Password, Certificate, Access control...",
-          hint: "Think about what a door requires before letting someone in. When a node accepts data from any source with no verification whatsoever, it's missing a fundamental security layer — the process that confirms the sender is who they claim to be.",
+          hint: "Think about what a door requires before letting someone in. When a node accepts data from any source with no verification whatsoever, it's missing a fundamental security layer: the process that confirms the sender is who they claim to be.",
           expectedKeywords: [
             "authentication",
             "signature",
@@ -139,7 +139,7 @@ export const journey = [
           question:
             "What congestion_score does the Edge Node produce when it receives traffic_volume = -5000?",
           placeholder: "e.g., 0.75, -1.0, 1.5...",
-          hint: "Open the LOGS tab after running the attack. Find the 'Edge Pre-processing Node' section and read the congestion_score value — write it exactly as it appears, including its sign.",
+          hint: "Open the LOGS tab after running the attack. Find the 'Edge Pre-processing Node' section and read the congestion_score value. Write it exactly as it appears, including its sign.",
           expectedKeywords: ["-0.625", "-0.6", "negative", "negativo"],
         },
         {
@@ -163,7 +163,7 @@ export const journey = [
           question:
             "If a data point is flagged as highly anomalous by the Z-Score, what action should the pipeline take instead of forwarding it to the Actuator Node?",
           placeholder: "e.g., Log it, Flag it, Alert it...",
-          hint: "In security, suspicious data that can't be forwarded or deleted is placed in a controlled holding zone for human review — the same concept used in biology when a threat needs to be contained before spreading.",
+          hint: "In security, suspicious data that can't be forwarded or deleted is placed in a controlled holding zone for human review, the same concept used in biology when a threat needs to be contained before spreading.",
           expectedKeywords: [
             "quarantine",
             "drop",
@@ -203,7 +203,7 @@ export const journey = [
           question:
             "After enabling defense, what should the Sensor Node do with the poisoned traffic_volume=-5000 reading?",
           placeholder: "e.g., Log it, Validate it, Flag it...",
-          hint: "Run the attack again and check the LOGS tab. The Sensor Node's response to the poisoned value is printed in uppercase — that word is your answer.",
+          hint: "Run the attack again and check the LOGS tab. The Sensor Node's response to the poisoned value is printed in uppercase. That word is your answer.",
           expectedKeywords: [
             "reject",
             "rejected",
@@ -217,7 +217,7 @@ export const journey = [
     },
     // ─── QUIZ ────────────────────────────────────────────────────────────────
     // Unlocks in the Quiz tab after all guide steps are completed.
-    // OPTIONS must be plain strings — the QuizTab component auto-generates
+    // OPTIONS must be plain strings; the QuizTab component auto-generates
     // the A / B / C labels, so do NOT add "A) " prefixes here.
     quiz: [
       {
@@ -234,7 +234,7 @@ export const journey = [
       },
       {
         question:
-          "What is the most computationally efficient way to prevent impossible values like '-5000 cars' from poisoning the model?",
+          "What is the simplest and earliest defense against impossible values like '-5000 cars' entering the pipeline?",
         options: [
           "Implementing Sanity Checks (Range Validation) at the Ingestion Node.",
           "Training a Generative AI to read the incoming logs.",
@@ -242,7 +242,7 @@ export const journey = [
         ],
         correctAnswerIndex: 0,
         explanation:
-          "A simple 'if (traffic_volume < 0) reject()' acts as a physical barrier against data that violates real-world logic.",
+          "Range validation at the ingestion node is the earliest possible gate. It rejects physically impossible values before they reach feature engineering or the model.",
       },
       {
         question:

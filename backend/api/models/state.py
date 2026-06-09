@@ -19,6 +19,7 @@ LABS = {
             "Goal: first attack is ACCEPTED; second attack is REJECTED.",
         ],
         "attack_command": ["python3", "/home/lab/Desktop/Lab1/poison_data.py"],
+        "reset_command": ["python3", "/home/lab/Desktop/Lab1/reset_lab.py"],
     },
     "edge-preprocessing": {
         "image": "lab-phase-2-input:vuln",
