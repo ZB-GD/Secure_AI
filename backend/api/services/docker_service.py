@@ -521,7 +521,7 @@ def get_lab_status(node: str, request_host: str | None = None, session_id: str =
         container = client.containers.get(container_name)
         payload = {"status": container.status}
         if container.status == "running":
-            payload["terminal_url"] = _build_novnc_url(_get_host_port_or_500(container), request_host)
+            payload["terminal_url"] = _build_novnc_url(_get_host_port_or_500(container), request_host, _get_container_vnc_password(container))
             metrics = _get_local_lab_metrics(container, lab)
             if metrics:
                 payload["status"] = metrics.get("status", payload["status"])
