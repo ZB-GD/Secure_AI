@@ -188,7 +188,7 @@ export default function LoginPage() {
     try {
       if (tab === "login") {
         const data = await callAuth("/auth/login", { username, password });
-        login(data.access_token, { email: data.email, role: data.role });
+        login(data.access_token, { username: data.email, role: data.role });
       } else {
         await callAuth("/auth/register", { username, email, password });
         setTab("login");
