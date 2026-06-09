@@ -21,11 +21,11 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest):
-    user = get_user(body.email)
+    user = get_user(body.username)
     if not user or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid username or password",
         )
     token = create_token(user["email"], user["role"])
     return {"access_token": token, "token_type": "bearer", "email": user["email"], "role": user["role"]}
@@ -33,20 +33,19 @@ def login(body: LoginRequest):
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest):
-    email = body.email
-    if not is_email_approved(email):
+    if not is_email_approved(body.email):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This email is not in the approved list. Contact your instructor.",
         )
-    if get_user(email):
+    if get_user(body.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
+            detail="An account with this username already exists.",
         )
-    create_user(email, hash_password(body.password), role="student")
-    token = create_token(email, "student")
-    return {"access_token": token, "token_type": "bearer", "email": email, "role": "student"}
+    create_user(body.username, hash_password(body.password), role="student")
+    token = create_token(body.username, "student")
+    return {"access_token": token, "token_type": "bearer", "email": body.username, "role": "student"}
 
 
 @router.get("/me")
