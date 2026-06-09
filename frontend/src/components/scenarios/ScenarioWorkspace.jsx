@@ -65,11 +65,11 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
       logs.push(...n4.retrain.log.map((line) => `[TRAINER] ${line}`));
     } else if (n4.retrain_triggered) {
       logs.push(
-        `[TRAINER] [RETRAIN] Triggered — drift=${Number(driftScore).toFixed(3)}`,
+        `[TRAINER] [RETRAIN] Triggered, drift=${Number(driftScore).toFixed(3)}`,
       );
     } else {
       logs.push(
-        `[TRAINER] [RETRAIN] Not triggered — drift=${Number(driftScore).toFixed(3)} (threshold 0.25)`,
+        `[TRAINER] [RETRAIN] Not triggered, drift=${Number(driftScore).toFixed(3)} (threshold 0.25)`,
       );
     }
 
@@ -84,7 +84,7 @@ const NODE_CONTEXT = {
     receives: (
       <>
         Raw sensor frame from a street camera, before any checks. The key field
-        is <Hi>traffic_volume</Hi> — a vehicle count that must be zero or above
+        is <Hi>traffic_volume</Hi>, a vehicle count that must be zero or above
         to be realistic. <Hi>signed: false</Hi> means the sensor did not prove
         its identity before sending data.
       </>
@@ -99,7 +99,7 @@ const NODE_CONTEXT = {
     logs: (
       <>
         Each line shows what the Sensor Node accepted or dropped. Look for{" "}
-        <Hi>_poisoned</Hi> readings — if one appears, an invalid sensor frame
+        <Hi>_poisoned</Hi> readings. If one appears, an invalid sensor frame
         entered the pipeline without any challenge.
       </>
     ),
@@ -123,7 +123,7 @@ const NODE_CONTEXT = {
     logs: (
       <>
         Shows the feature values the Edge Node computed. Look for{" "}
-        <Hi>anomaly: true</Hi> or a <Hi>negative congestion_score</Hi> — either
+        <Hi>anomaly: true</Hi> or a <Hi>negative congestion_score</Hi>. Either
         confirms a poisoned reading is being treated as valid data.
       </>
     ),
@@ -132,7 +132,7 @@ const NODE_CONTEXT = {
     receives: (
       <>
         The feature vector from the Edge Node that will be fed into the ML
-        model. <Hi>integrity_ok</Hi> is the result of a model hash check — if it
+        model. <Hi>integrity_ok</Hi> is the result of a model hash check. If it
         is <Hi>null or false</Hi>, the model weights may have been modified and
         cannot be trusted.
       </>
@@ -173,7 +173,7 @@ const NODE_CONTEXT = {
     logs: (
       <>
         Shows storage and retraining decisions. Look for{" "}
-        <Hi>Retraining triggered</Hi> with a high drift score — that confirms
+        <Hi>Retraining triggered</Hi> with a high drift score. That confirms
         the attack has succeeded in changing the model's future behavior.
       </>
     ),
@@ -189,7 +189,7 @@ const NODE_ABOUT = {
       <Hi>traffic_volume</Hi> is a physically possible value (0 to ~8,000
       vehicles/hour) and that the sender is a{" "}
       <Hi>known, authenticated sensor</Hi>. In this scenario both checks are
-      disabled — it accepts every reading, including the attack-injected{" "}
+      disabled. It accepts every reading, including the attack-injected{" "}
       <Hi>traffic_volume = -5,000</Hi>.
     </>
   ),
@@ -199,7 +199,7 @@ const NODE_ABOUT = {
       task is computing <Hi>congestion_score = traffic_volume / 8,000</Hi>, a
       0-to-1 scale of road busyness. When the poisoned{" "}
       <Hi>traffic_volume = -5,000</Hi> arrives, the formula produces{" "}
-      <Hi>congestion_score = -0.625</Hi> — a physically impossible value. The
+      <Hi>congestion_score = -0.625</Hi>, a physically impossible value. The
       Edge Node flags it as <Hi>anomalous</Hi> but in vulnerable mode still
       passes it to the model instead of <Hi>quarantining it</Hi>.
     </>
@@ -208,7 +208,7 @@ const NODE_ABOUT = {
     <>
       It is where the ML model makes decisions. It takes the{" "}
       <Hi>feature vector</Hi> from the Edge Node, runs <Hi>inference</Hi>, and
-      turns the prediction into a real traffic action — such as{" "}
+      turns the prediction into a real traffic action, such as{" "}
       <Hi>holding a light red</Hi> or <Hi>rerouting buses</Hi>. A secure node
       would refuse to act on <Hi>anomalous input</Hi> and verify the model
       hasn't been tampered with via an <Hi>integrity check</Hi>. In vulnerable
@@ -219,7 +219,7 @@ const NODE_ABOUT = {
   trainer: (
     <>
       It keeps the ML model up to date by saving incoming <Hi>feature rows</Hi>{" "}
-      and tracking <Hi>data drift</Hi> — how different the new data looks
+      and tracking <Hi>data drift</Hi>, meaning how different the new data looks
       compared to what the model was trained on. If drift crosses <Hi>0.25</Hi>,
       it triggers <Hi>retraining</Hi>. The danger: if <Hi>poisoned features</Hi>{" "}
       were stored and drift is already elevated, retraining bakes the{" "}
@@ -235,7 +235,7 @@ function PipelineRuntime() {
       {
         id: "edge",
 
-        name: "Sensor Data Node",
+        name: "SENSOR DATA",
         status: "compromised",
         summary: "Accepted a physically impossible sensor reading.",
         about: NODE_ABOUT.edge,
@@ -247,7 +247,7 @@ function PipelineRuntime() {
       {
         id: "preprocessing",
 
-        name: "Edge Pre-processing Node",
+        name: "EDGE PRE-PROCESSING",
         status: "compromised",
         summary: "Converted the poisoned reading into an invalid feature.",
         about: NODE_ABOUT.preprocessing,
@@ -259,7 +259,7 @@ function PipelineRuntime() {
       {
         id: "actuator",
 
-        name: "Inference & Action Node",
+        name: "INFERENCE & ACTION",
         status: "compromised",
         summary: "Turned the invalid feature into a traffic-control action.",
         about: NODE_ABOUT.actuator,
@@ -271,7 +271,7 @@ function PipelineRuntime() {
       {
         id: "trainer",
 
-        name: "Trainer Node",
+        name: "TRAINER",
         status: "compromised",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
         about: NODE_ABOUT.trainer,
@@ -351,7 +351,7 @@ function PipelineRuntime() {
       {
         id: "edge",
 
-        name: "SENSOR DATA NODE",
+        name: "SENSOR DATA",
         status: n1Poisoned ? "compromised" : "healthy",
         summary: `Forwarded ${n1.readings?.length || 0} readings. Dropped ${n1.dropped?.length || 0}.`,
         about: NODE_ABOUT.edge,
@@ -372,7 +372,7 @@ function PipelineRuntime() {
       {
         id: "preprocessing",
 
-        name: "EDGE PRE-PROCESSING NODE",
+        name: "EDGE PRE-PROCESSING",
         status: n2Anomalous ? "compromised" : "healthy",
         summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
         about: NODE_ABOUT.preprocessing,
@@ -396,7 +396,7 @@ function PipelineRuntime() {
       {
         id: "actuator",
 
-        name: "ACTUATOR NODE",
+        name: "ACTUATOR",
         status: n3Status,
         summary: `Predictions: ${n3.predictions?.length || 0}. Actions: ${n3.actions?.length || 0}.`,
         about: NODE_ABOUT.actuator,
@@ -422,7 +422,7 @@ function PipelineRuntime() {
       {
         id: "trainer",
 
-        name: "TRAINER NODE",
+        name: "TRAINER",
         status: n4Status,
         summary: n4.retrain_triggered
           ? `Store: ${n4.store ? "ok" : "failed"}. Retrain: ${n4.retrain ? "triggered" : "failed"}.`

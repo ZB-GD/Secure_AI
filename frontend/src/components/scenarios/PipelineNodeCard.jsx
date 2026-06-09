@@ -18,40 +18,80 @@ const STATUS_CFG = {
   },
 };
 
-function StatusIcon({ status, color, colorRaw }) {
+function StatusBadgeIcon({ status, color }) {
   if (status === "healthy") {
     return (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <circle
-          cx="12" cy="12" r="9"
-          stroke={color} strokeWidth="1.5"
-          fill={`rgba(${colorRaw}, 0.12)`}
-        />
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path
-          d="M8.5 12L11 14.5L15.5 10"
-          stroke={color} strokeWidth="1.8"
-          strokeLinecap="round" strokeLinejoin="round"
+          d="M20 6L9 17L4 12"
+          stroke={color}
+          strokeWidth="2.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     );
   }
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M12 4.5L21 19.5H3L12 4.5Z"
-        stroke={color} strokeWidth="1.5" strokeLinejoin="round"
-        fill={`rgba(${colorRaw}, 0.12)`}
+        d="M12 5L21.5 19.5H2.5L12 5Z"
+        stroke={color}
+        strokeWidth="2.2"
+        strokeLinejoin="round"
       />
-      <line x1="12" y1="10.5" x2="12" y2="15" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="12" cy="17.5" r="1" fill={color} />
+      <line
+        x1="12" y1="11" x2="12" y2="15"
+        stroke={color} strokeWidth="2.2" strokeLinecap="round"
+      />
+      <circle cx="12" cy="18" r="1.1" fill={color} />
     </svg>
   );
 }
+
+const NODE_ICONS = {
+  // Sensor Data — camera representing IoT sensor / data capture
+  edge: (color) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="2" y="8" width="20" height="13" rx="2" stroke={color} strokeWidth="1.7" />
+      <circle cx="12" cy="14.5" r="3.5" stroke={color} strokeWidth="1.7" />
+      <path d="M9 8V6.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V8" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="17.5" cy="11" r="1" fill={color} />
+    </svg>
+  ),
+  // Edge Pre-processing — funnel representing data filtering and feature engineering
+  preprocessing: (color) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M22 3H2l8 9.46V19l4 2V12.46L22 3z"
+        stroke={color} strokeWidth="1.7" strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Actuator — lightning bolt representing ML inference triggering a physical action
+  actuator: (color) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M13 2L4 14h8l-1 8 9-12h-8z"
+        stroke={color} strokeWidth="1.7" strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  // Trainer — database cylinder representing feature storage and model retraining
+  trainer: (color) => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <ellipse cx="12" cy="6" rx="8" ry="3" stroke={color} strokeWidth="1.7" />
+      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" stroke={color} strokeWidth="1.7" />
+      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke={color} strokeWidth="1.7" />
+    </svg>
+  ),
+};
 
 export default function PipelineNodeCard({ node, isActive, onClick }) {
   const [hovered, setHovered] = useState(false);
   const cfg = STATUS_CFG[node.status] || STATUS_CFG.healthy;
   const lit = isActive || hovered;
+  const iconColor = lit ? cfg.color : "var(--text-3)";
 
   return (
     <button
@@ -98,20 +138,20 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
       <div
         style={{
           flex: 1,
-          padding: "12px 14px 8px",
+          padding: "10px 14px 8px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "7px",
+          gap: "6px",
           width: "100%",
         }}
       >
-        <StatusIcon status={node.status} color={cfg.color} colorRaw={cfg.colorRaw} />
+        {NODE_ICONS[node.id]?.(iconColor)}
 
         <div
           style={{
             color: lit ? "var(--text-1)" : "var(--text-2)",
-            fontSize: "14px",
+            fontSize: "13px",
             fontWeight: 700,
             fontFamily: "var(--font-display)",
             lineHeight: 1.3,
@@ -123,19 +163,22 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
 
         <span
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
             padding: "2px 10px",
             borderRadius: "999px",
             border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.6 : 0.3})`,
             background: `rgba(${cfg.colorRaw}, ${lit ? 0.15 : 0.07})`,
             color: cfg.color,
-            fontSize: "14px",
+            fontSize: "12px",
             fontFamily: "var(--font-display)",
           }}
         >
+          <StatusBadgeIcon status={node.status} color={cfg.color} />
           {cfg.label}
         </span>
       </div>
-
     </button>
   );
 }
