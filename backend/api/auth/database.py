@@ -27,10 +27,18 @@ def init_db() -> None:
             );
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
                 hashed_password TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'student',
                 created_at TEXT DEFAULT (datetime('now'))
             );
         """)
+        # migrate existing DB: add username column if missing
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "username" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE users SET username = email WHERE username = ''")
+        if "email" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
         conn.commit()

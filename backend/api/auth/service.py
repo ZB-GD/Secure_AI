@@ -44,29 +44,29 @@ def decode_token(token: str) -> dict:
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
-def get_user(email: str) -> dict | None:
+def get_user(username: str) -> dict | None:
     with get_db() as conn:
         row = conn.execute(
-            "SELECT email, hashed_password, role, created_at FROM users WHERE email = ?",
-            (email.lower(),),
+            "SELECT username, email, hashed_password, role, created_at FROM users WHERE username = ?",
+            (username.lower(),),
         ).fetchone()
         return dict(row) if row else None
 
 
-def create_user(email: str, hashed_password: str, role: str = "student") -> None:
+def create_user(username: str, hashed_password: str, role: str = "student", email: str = "") -> None:
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO users (email, hashed_password, role) VALUES (?, ?, ?)",
-            (email.lower(), hashed_password, role),
+            "INSERT INTO users (username, email, hashed_password, role) VALUES (?, ?, ?, ?)",
+            (username.lower(), email.lower(), hashed_password, role),
         )
         conn.commit()
 
 
-def update_password(email: str, new_hashed: str) -> None:
+def update_password(username: str, new_hashed: str) -> None:
     with get_db() as conn:
         conn.execute(
-            "UPDATE users SET hashed_password = ? WHERE email = ?",
-            (new_hashed, email.lower()),
+            "UPDATE users SET hashed_password = ? WHERE username = ?",
+            (new_hashed, username.lower()),
         )
         conn.commit()
 
@@ -74,7 +74,7 @@ def update_password(email: str, new_hashed: str) -> None:
 def list_users() -> list[dict]:
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT email, role, created_at FROM users ORDER BY created_at DESC"
+            "SELECT username, email, role, created_at FROM users ORDER BY created_at DESC"
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -113,9 +113,9 @@ def list_approved_emails() -> list[dict]:
 
 # ── Admin seeding ─────────────────────────────────────────────────────────────
 
-def seed_admin(email: str, password: str) -> None:
+def seed_admin(username: str, password: str) -> None:
     """Create the admin account on first run; skip if it already exists."""
-    if get_user(email):
+    if get_user(username):
         return
-    create_user(email, hash_password(password), role="admin")
-    print(f"[AUTH] Admin account created: {email}")
+    create_user(username, hash_password(password), role="admin")
+    print(f"[AUTH] Admin account created: {username}")

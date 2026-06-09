@@ -27,8 +27,8 @@ def login(body: LoginRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
-    token = create_token(user["email"], user["role"])
-    return {"access_token": token, "token_type": "bearer", "email": user["email"], "role": user["role"]}
+    token = create_token(user["username"], user["role"])
+    return {"access_token": token, "token_type": "bearer", "email": user["username"], "role": user["role"]}
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -43,7 +43,7 @@ def register(body: RegisterRequest):
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this username already exists.",
         )
-    create_user(body.username, hash_password(body.password), role="student")
+    create_user(body.username, hash_password(body.password), role="student", email=body.email)
     token = create_token(body.username, "student")
     return {"access_token": token, "token_type": "bearer", "email": body.username, "role": "student"}
 
