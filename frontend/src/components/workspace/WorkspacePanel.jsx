@@ -50,6 +50,7 @@ export default function WorkspacePanel({
     return (
       <ScenarioWorkspace
         item={item}
+        items={items}
         onCompleteScenario={onCompleteScenario}
         onSelectItem={onSelectItem}
       />

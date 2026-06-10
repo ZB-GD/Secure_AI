@@ -99,6 +99,56 @@ function TabBar({ activeTab, onSelect, quizUnlocked, onReset, resetLoading }) {
   );
 }
 
+// ─── Sub-component: shared pill-style action button (icon + label) ──────────
+function PillButton({ onClick, color, background, border, icon, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        padding: "8px 14px",
+        borderRadius: "6px",
+        border: `1px solid ${border}`,
+        background,
+        color,
+        fontSize: "12px",
+        fontWeight: 700,
+        fontFamily: "var(--font-display)",
+        cursor: "pointer",
+        letterSpacing: "0.05em",
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+const RETRY_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
+const REVIEW_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const FINISH_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
 function QuizTab({ item, phase, onComplete, onSelectItem }) {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -392,12 +442,32 @@ function QuizTab({ item, phase, onComplete, onSelectItem }) {
           </div>
 
           <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border-dim)", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
-            <button type="button" onClick={() => setShowFeedback(false)} style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>
-              Review Answers
-            </button>
-            <button type="button" onClick={reset} style={{ padding: "8px 14px", borderRadius: "6px", border: "1px solid var(--border-dim)", background: "transparent", color: "var(--text-2)", fontSize: "14px", fontFamily: "var(--font-display)", cursor: "pointer" }}>
-              RETRY
-            </button>
+            <PillButton
+              onClick={() => setShowFeedback(false)}
+              color="var(--text-2)"
+              background="transparent"
+              border="var(--border-dim)"
+              icon={REVIEW_ICON}
+              label="REVIEW ANSWERS"
+            />
+            <PillButton
+              onClick={reset}
+              color="var(--text-2)"
+              background="transparent"
+              border="var(--border-dim)"
+              icon={RETRY_ICON}
+              label="RETRY"
+            />
+            {scoreRatio >= 0.75 && (
+              <PillButton
+                onClick={() => onSelectItem?.("dashboard")}
+                color="var(--green)"
+                background="var(--green-dim)"
+                border="var(--green-border)"
+                icon={FINISH_ICON}
+                label="FINISH"
+              />
+            )}
           </div>
         </div>
       )}
