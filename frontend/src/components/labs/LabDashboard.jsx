@@ -75,99 +75,75 @@ export default function LabDashboard({ items, onSelectItem }) {
       {/* Content */}
       <div style={{ flex: 1, padding: "32px 40px" }}>
 
-          {/* Completion banner */}
-          {allCompletableComplete && (
-            <section
-              style={{
-                marginBottom: "28px",
-                border: "1px solid var(--green-border)",
-                borderRadius: "12px",
-                background: "var(--green-dim)",
-                padding: "24px",
-              }}
-            >
-              <div
-                style={{
-                  color: "var(--green)",
-                  fontFamily: "var(--font-display)",
-                  fontSize: "12px",
-                  marginBottom: "8px",
-                }}
-              >
-                TRAINING COMPLETE
-              </div>
-              <h2
-                style={{
-                  margin: "0 0 16px",
-                  color: "var(--text-1)",
-                  fontFamily: "var(--font-display)",
-                  fontSize: "24px",
-                  fontWeight: 700,
-                }}
-              >
-                CityFlow investigation closed
-              </h2>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "12px",
-                }}
-              >
-                {[
-                  ["Labs completed", `${completableLabs.length}/${completableLabs.length}`],
-                  ["Average quiz score", averageScore == null ? "n/a" : `${averageScore}%`],
-                  ["Time spent", elapsedMinutes == null ? "n/a" : `${elapsedMinutes} min`],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    style={{
-                      border: "1px solid rgba(34,197,94,0.20)",
-                      borderRadius: "8px",
-                      background: "rgba(15,23,42,0.45)",
-                      padding: "14px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: "var(--text-3)",
-                        fontFamily: "var(--font-display)",
-                        fontSize: "12px",
-                        marginBottom: "6px",
-                      }}
-                    >
-                      {label.toUpperCase()}
-                    </div>
-                    <div
-                      style={{
-                        color: "var(--text-1)",
-                        fontFamily: "var(--font-display)",
-                        fontSize: "22px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Stats bar */}
+          {/* Summary bar — persistent progress overview */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "20px",
-              color: "var(--text-3)",
-              fontFamily: "var(--font-display)",
-              fontSize: "12px",
+              flexWrap: "wrap",
+              gap: "8px",
+              marginBottom: "28px",
+              padding: "14px 20px",
+              borderRadius: "10px",
+              border: `1px solid ${allCompletableComplete ? "var(--green-border)" : "var(--border-dim)"}`,
+              background: allCompletableComplete ? "var(--green-dim)" : "var(--bg-panel)",
             }}
           >
-            <span>{labs.length} LABS AVAILABLE</span>
-            <span>{completed}/{labs.length} COMPLETE</span>
+            {[
+              ["LABS COMPLETED", `${completed}/${completableLabs.length}`],
+              ["AVERAGE QUIZ SCORE", averageScore == null ? "n/a" : `${averageScore}%`],
+              ["TIME SPENT", elapsedMinutes == null ? "n/a" : `${elapsedMinutes} min`],
+            ].map(([label, value], i) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: "8px",
+                  paddingLeft: i > 0 ? "24px" : 0,
+                  borderLeft: i > 0 ? "1px solid var(--border-dim)" : "none",
+                }}
+              >
+                <span
+                  style={{
+                    color: "var(--text-3)",
+                    fontFamily: "var(--font-display)",
+                    fontSize: "12px",
+                  }}
+                >
+                  {label}
+                </span>
+                <span
+                  style={{
+                    color: "var(--text-1)",
+                    fontFamily: "var(--font-display)",
+                    fontSize: "18px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
+
+            <div style={{ flex: 1 }} />
+
+            {allCompletableComplete && (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color: "var(--green)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                }}
+              >
+                ✓ TRAINING COMPLETE
+              </span>
+            )}
           </div>
 
           {/* Cards grid */}
@@ -185,14 +161,23 @@ export default function LabDashboard({ items, onSelectItem }) {
               const currentStep = (lab.currentStepIndex ?? 0) + 1;
               const stepProgress = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
 
+              const perfectScore =
+                !lab.quizScore?.total || lab.quizScore.percent === 100;
+
               let badgeColor = "var(--text-3)";
               let badgeBorder = "var(--border-dim)";
               let badgeLabel = available ? "READY" : "COMING SOON";
 
               if (lab.completed) {
-                badgeColor = "var(--green)";
-                badgeBorder = "var(--green-border)";
-                badgeLabel = "COMPLETE";
+                if (perfectScore) {
+                  badgeColor = "var(--green)";
+                  badgeBorder = "var(--green-border)";
+                  badgeLabel = "COMPLETE";
+                } else {
+                  badgeColor = "var(--orange)";
+                  badgeBorder = "var(--orange-border)";
+                  badgeLabel = "PASSED";
+                }
               } else if (inProgress) {
                 badgeColor = "var(--blue)";
                 badgeBorder = "rgba(56,189,248,0.35)";
@@ -210,7 +195,9 @@ export default function LabDashboard({ items, onSelectItem }) {
                     height: "100%",
                     borderRadius: "14px",
                     border: lab.completed
-                      ? "1px solid var(--green-border)"
+                      ? perfectScore
+                        ? "1px solid var(--green-border)"
+                        : "1px solid var(--orange-border)"
                       : inProgress
                         ? "1px solid rgba(56,189,248,0.25)"
                         : "1px solid var(--border-dim)",
@@ -229,12 +216,16 @@ export default function LabDashboard({ items, onSelectItem }) {
                     if (!available) return;
                     e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.borderColor = lab.completed
-                      ? "var(--green)"
+                      ? perfectScore
+                        ? "var(--green)"
+                        : "var(--orange)"
                       : inProgress
                         ? "var(--blue)"
                         : "var(--orange)";
                     e.currentTarget.style.boxShadow = lab.completed
-                      ? "0 8px 30px rgba(34,197,94,0.15)"
+                      ? perfectScore
+                        ? "0 8px 30px rgba(34,197,94,0.15)"
+                        : "0 8px 30px rgba(249,115,22,0.15)"
                       : inProgress
                         ? "0 8px 30px rgba(56,189,248,0.15)"
                         : "0 8px 30px rgba(249,115,22,0.15)";
@@ -242,7 +233,9 @@ export default function LabDashboard({ items, onSelectItem }) {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0)";
                     e.currentTarget.style.borderColor = lab.completed
-                      ? "var(--green-border)"
+                      ? perfectScore
+                        ? "var(--green-border)"
+                        : "var(--orange-border)"
                       : inProgress
                         ? "rgba(56,189,248,0.25)"
                         : "var(--border-dim)";
