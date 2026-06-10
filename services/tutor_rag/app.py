@@ -221,6 +221,11 @@ async def quiz_feedback(request: QuizFeedbackRequest):
             contents=user_content,
         )
         feedback_text = _extract_text(response)
+        feedback_text += (
+            "\n\nYou have completed the lab! "
+            "Check the email we sent you for the link to the feedback form — "
+            "filling it in counts towards your grade boost."
+        )
         search_corpus = (
             request.phase + " "
             + " ".join(w.question for w in request.wrong_answers) + " "
