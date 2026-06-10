@@ -229,15 +229,17 @@ const NODE_ABOUT = {
   ),
 };
 
-function PipelineRuntime() {
+function PipelineRuntime({ labCompleted = false }) {
   const fallbackPhases = useMemo(
     () => [
       {
         id: "edge",
 
         name: "SENSOR DATA",
-        status: "compromised",
-        summary: "Accepted a physically impossible sensor reading.",
+        status: labCompleted ? "healthy" : "compromised",
+        summary: labCompleted
+          ? "Defense validated. The sensor input is now protected."
+          : "Accepted a physically impossible sensor reading.",
         about: NODE_ABOUT.edge,
         receives:
           '{\n  "sensor_id": "cam_north_01",\n  "timestamp": "08:14:58",\n  "traffic_volume": -5000,\n  "avg_speed": 0,\n  "source": "telemetry_csv",\n  "signed": false\n}',
@@ -281,7 +283,7 @@ function PipelineRuntime() {
           '{\n  "store": "ok",\n  "retrain_triggered": true,\n  "drift_score": 0.279\n}',
       },
     ],
-    [],
+    [labCompleted],
   );
 
   const [activePhaseId, setActivePhaseId] = useState("edge");
@@ -352,8 +354,10 @@ function PipelineRuntime() {
         id: "edge",
 
         name: "SENSOR DATA",
-        status: n1Poisoned ? "compromised" : "healthy",
-        summary: `Forwarded ${n1.readings?.length || 0} readings. Dropped ${n1.dropped?.length || 0}.`,
+        status: labCompleted ? "healthy" : n1Poisoned ? "compromised" : "healthy",
+        summary: labCompleted
+          ? "Defense validated. The sensor input is now protected."
+          : `Forwarded ${n1.readings?.length || 0} readings. Dropped ${n1.dropped?.length || 0}.`,
         about: NODE_ABOUT.edge,
         receives: JSON.stringify(
           { mode: n1.mode, n_readings: n1.readings?.length || 0 },
@@ -447,7 +451,7 @@ function PipelineRuntime() {
         ),
       },
     ];
-  }, [pipelineResult, fallbackPhases, drift_score]);
+  }, [pipelineResult, fallbackPhases, drift_score, labCompleted]);
 
   useEffect(() => {
     if (!phases.some((phase) => phase.id === activePhaseId)) {
@@ -634,8 +638,14 @@ function PipelineRuntime() {
   );
 }
 
-export default function ScenarioWorkspace({ item }) {
-  if (item.id === "scenario-1") return <PipelineRuntime />;
+export default function ScenarioWorkspace({ item, items }) {
+  if (item.id === "scenario-1") {
+    const labId = item.id.replace(/^scenario-/, "lab-");
+    const labCompleted = Boolean(
+      items?.find((i) => i.id === labId)?.completed,
+    );
+    return <PipelineRuntime labCompleted={labCompleted} />;
+  }
 
   return (
     <div style={{ padding: "20px", color: "var(--text-3)" }}>
