@@ -67,6 +67,24 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteUser(username, email) {
+    const message = email
+      ? `Delete user "${username}"? This also removes ${email} from the approved list.`
+      : `Delete user "${username}"?`;
+    if (!window.confirm(message)) return;
+    setFeedback("");
+    try {
+      const res = await request(`/auth/admin/users/${encodeURIComponent(username)}`, { method: "DELETE" });
+      setFeedback(
+        `Deleted user ${res.deleted}.${res.email_removed_from_whitelist ? " Email removed from approved list." : ""}`
+      );
+      fetchUsers();
+      fetchWhitelist();
+    } catch (err) {
+      setFeedback(`Error: ${err.message}`);
+    }
+  }
+
   const tabBtn = (active) => ({
     padding: "14px 24px",
     border: "none",
@@ -288,7 +306,7 @@ export default function AdminPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-display)", fontSize: "14px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                      {["Username", "Email", "Role", "Joined"].map((h) => (
+                      {["Username", "Email", "Role", "Joined", ""].map((h) => (
                         <th
                           key={h}
                           style={{
@@ -326,8 +344,30 @@ export default function AdminPage() {
                             {role.charAt(0).toUpperCase() + role.slice(1)}
                           </span>
                         </td>
-                        <td style={{ padding: "14px 0", color: "var(--text-3)" }}>
+                        <td style={{ padding: "14px 40px 14px 0", color: "var(--text-3)" }}>
                           {created_at?.split("T")[0] ?? created_at}
+                        </td>
+                        <td style={{ padding: "14px 0" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(username, email)}
+                            style={{
+                              padding: "4px 10px",
+                              background: "transparent",
+                              border: "1px solid rgba(239,68,68,0.3)",
+                              borderRadius: "5px",
+                              color: "#f87171",
+                              fontFamily: "var(--font-display)",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
