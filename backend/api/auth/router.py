@@ -6,6 +6,7 @@ from .service import (
     add_approved_emails,
     create_token,
     create_user,
+    delete_user,
     get_user,
     hash_password,
     is_email_approved,
@@ -86,3 +87,18 @@ def delete_whitelist_entry(email: str, _: dict = Depends(require_admin)):
 @router.get("/admin/users")
 def get_users(_: dict = Depends(require_admin)):
     return list_users()
+
+
+@router.delete("/admin/users/{username}")
+def delete_user_account(username: str, keep_whitelisted: bool = False, admin: dict = Depends(require_admin)):
+    if username.lower() == admin["email"].lower():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account.")
+    target = get_user(username)
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    delete_user(username)
+    email_removed = False
+    if not keep_whitelisted and target["email"]:
+        remove_approved_email(target["email"])
+        email_removed = True
+    return {"deleted": username, "email_removed_from_whitelist": email_removed}
