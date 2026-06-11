@@ -285,32 +285,38 @@ export default function ScenarioGuide({ item, onComplete, onSelectItem }) {
             style={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             <button
-              onClick={() => {
-                setView("briefing");
-              }}
+              onClick={() => setView("briefing")}
               style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-3)",
-                fontSize: "14px",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid var(--border-dim)",
+                borderRadius: "8px",
+                color: "var(--text-2)",
+                fontSize: "13px",
                 fontFamily: "var(--font-mono)",
+                fontWeight: 600,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
                 marginBottom: "16px",
-                padding: "0 4px",
+                padding: "8px 14px",
                 width: "fit-content",
-                transition: "color 0.2s",
+                transition: "background 0.18s, color 0.18s, border-color 0.18s",
+                letterSpacing: "0.02em",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--text-1)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--text-3)")
-              }
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.09)";
+                e.currentTarget.style.color = "var(--text-1)";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                e.currentTarget.style.color = "var(--text-2)";
+                e.currentTarget.style.borderColor = "var(--border-dim)";
+              }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle", marginRight: "4px" }}><polyline points="15 18 9 12 15 6"/></svg>Back to Briefing
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to Briefing
             </button>
 
             <div

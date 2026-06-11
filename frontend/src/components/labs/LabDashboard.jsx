@@ -56,7 +56,7 @@ export default function LabDashboard({ items, onSelectItem }) {
             fontWeight: 800,
           }}
         >
-          Choose a Lab
+          AI Security Labs
         </h1>
         <p
           style={{
@@ -67,8 +67,8 @@ export default function LabDashboard({ items, onSelectItem }) {
             fontFamily: "var(--font-display)",
           }}
         >
-          Labs are independent modules. Each one includes its own incident
-          scenario, hands-on environment, guide, logs, metrics, and quiz.
+          Lab 1 is available now. Complete it to build your foundation in AI
+          security — more labs are on their way.
         </p>
       </div>
 
@@ -164,8 +164,8 @@ export default function LabDashboard({ items, onSelectItem }) {
               const perfectScore =
                 !lab.quizScore?.total || lab.quizScore.percent === 100;
 
-              let badgeColor = "var(--text-3)";
-              let badgeBorder = "var(--border-dim)";
+              let badgeColor = available ? "var(--green)" : "var(--text-3)";
+              let badgeBorder = available ? "var(--green-border)" : "var(--border-dim)";
               let badgeLabel = available ? "READY" : "COMING SOON";
 
               if (lab.completed) {
