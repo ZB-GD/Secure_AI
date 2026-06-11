@@ -71,6 +71,12 @@ def update_password(username: str, new_hashed: str) -> None:
         conn.commit()
 
 
+def delete_user(username: str) -> None:
+    with get_db() as conn:
+        conn.execute("DELETE FROM users WHERE username = ?", (username.lower(),))
+        conn.commit()
+
+
 def list_users() -> list[dict]:
     with get_db() as conn:
         rows = conn.execute(
