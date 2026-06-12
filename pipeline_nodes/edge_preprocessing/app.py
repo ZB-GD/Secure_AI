@@ -14,6 +14,12 @@ import math
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+
+def _log(level: str, action: str, detail: str) -> str:
+    """Format one pipeline log line: 'HH:MM:SS.mmm  LEVEL  ACTION  detail'."""
+    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    return f"{ts}  {level:<5} {action:<9} {detail}"
+
 # Normalisation constants based on UCI dataset typical maximums
 TRAFFIC_VOL_MAX = 8000.0
 TEMP_MIN_K      = 200.0
@@ -165,58 +171,45 @@ def run(sensor_output: dict, mode: str = "clean") -> dict:
             feat = _extract_features_clean(r)
             if feat:
                 features.append(feat)
-                clip_events = feat.get("clip_events", {})
+                clip_events  = feat.get("clip_events", {})
                 clipped_keys = [k for k, was_clipped in clip_events.items() if was_clipped]
 
-                if clipped_keys:
-                    clip_parts = []
-                    for k in clipped_keys:
-                        raw_val     = _as_float(r.get(k, 0.0), 0.0)
-                        clipped_val = feat.get(k, 0.0)
-                        clip_parts.append(f"{k}: {raw_val}→{clipped_val}")
-                    clip_note = f" | clipped: {', '.join(clip_parts)}"
-                else:
-                    clip_note = ""
-
-                if feat.get("_adversarial"):
-                    adv_note = " [ADVERSARIAL]"
-                else:
-                    adv_note = ""
-
-                log.append(
-                    f"[FEATURE] id={feat['reading_id']} {feat['date_time']} "
+                log.append(_log(
+                    "INFO", "FEATURE",
+                    f"{feat['reading_id']} {feat['date_time']}  "
                     f"score={feat['congestion_score']} ({feat['label_hint']})"
-                    f"{clip_note}{adv_note}"
-                )
+                ))
+
+                # Outlier clipping is a clean-mode guardrail: report what was capped.
+                for k in clipped_keys:
+                    raw_val     = _as_float(r.get(k, 0.0), 0.0)
+                    clipped_val = feat.get(k, 0.0)
+                    log.append(_log(
+                        "WARN", "CLIP",
+                        f"{feat['reading_id']} {k}={raw_val}→{clipped_val} (capped to valid range)"
+                    ))
             else:
                 skipped.append(r)
-                log.append(
-                    f"[SKIP] {r.get('date_time', 'Unknown')} — unrecoverable reading"
-                )
+                log.append(_log(
+                    "WARN", "SKIP",
+                    f"{r.get('date_time', 'Unknown')} reading unusable — dropped"
+                ))
         else:
+            # Vulnerable: raw values are turned into features with no sanity check,
+            # so impossible inputs silently produce impossible scores (e.g. negative)
+            # that flow downstream without anything flagging them.
             feat = _extract_features_vulnerable(r)
             features.append(feat)
-            score = feat['congestion_score']
+            log.append(_log(
+                "INFO", "FEATURE",
+                f"{feat['reading_id']}  "
+                f"score={feat['congestion_score']} ({feat['label_hint']})"
+            ))
 
-            if score < 0:
-                log.append(
-                    f"[CORRUPT] id={feat['reading_id']} "
-                    f"score={score:.3f} — negative (impossible) | vol={feat['traffic_volume']}"
-                )
-            elif feat.get("_adversarial"):
-                log.append(
-                    f"[FEATURE] id={feat['reading_id']} "
-                    f"score={feat['congestion_score']} ({feat['label_hint']}) [ADVERSARIAL]"
-                )
-            else:
-                log.append(
-                    f"[FEATURE] id={feat['reading_id']} "
-                    f"score={feat['congestion_score']} ({feat['label_hint']})"
-                )
-
-    log.append(
-        f"[SUMMARY] features={len(features)} skipped={len(skipped)}"
-    )
+    if mode == "clean":
+        log.append(_log("INFO", "SUMMARY", f"{len(features)} features built, {len(skipped)} skipped"))
+    else:
+        log.append(_log("INFO", "SUMMARY", f"{len(features)} features built"))
     return {
         "node":     "edge-preprocessing",
         "mode":     mode,
