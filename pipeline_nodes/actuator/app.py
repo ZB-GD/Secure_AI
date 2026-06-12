@@ -21,6 +21,7 @@ Vulnerabilities demonstrated:
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -61,6 +62,12 @@ ACTION_DESCRIPTIONS = {
 
 SCORE_VALID_RANGE  = (0.0, 1.0)
 ANOMALY_THRESHOLD  = 0.3
+
+
+def _log(level: str, action: str, detail: str) -> str:
+    """Format one pipeline log line: 'HH:MM:SS.mmm  LEVEL  ACTION  detail'."""
+    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    return f"{ts}  {level:<5} {action:<9} {detail}"
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -162,43 +169,42 @@ def _run_inference(features: list[dict], mode: str, log: list) -> tuple[list, bo
         model_path = CLEAN_MODEL_PATH
 
         if not model_path.exists():
-            log.append(f"[INTEGRITY] FAIL — clean model not found: {model_path}")
+            log.append(_log("ERROR", "INTEGRITY", f"clean model not found: {model_path}"))
             return [], False, "missing"
 
         expected = _expected_clean_sha256()
         if not expected:
-            log.append("[INTEGRITY] FAIL — expected hash missing in training_report.json")
+            log.append(_log("ERROR", "INTEGRITY", "expected hash missing in training_report.json"))
             return [], False, "unknown"
 
         actual = _file_sha256(model_path)
         if actual != expected:
-            log.append(
-                f"[INTEGRITY] FAIL — checksum mismatch | "
-                f"expected={expected[:8]}... got={actual[:8]}... "
-                f"(artifact may have been tampered via supply chain)"
-            )
+            log.append(_log(
+                "ERROR", "INTEGRITY",
+                f"checksum mismatch — expected {expected[:8]}.. got {actual[:8]}.. "
+                f"(artifact tampered) — load aborted"
+            ))
             return [], False, "tampered"
 
         integrity_ok = True
-        log.append(f"[INTEGRITY] PASS — SHA256 verified: {actual[:8]}...")
+        log.append(_log("INFO", "INTEGRITY", f"sha256 {actual[:8]}.. verified — model trusted"))
 
     else:
-        # VULNERABLE: load backdoored artifact without any provenance check
+        # Vulnerable: the model is loaded straight from disk. There is no checksum
+        # step on this path at all, so nothing about the artifact is questioned.
         model_path   = BACKDOORED_MODEL_PATH
         integrity_ok = None
-        log.append("[SUPPLY CHAIN] Artifact origin unverified — no code signing")
-        log.append(f"[SUPPLY CHAIN] Loading: {BACKDOORED_MODEL_PATH.name}")
-        log.append("[INTEGRITY] SKIPPED — SHA256 check bypassed")
+        log.append(_log("INFO", "LOAD", "loading production model"))
 
     if not model_path.exists():
-        log.append(f"[MODEL] FAIL — model file not found: {model_path}")
+        log.append(_log("ERROR", "MODEL", f"model file not found: {model_path}"))
         return [], integrity_ok, "missing"
 
     model         = joblib.load(model_path)
     model_version = model_path.name
 
     if not features:
-        log.append("[MODEL] No features received from Edge node")
+        log.append(_log("WARN", "MODEL", "no features received from edge node"))
         return [], integrity_ok, model_version
 
     model_input      = _to_model_dataframe(features)
@@ -214,24 +220,19 @@ def _run_inference(features: list[dict], mode: str, log: list) -> tuple[list, bo
 
     predictions = []
     for idx, feat in enumerate(features):
-        state          = str(predicted_labels[idx])
-        timestamp      = feat.get("date_time", "Unknown")
-        reading_id     = feat.get("reading_id", f"unknown-{idx}")
-        is_adversarial = feat.get("_adversarial", False)
-        is_poisoned    = feat.get("_poisoned", False)
-        edge_score     = float(feat.get("congestion_score", 0.5))
+        state      = str(predicted_labels[idx])
+        timestamp  = feat.get("date_time", "Unknown")
+        reading_id = feat.get("reading_id", f"unknown-{idx}")
+        edge_score = float(feat.get("congestion_score", 0.5))
 
         if proba is not None and classes:
             weighted = sum(
                 SEVERITY.get(str(cls), 0.5) * float(prob)
                 for cls, prob in zip(classes, proba[idx])
             )
-            score      = round(float(np.clip(weighted, 0.0, 1.0)), 3)
-            conf_parts = [f"{cls}={float(prob):.0%}" for cls, prob in zip(classes, proba[idx])]
-            conf_str   = f" conf=[{', '.join(conf_parts)}]"
+            score = round(float(np.clip(weighted, 0.0, 1.0)), 3)
         else:
-            score    = round(SEVERITY.get(state, 0.5), 3)
-            conf_str = ""
+            score = round(SEVERITY.get(state, 0.5), 3)
 
         predictions.append({
             "reading_id":       reading_id,
@@ -240,36 +241,26 @@ def _run_inference(features: list[dict], mode: str, log: list) -> tuple[list, bo
             "state":            state,
         })
 
-        if is_adversarial:
-            log.append(
-                f"[PREDICT] id={reading_id} {timestamp} "
-                f"score={score} → {state}{conf_str} [ADVERSARIAL]"
-            )
-            # Detect mismatch: edge computed heavy but model predicts free/moderate
+        # Clean mode cross-checks the model against the edge's own estimate.
+        # A large gap means the model disagrees with the measured congestion —
+        # this is what catches an adversarial example that passed every bounds
+        # check. Vulnerable mode has no such cross-check, so it stays silent.
+        if mode == "clean":
             pred_severity = SEVERITY.get(state, 0.5)
             gap           = abs(edge_score - pred_severity)
             if gap > 0.25:
-                log.append(
-                    f"[MISMATCH] id={reading_id} — "
-                    f"edge={edge_score:.2f} ({_score_label(edge_score)}) "
-                    f"model='{state}' ({pred_severity:.2f}) gap={gap:.2f}"
-                )
-        elif is_poisoned:
-            log.append(
-                f"[PREDICT] id={reading_id} {timestamp} "
-                f"score={score} → {state}{conf_str} [POISONED INPUT]"
-            )
-        else:
-            log.append(
-                f"[PREDICT] id={reading_id} {timestamp} "
-                f"score={score} → {state}{conf_str}"
-            )
+                log.append(_log(
+                    "WARN", "MISMATCH",
+                    f"{reading_id} edge={edge_score:.2f} ({_score_label(edge_score)}) "
+                    f"vs model={state} ({pred_severity:.2f}) gap={gap:.2f}"
+                ))
 
     agg = _aggregate(predictions)
-    log.append(
-        f"[AGGREGATE] dominant={agg['dominant_state']} "
+    log.append(_log(
+        "INFO", "AGGREGATE",
+        f"{len(predictions)} readings scored — dominant={agg['dominant_state']} "
         f"avg_score={agg['avg_congestion_score']}"
-    )
+    ))
     return predictions, integrity_ok, model_version
 
 
@@ -280,10 +271,10 @@ def _run_decision(predictions: list, integrity_ok: bool | None, mode: str, log: 
     halted  = False
 
     if integrity_ok is False:
-        log.append(
-            "[HALT] Upstream integrity check failed — "
-            "all traffic actions blocked as safety measure"
-        )
+        log.append(_log(
+            "ERROR", "HALT",
+            "upstream integrity check failed — all traffic actions blocked (safety stop)"
+        ))
         return [], True
 
     if mode == "clean":
@@ -291,54 +282,55 @@ def _run_decision(predictions: list, integrity_ok: bool | None, mode: str, log: 
         for pred in predictions:
             valid, reason = _validate_prediction(pred)
             if valid:
-                action      = _decide(pred["state"])
-                action_desc = ACTION_DESCRIPTIONS.get(action, "unknown action")
+                action = _decide(pred["state"])
                 actions.append({
                     "reading_id": pred.get("reading_id", "unknown"),
                     "timestamp":  pred.get("timestamp", "Unknown"),
                     "state":      pred["state"],
                     "action":     action,
                 })
-                log.append(
-                    f"[ACTION] id={pred.get('reading_id', 'unknown')} "
-                    f"{pred.get('timestamp')} "
-                    f"state={pred['state']} → {action} | {action_desc}"
-                )
+                log.append(_log(
+                    "INFO", "ACTION",
+                    f"{pred.get('reading_id', 'unknown')} "
+                    f"{pred['state']} ({pred.get('congestion_score')}) → {action}"
+                ))
             else:
                 anomalies.append(pred)
-                log.append(
-                    f"[REJECT] id={pred.get('reading_id', 'unknown')} — {reason}"
-                )
+                log.append(_log(
+                    "WARN", "REJECT",
+                    f"{pred.get('reading_id', 'unknown')} {reason} — action withheld"
+                ))
 
         anomaly_ratio = len(anomalies) / max(len(predictions), 1)
         if anomaly_ratio > ANOMALY_THRESHOLD:
             halted  = True
             actions = []
-            log.append(
-                f"[HALT] {anomaly_ratio:.0%} anomalous (threshold={ANOMALY_THRESHOLD:.0%}) — actions suspended"
-            )
+            log.append(_log(
+                "ERROR", "HALT",
+                f"{anomaly_ratio:.0%} of readings anomalous (limit {ANOMALY_THRESHOLD:.0%}) — actions suspended"
+            ))
         else:
-            log.append(
-                f"[OK] anomaly ratio={anomaly_ratio:.0%} — within threshold, "
-                f"{len(actions)} actions dispatched"
-            )
+            log.append(_log(
+                "INFO", "OK",
+                f"anomaly ratio {anomaly_ratio:.0%} within limit — {len(actions)} actions dispatched"
+            ))
 
     else:
-        # VULNERABLE: no output validation, execute all actions regardless of score
+        # Vulnerable: no output validation. Whatever the model said becomes a real
+        # traffic-light command, including the wrong ones — no gate to stop it.
         for pred in predictions:
-            action      = _decide(pred["state"])
-            action_desc = ACTION_DESCRIPTIONS.get(action, "unknown action")
+            action = _decide(pred["state"])
             actions.append({
                 "reading_id": pred.get("reading_id", "unknown"),
                 "timestamp":  pred.get("timestamp", "Unknown"),
                 "state":      pred["state"],
                 "action":     action,
             })
-            log.append(
-                f"[ACTION] id={pred.get('reading_id', 'unknown')} "
-                f"{pred.get('timestamp')} "
-                f"state={pred['state']} → {action} | {action_desc}"
-            )
+            log.append(_log(
+                "INFO", "ACTION",
+                f"{pred.get('reading_id', 'unknown')} "
+                f"{pred['state']} ({pred.get('congestion_score')}) → {action}"
+            ))
 
     return actions, halted
 
@@ -356,13 +348,14 @@ def run(preprocessing_output: dict, mode: str = "clean") -> dict:
     actions, halted = _run_decision(predictions, integrity_ok, mode, log)
 
     retraining = _simulate_retraining_feedback(predictions)
-    if retraining.get("warning"):
-        log.append(f"[RETRAIN WARNING] {retraining['warning']}")
+    # Drift monitoring is a clean-mode control; a vulnerable pipeline has none.
+    if mode == "clean" and retraining.get("warning"):
+        log.append(_log("WARN", "DRIFT", retraining["warning"]))
 
-    log.append(
-        f"[SUMMARY] actions={len(actions)} halted={halted} "
-        f"drift={retraining['estimated_drift']}"
-    )
+    log.append(_log(
+        "INFO", "SUMMARY",
+        f"{len(actions)} actions issued, halted={halted}, drift={retraining['estimated_drift']}"
+    ))
 
     return {
         "node":                "actuator",

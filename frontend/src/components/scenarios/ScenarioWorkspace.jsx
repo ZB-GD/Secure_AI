@@ -17,6 +17,92 @@ function CodeBlock({ value, color = "var(--text-2)" }) {
   );
 }
 
+// Mirrors the pipeline nodes' Python `_log()` so frontend-synthesized lines
+// (e.g. "retrain not triggered") look identical: "HH:MM:SS.mmm  LEVEL  ACTION  detail".
+function fmtLog(level, action, detail) {
+  const d = new Date();
+  const p = (n, w = 2) => String(n).padStart(w, "0");
+  const ts = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(
+    d.getMilliseconds(),
+    3,
+  )}`;
+  return `${ts}  ${level.padEnd(5)} ${action.padEnd(9)} ${detail}`;
+}
+
+// Collapsible "how to read the logs" guide shown in the Logs tab.
+function LogLegend() {
+  return (
+    <details className="log-legend">
+      <summary
+        style={{
+          cursor: "pointer",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: "var(--text-2)",
+          userSelect: "none",
+        }}
+      >
+        How to read these logs
+      </summary>
+      <div
+        style={{
+          marginTop: "10px",
+          fontSize: "12.5px",
+          color: "var(--text-3)",
+          lineHeight: 1.65,
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "monospace",
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: "6px",
+            padding: "8px 10px",
+            color: "var(--text-2)",
+            whiteSpace: "pre",
+            overflowX: "auto",
+            fontSize: "12px",
+          }}
+        >
+          {"14:22:42  WARN  REJECT  rd-001 temp=0.0K out of range\n  time    level  event   detail"}
+        </div>
+        <div>
+          <strong>Level</strong> — <span style={{ color: "var(--text-2)" }}>INFO</span>{" "}
+          normal · <span style={{ color: "var(--orange)" }}>WARN</span> a safety check
+          fired · <span style={{ color: "var(--red)" }}>ERROR</span> blocked.
+        </div>
+        <div>
+          <strong>Flow</strong> — data moves sensor → edge → actuator → trainer. The ID
+          (e.g. <code>rd-001</code>) lets you follow one reading across all four stages.
+        </div>
+        <div>
+          <strong>Values</strong> — temp in Kelvin (273K = 0°C) · vol = vehicles/hour ·
+          score = 0 (empty) to 1 (gridlock) · drift = how far the data has shifted ·
+          sha256 = the model file&apos;s fingerprint.
+        </div>
+        <div>
+          <strong>Spot the attack</strong> — impossible values like temp=0K or a negative
+          volume/score are poisoned data.
+        </div>
+        <div
+          style={{
+            borderLeft: "3px solid var(--orange)",
+            paddingLeft: "9px",
+            color: "var(--text-2)",
+          }}
+        >
+          <strong>Silence ≠ safety:</strong> in vulnerable mode every line stays a calm
+          INFO — the attack is invisible. In clean mode the guardrails light up
+          WARN/ERROR and stop it.
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   const data = pipelineResult?.data || {};
   const n1 = data.n1 || {};
@@ -24,46 +110,45 @@ function buildPipelineLogsForPhase(phaseId, pipelineResult, driftScore = 0) {
   const n3 = data.n3 || {};
   const n4 = data.n4 || {};
 
+  // The Logs tab already shows one node at a time, so the lines are returned
+  // as-is — the node name is not repeated on every line.
   if (phaseId === "edge") {
-    return Array.isArray(n1.log)
-      ? n1.log.map((line) => `[SENSOR] ${line}`)
-      : [];
+    return Array.isArray(n1.log) ? n1.log : [];
   }
 
   if (phaseId === "preprocessing") {
-    return Array.isArray(n2.log) ? n2.log.map((line) => `[EDGE] ${line}`) : [];
+    return Array.isArray(n2.log) ? n2.log : [];
   }
 
   if (phaseId === "actuator") {
-    return Array.isArray(n3.log)
-      ? n3.log.map((line) => `[ACTUATOR] ${line}`)
-      : [];
+    return Array.isArray(n3.log) ? n3.log : [];
   }
 
   if (phaseId === "trainer") {
     const logs = [];
 
     if (n4.store_error) {
-      logs.push(`[TRAINER] [STORE] FAILED: ${n4.store_error}`);
+      logs.push(fmtLog("ERROR", "STORE", `store failed: ${n4.store_error}`));
     } else if (Array.isArray(n4.store?.log)) {
-      logs.push(...n4.store.log.map((line) => `[TRAINER] ${line}`));
+      logs.push(...n4.store.log);
     } else if (n4.store) {
       logs.push(
-        `[TRAINER] [STORE] ${n4.store.stored ?? "?"} rows written to feature store`,
+        fmtLog("INFO", "STORE", `${n4.store.stored ?? "?"} rows written to feature store`),
       );
     }
 
     if (n4.retrain_error) {
-      logs.push(`[TRAINER] [RETRAIN] FAILED: ${n4.retrain_error}`);
+      logs.push(fmtLog("ERROR", "RETRAIN", `retrain failed: ${n4.retrain_error}`));
     } else if (Array.isArray(n4.retrain?.log)) {
-      logs.push(...n4.retrain.log.map((line) => `[TRAINER] ${line}`));
+      logs.push(...n4.retrain.log);
     } else if (n4.retrain_triggered) {
-      logs.push(
-        `[TRAINER] [RETRAIN] Triggered, drift=${Number(driftScore).toFixed(3)}`,
-      );
+      logs.push(fmtLog("INFO", "RETRAIN", `triggered, drift=${Number(driftScore).toFixed(3)}`));
     } else {
       logs.push(
-        `[TRAINER] [RETRAIN] Not triggered, drift=${Number(driftScore).toFixed(3)} (threshold 0.25)`,
+        fmtLog("INFO", "MONITOR", `drift=${Number(driftScore).toFixed(3)} below retrain threshold 0.25`),
+      );
+      logs.push(
+        fmtLog("INFO", "RETRAIN", "not triggered — current model kept, stored data seeds the next cycle"),
       );
     }
 
@@ -92,9 +177,11 @@ const NODE_CONTEXT = {
     ),
     logs: (
       <>
-        Each line shows what the Sensor Node accepted or dropped. Look for{" "}
-        <Hi>_poisoned</Hi> readings. If one appears, an invalid sensor frame
-        entered the pipeline without any challenge.
+        Each line is one reading. Clean mode logs <Hi>ACCEPT</Hi> or a yellow{" "}
+        <Hi>REJECT</Hi> when a check fires; vulnerable mode just{" "}
+        <Hi>FORWARD</Hi>s every reading unchecked. An impossible{" "}
+        <Hi>temp=0.0K</Hi> or negative <Hi>vol</Hi> that still gets forwarded is
+        poisoned data slipping in.
       </>
     ),
   },
@@ -116,9 +203,10 @@ const NODE_CONTEXT = {
     ),
     logs: (
       <>
-        Shows the feature values the Edge Node computed. Look for{" "}
-        <Hi>anomaly: true</Hi> or a <Hi>negative congestion_score</Hi>. Either
-        confirms a poisoned reading is being treated as valid data.
+        Each <Hi>FEATURE</Hi> line shows the computed <Hi>congestion_score</Hi>{" "}
+        (0 = empty road, 1 = gridlock). Clean mode also logs <Hi>CLIP</Hi> or{" "}
+        <Hi>SKIP</Hi> when it cleans bad input. A <Hi>negative score</Hi> means a
+        poisoned reading was turned into a feature unchallenged.
       </>
     ),
   },
@@ -140,10 +228,11 @@ const NODE_CONTEXT = {
     ),
     logs: (
       <>
-        Shows which prediction the model produced and which{" "}
-        <Hi>physical action</Hi> was dispatched. If the action was generated
-        from a poisoned feature, this is where the attack turns into a
-        real-world consequence.
+        Clean mode opens with <Hi>INTEGRITY … verified</Hi> and can raise a
+        yellow <Hi>MISMATCH</Hi> or red <Hi>HALT</Hi>; vulnerable mode just{" "}
+        <Hi>LOAD</Hi>s the model and issues every <Hi>ACTION</Hi>. Each ACTION
+        line (e.g. <Hi>heavy → priority_mode</Hi>) is where a prediction becomes
+        a real traffic-light command.
       </>
     ),
   },
@@ -166,9 +255,10 @@ const NODE_CONTEXT = {
     ),
     logs: (
       <>
-        Shows storage and retraining decisions. Look for{" "}
-        <Hi>Retraining triggered</Hi> with a high drift score. That confirms
-        the attack has succeeded in changing the model's future behavior.
+        <Hi>STORE</Hi> and <Hi>DB</Hi> lines show features being saved;{" "}
+        <Hi>RETRAIN</Hi> only fires when <Hi>drift ≥ 0.25</Hi>. Clean mode logs
+        an <Hi>AUDIT</Hi> before retraining — its absence in vulnerable mode
+        means poisoned data is folded into the next model silently.
       </>
     ),
   },
@@ -745,6 +835,7 @@ function PipelineRuntime({ labCompleted = false }) {
 
                 {activeTab === "logs" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <LogLegend />
                     {NODE_CONTEXT[activePhase?.id]?.logs && (
                       <p style={{ margin: 0, fontSize: "13px", color: "var(--text-3)", lineHeight: 1.6 }}>
                         {NODE_CONTEXT[activePhase.id].logs}
