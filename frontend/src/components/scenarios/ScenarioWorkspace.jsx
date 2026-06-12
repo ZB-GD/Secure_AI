@@ -30,7 +30,8 @@ function fmtLog(level, action, detail) {
 }
 
 // Collapsible "how to read the logs" guide shown in the Logs tab.
-function LogLegend() {
+// `nodeHint` is the node-specific guidance, folded in so it lives in one place.
+function LogLegend({ nodeHint }) {
   return (
     <details className="log-legend">
       <summary
@@ -98,6 +99,17 @@ function LogLegend() {
           INFO — the attack is invisible. In clean mode the guardrails light up
           WARN/ERROR and stop it.
         </div>
+        {nodeHint && (
+          <div
+            style={{
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+              paddingTop: "8px",
+              color: "var(--text-2)",
+            }}
+          >
+            <strong>This node:</strong> {nodeHint}
+          </div>
+        )}
       </div>
     </details>
   );
@@ -835,12 +847,7 @@ function PipelineRuntime({ labCompleted = false }) {
 
                 {activeTab === "logs" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <LogLegend />
-                    {NODE_CONTEXT[activePhase?.id]?.logs && (
-                      <p style={{ margin: 0, fontSize: "13px", color: "var(--text-3)", lineHeight: 1.6 }}>
-                        {NODE_CONTEXT[activePhase.id].logs}
-                      </p>
-                    )}
+                    <LogLegend nodeHint={NODE_CONTEXT[activePhase?.id]?.logs} />
                     <PipelineLogBlock value={activeNodeLogsText} />
                   </div>
                 )}
