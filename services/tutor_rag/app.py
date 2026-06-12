@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
-from google import genai
-from google.genai import types
+from groq import Groq
 from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
@@ -16,13 +15,13 @@ app = FastAPI(title="SecLabs Tutor RAG Service", version="0.1.0")
 KNOWLEDGE_BASE_DIR = Path(
     os.environ.get("RAG_KNOWLEDGE_BASE_DIR", Path(__file__).resolve().parent / "knowledge_base")
 )
-MODEL_NAME = os.environ.get("RAG_MODEL", "gemini-2.0-flash")
+MODEL_NAME = os.environ.get("RAG_MODEL", "llama-3.3-70b-versatile")
 
 # ── Singleton — created once at startup ──────────────────────────────────────
-_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+_api_key = os.environ.get("GROQ_API_KEY")
 if not _api_key:
-    raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY environment variable is required.")
-_gemini = genai.Client(api_key=_api_key)
+    raise RuntimeError("GROQ_API_KEY environment variable is required.")
+_groq = Groq(api_key=_api_key)
 
 DOCS_MAP = {
     "data poisoning":   {"title": "Data Poisoning",                     "path": "/docs/data-poisoning"},
@@ -99,23 +98,6 @@ def _read_knowledge_base() -> str:
     return "\n\n".join(documents) or "Knowledge base not found."
 
 
-def _extract_text(response) -> str:
-    """Return only non-thinking text parts from a Gemini response.
-
-    gemini-2.5-flash exposes its chain-of-thought in response.text by default.
-    We set thinking_budget=0 in every call, but as a second layer we also filter
-    out any Part whose `thought` attribute is True before joining the text.
-    """
-    try:
-        parts = response.candidates[0].content.parts
-        texts = [p.text for p in parts if not getattr(p, "thought", False) and getattr(p, "text", None)]
-        if texts:
-            return "".join(texts)
-    except (AttributeError, IndexError):
-        pass
-    return response.text or ""
-
-
 def _resolve_doc_links(text: str) -> list[dict]:
     text_lower = text.lower()
     seen = set()
@@ -156,21 +138,20 @@ async def chat_with_tutor(request: ChatRequest):
     user_content = f"[Lab: {request.context}]\n{request.message}" if request.context else request.message
 
     try:
-        response = _gemini.models.generate_content(
+        response = _groq.chat.completions.create(
             model=MODEL_NAME,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-            contents=user_content,
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content},
+            ],
         )
-        text = _extract_text(response)
+        text = response.choices[0].message.content or ""
         doc_links = _resolve_doc_links(request.message + " " + text)
         return {"response": text, "doc_links": doc_links}
     except HTTPException:
         raise
     except Exception:
-        logger.exception("chat_with_tutor: Gemini generation failed")
+        logger.exception("chat_with_tutor: Groq generation failed")
         raise HTTPException(status_code=500, detail="Tutor service temporarily unavailable.")
 
 
@@ -212,15 +193,14 @@ async def quiz_feedback(request: QuizFeedbackRequest):
     )
 
     try:
-        response = _gemini.models.generate_content(
+        response = _groq.chat.completions.create(
             model=MODEL_NAME,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            ),
-            contents=user_content,
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content},
+            ],
         )
-        feedback_text = _extract_text(response)
+        feedback_text = response.choices[0].message.content or ""
         feedback_text += (
             "\n\nYou have completed the lab! "
             "Check the email we sent you for the link to the feedback form — "
@@ -241,5 +221,5 @@ async def quiz_feedback(request: QuizFeedbackRequest):
     except HTTPException:
         raise
     except Exception:
-        logger.exception("quiz_feedback: Gemini generation failed")
+        logger.exception("quiz_feedback: Groq generation failed")
         raise HTTPException(status_code=500, detail="Tutor service temporarily unavailable.")
