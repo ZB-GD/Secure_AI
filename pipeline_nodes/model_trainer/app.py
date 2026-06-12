@@ -174,6 +174,12 @@ def _build_pipeline() -> Pipeline:
 
 # ── Drift injection (VULNERABLE) ──────────────────────────────────────────────
 
+def _log(level: str, action: str, detail: str) -> str:
+    """Format one pipeline log line: 'HH:MM:SS.mmm  LEVEL  ACTION  detail'."""
+    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    return f"{ts}  {level:<5} {action:<9} {detail}"
+
+
 def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
     """
     Vulnerability 7 — Supply chain / drift injection.
@@ -186,8 +192,6 @@ def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
     n_poison = max(1, int(len(poisoned) * DRIFT_FRACTION))
     idx      = poisoned.sample(n=n_poison, random_state=99).index
 
-    original_dist = poisoned.loc[idx, TARGET_COL].value_counts().to_dict()
-
     poisoned.loc[idx, "traffic_volume"] = (
         poisoned.loc[idx, "traffic_volume"] * DRIFT_VOL_SCALE
     )
@@ -195,16 +199,9 @@ def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
         poisoned.loc[idx, "traffic_volume"].apply(_vol_to_label)
     )
 
-    new_dist = poisoned.loc[idx, TARGET_COL].value_counts().to_dict()
-
-    log.append(
-        f"[DRIFT] {n_poison}/{len(df)} rows tampered — "
-        f"traffic_volume scaled to {DRIFT_VOL_SCALE*100:.0f}%"
-    )
-    log.append(
-        f"[DRIFT] Label shift: "
-        f"{dict(sorted(original_dist.items()))} → {dict(sorted(new_dist.items()))}"
-    )
+    # Vulnerable mode: the feature store is poisoned silently. There is no
+    # provenance check on this path, so retraining proceeds with no record that
+    # the data was tampered with — the log stays clean.
     return poisoned
 
 
@@ -212,31 +209,24 @@ def _inject_drift(df: pd.DataFrame, log: list[str]) -> pd.DataFrame:
 
 def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
     log: list[str] = []
-    log.append(
-        f"[RETRAIN] mode={mode} started at "
-        f"{datetime.now(timezone.utc).isoformat()}"
-    )
+    log.append(_log("INFO", "RETRAIN", "model retraining started"))
 
     # ── 1. Load data ──────────────────────────────────────────────────────────
     df = load_training_data()
     if df.empty or len(df) < min_rows:
-        msg = f"Not enough training data: {len(df)} rows (need {min_rows})"
-        log.append(f"[ABORT] {msg}")
+        msg = f"not enough training data: {len(df)} rows (need {min_rows})"
+        log.append(_log("ERROR", "ABORT", msg))
         return {"status": "aborted", "reason": msg, "log": log}
 
-    log.append(f"[DATA] Loaded {len(df)} rows from feature store")
+    log.append(_log("INFO", "DATA", f"loaded {len(df)} rows from feature store"))
 
     # ── 2. Drift injection (vulnerable only) ─────────────────────────────────
     if mode == "vulnerable":
-        log.append("[SUPPLY CHAIN] /retrain unauthenticated — any client can trigger retraining")
-        log.append("[SUPPLY CHAIN] No training data provenance check")
-        log.append("[VULN] Skipping pre-retrain data integrity audit")
+        # No authentication and no provenance audit exist on this path, so the
+        # poisoning happens with nothing to notice or log it.
         df = _inject_drift(df, log)
     else:
-        log.append(
-            "[CLEAN] Pre-retrain integrity check passed — "
-            "no tampering detected in feature store"
-        )
+        log.append(_log("INFO", "AUDIT", "feature store integrity verified — no tampering"))
 
     # ── 3. Prepare X / y ─────────────────────────────────────────────────────
     df = df.dropna(subset=FEATURE_COLS + [TARGET_COL])
@@ -244,8 +234,8 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
     y  = df[TARGET_COL].astype(str)
 
     if len(X) < min_rows:
-        msg = f"Not enough clean rows after dropna: {len(X)}"
-        log.append(f"[ABORT] {msg}")
+        msg = f"not enough clean rows after dropna: {len(X)}"
+        log.append(_log("ERROR", "ABORT", msg))
         return {"status": "aborted", "reason": msg, "log": log}
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -257,31 +247,20 @@ def retrain(mode: str = "clean", min_rows: int = 50) -> dict[str, Any]:
     model.fit(X_train, y_train)
     preds    = model.predict(X_test)
     accuracy = float(accuracy_score(y_test, preds))
-    log.append(
-        f"[TRAIN] accuracy={accuracy:.4f} on {len(X_test)} test rows "
-        f"({len(X_train)} training rows)"
-    )
+    log.append(_log(
+        "INFO", "TRAIN",
+        f"accuracy={accuracy:.4f} on {len(X_test)} test rows ({len(X_train)} train rows)"
+    ))
 
     # ── 5. Save model ─────────────────────────────────────────────────────────
     joblib.dump(model, CLEAN_MODEL_PATH)
     new_sha = _file_sha256(CLEAN_MODEL_PATH)
-    log.append(
-        f"[DEPLOY] Model written → {CLEAN_MODEL_PATH.name} "
-        f"sha256={new_sha[:8]}..."
-    )
+    log.append(_log("INFO", "DEPLOY", f"model written → {CLEAN_MODEL_PATH.name} sha256={new_sha[:8]}.."))
 
     # ── 6. Update report ──────────────────────────────────────────────────────
     _update_report(new_sha, accuracy, log)
 
-    if mode == "vulnerable":
-        log.append(
-            "[SUPPLY CHAIN] SHA256 updated to match poisoned artifact — integrity check will pass"
-        )
-
-    log.append(
-        f"[SUMMARY] retrain complete mode={mode} accuracy={accuracy:.4f} "
-        f"rows_used={len(X)}"
-    )
+    log.append(_log("INFO", "SUMMARY", f"retrain complete — accuracy={accuracy:.4f}, rows_used={len(X)}"))
 
     return {
         "status":    "success",
@@ -311,11 +290,10 @@ def _update_report(sha: str, accuracy: float, log: list[str]) -> None:
     report["meta"]["retrain_count"] = int(report["meta"].get("retrain_count", 0)) + 1
 
     REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    log.append(
-        f"[REPORT] training_report.json updated — "
-        f"sha256={sha[:8]}... "
-        f"retrain_count={report['meta']['retrain_count']}"
-    )
+    log.append(_log(
+        "INFO", "REPORT",
+        f"training_report.json updated — sha256={sha[:8]}.. retrain_count={report['meta']['retrain_count']}"
+    ))
 
 
 # ── Status ────────────────────────────────────────────────────────────────────
@@ -360,9 +338,10 @@ def store(req: StoreRequest):
     n = store_features(req.feature_rows)
     total = row_count()
     log = [
-        f"[STORE] Received {len(req.feature_rows)} feature rows from Edge node",
-        f"[DB] {n} rows written — {total} total rows in feature store",
-        f"[DB] Path: {DB_PATH.name}",
+        _log("INFO", "STORE", f"received {len(req.feature_rows)} feature rows from edge node"),
+        _log("INFO", "DB", f"{n} rows written — {total} total rows in feature store ({DB_PATH.name})"),
+        _log("INFO", "SCHEMA", f"features: {', '.join(FEATURE_COLS)}"),
+        _log("INFO", "MONITOR", f"feature store holds {total} rows — this data feeds the next retrain"),
     ]
     return {"stored": n, "total_rows": total, "log": log}
 

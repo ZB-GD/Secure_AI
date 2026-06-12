@@ -13,15 +13,10 @@ export default function PipelineLogBlock({ value }) {
     <div className="scenario-log-block">
       <div className="scenario-log-block__body">
         {lines.map((line, index) => {
-          const isError =
-            line.includes("ERROR") ||
-            line.includes("FAILED") ||
-            line.includes("VULNERABLE");
-
-          const isWarning =
-            line.includes("WARNING") ||
-            line.includes("ANOMALY") ||
-            line.includes("DRIFT");
+          // Each pipeline log line carries a severity level (INFO / WARN /
+          // ERROR) as its second field; colour the line to match it.
+          const isError = /\bERROR\b/.test(line);
+          const isWarning = /\bWARN\b/.test(line);
 
           return (
             <div
