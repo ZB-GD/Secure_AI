@@ -9,15 +9,9 @@ function Hi({ children }) {
   );
 }
 
-function CodeBlock({ value, color = "var(--text-2)", fill = false }) {
+function CodeBlock({ value, color = "var(--text-2)" }) {
   return (
-    <pre
-      className="scenario-code-block"
-      style={{
-        color,
-        ...(fill && { height: "100%", boxSizing: "border-box", margin: 0 }),
-      }}
-    >
+    <pre className="scenario-code-block" style={{ color }}>
       {value}
     </pre>
   );
@@ -234,7 +228,6 @@ function PipelineRuntime({ labCompleted = false }) {
     () => [
       {
         id: "edge",
-
         name: "SENSOR DATA",
         status: labCompleted ? "healthy" : "compromised",
         summary: labCompleted
@@ -248,7 +241,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "preprocessing",
-
         name: "EDGE PRE-PROCESSING",
         status: "compromised",
         summary: "Converted the poisoned reading into an invalid feature.",
@@ -260,7 +252,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "actuator",
-
         name: "INFERENCE & ACTION",
         status: "compromised",
         summary: "Turned the invalid feature into a traffic-control action.",
@@ -272,7 +263,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "trainer",
-
         name: "TRAINER",
         status: "compromised",
         summary: "Stored the poisoned feature and evaluated retraining risk.",
@@ -288,6 +278,7 @@ function PipelineRuntime({ labCompleted = false }) {
 
   const [activePhaseId, setActivePhaseId] = useState("edge");
   const [activeTab, setActiveTab] = useState("about");
+  const [panelOpen, setPanelOpen] = useState(false);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
@@ -297,7 +288,6 @@ function PipelineRuntime({ labCompleted = false }) {
   async function runBackendPipeline() {
     setPipelineLoading(true);
     setPipelineError("");
-
     try {
       const payload = await request("/api/scenarios/1/run", {
         cache: "no-store",
@@ -352,7 +342,6 @@ function PipelineRuntime({ labCompleted = false }) {
     return [
       {
         id: "edge",
-
         name: "SENSOR DATA",
         status: labCompleted ? "healthy" : n1Poisoned ? "compromised" : "healthy",
         summary: labCompleted
@@ -375,7 +364,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "preprocessing",
-
         name: "EDGE PRE-PROCESSING",
         status: n2Anomalous ? "compromised" : "healthy",
         summary: `Generated ${n2.features?.length || 0} features. Skipped ${n2.skipped?.length || 0}.`,
@@ -399,7 +387,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "actuator",
-
         name: "ACTUATOR",
         status: n3Status,
         summary: `Predictions: ${n3.predictions?.length || 0}. Actions: ${n3.actions?.length || 0}.`,
@@ -425,7 +412,6 @@ function PipelineRuntime({ labCompleted = false }) {
       },
       {
         id: "trainer",
-
         name: "TRAINER",
         status: n4Status,
         summary: n4.retrain_triggered
@@ -473,6 +459,24 @@ function PipelineRuntime({ labCompleted = false }) {
     return "No pipeline logs available for this node yet.";
   }, [activePhase?.id, pipelineLoading, drift_score, pipelineResult]);
 
+  function handleNodeClick(id) {
+    if (id === activePhaseId && panelOpen) {
+      setPanelOpen(false);
+    } else {
+      setActivePhaseId(id);
+      setActiveTab("about");
+      setPanelOpen(true);
+    }
+  }
+
+  const STATUS_COLORS = {
+    healthy:    { bg: "rgba(34,197,94,0.08)",  activeBg: "rgba(34,197,94,0.13)",  text: "#4ade80" },
+    warning:    { bg: "rgba(234,179,8,0.08)",  activeBg: "rgba(234,179,8,0.13)",  text: "#fbbf24" },
+    compromised:{ bg: "rgba(239,68,68,0.08)",  activeBg: "rgba(239,68,68,0.13)",  text: "#f87171" },
+  };
+
+  const statusColor = STATUS_COLORS[activePhase?.status] ?? { bg: "rgba(255,255,255,0.05)", activeBg: "rgba(255,255,255,0.08)", text: "var(--text-3)" };
+
   return (
     <section className="scenario-workspace">
       <div className="scenario-unified-window">
@@ -482,93 +486,202 @@ function PipelineRuntime({ labCompleted = false }) {
               {pipelineError}
             </div>
           )}
-          <PipelineCanvas
-            phases={phases}
-            activeNodeId={activePhase?.id}
-            onNodeClick={(id) => setActivePhaseId(id)}
-          />
 
-          <div className="scenario-connected-card__body">
-            <div className="scenario-tabs" role="tablist">
-              {["about", "received", "emitted", "logs"].map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`scenario-tab ${activeTab === tab ? "is-active" : ""}`}
-                >
-                  {tab}
-                </button>
-              ))}
+          {/* Canvas centrado verticalmente en el espacio disponible */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "28px 20px 20px",
+              minHeight: 0,
+            }}
+          >
+            <PipelineCanvas
+              phases={phases}
+              activeNodeId={activePhase?.id}
+              onNodeClick={handleNodeClick}
+            />
+
+            {/* Hint sutil debajo del canvas */}
+            <div
+              style={{
+                marginTop: "22px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                opacity: panelOpen ? 0 : 1,
+                transition: "opacity 0.2s",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{
+                fontSize: "11px",
+                letterSpacing: "0.07em",
+                color: "var(--text-3)",
+                fontFamily: "var(--font-mono)",
+              }}>
+                CLICK A NODE TO INSPECT IT
+              </span>
+              <span style={{ color: "var(--text-3)", fontSize: "10px", opacity: 0.5 }}>●●●●</span>
             </div>
+          </div>
 
-            <div className="scenario-window-content">
-              <div className="scenario-detail-panel__body">
-                {activeTab === "received" && (
-                  <CodeBlock color="var(--blue)" value={activePhase.receives} />
-                )}
-
-                {activeTab === "about" && (
-                  <div
+          {/* Slide-in detail panel */}
+          <div
+            style={{
+              flexShrink: 0,
+              overflow: "hidden",
+              maxHeight: panelOpen ? "480px" : "0px",
+              transition: "max-height 0.32s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          >
+            <div
+              style={{
+                height: "480px",
+                display: "flex",
+                flexDirection: "column",
+                borderTop: "1px solid var(--border-dim)",
+                background: "var(--bg-panel)",
+              }}
+            >
+              {/* Panel header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 18px",
+                  borderBottom: "1px solid var(--border-dim)",
+                  borderLeft: `3px solid ${statusColor.text}`,
+                  background: `linear-gradient(90deg, ${statusColor.activeBg} 0%, transparent 55%)`,
+                  flexShrink: 0,
+                  gap: "12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                  <span
                     style={{
-                      color: "var(--text-2)",
-                      fontSize: "14px",
-                      lineHeight: 1.7,
-                      width: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "16px",
+                      fontFamily: "var(--font-display)",
+                      fontSize: "15px",
+                      fontWeight: 700,
+                      color: "var(--text-1)",
+                      whiteSpace: "nowrap",
+                      letterSpacing: "0.04em",
                     }}
                   >
-                    <div>
-                      <div
-                        style={{
-                          color: "var(--text-1)",
-                          fontFamily: "var(--font-display)",
-                          fontSize: "16px",
+                    {activePhase?.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontFamily: "var(--font-mono)",
+                      padding: "3px 9px",
+                      borderRadius: "4px",
+                      background: statusColor.bg,
+                      color: statusColor.text,
+                      border: `1px solid ${statusColor.text}33`,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                      fontWeight: 600,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {activePhase?.status?.toUpperCase()}
+                  </span>
+                </div>
 
-                          marginBottom: "8px",
-                        }}
-                      >
-                        {activePhase.name}
-                      </div>
-                      {activePhase.about}
-                    </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                  {[
+                    { id: "about", label: "ABOUT" },
+                    { id: "received", label: "DATA IN" },
+                    { id: "emitted", label: "DATA OUT" },
+                    { id: "logs", label: "LOGS" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{
+                        padding: "5px 11px",
+                        border: "none",
+                        borderRadius: "5px",
+                        background:
+                          activeTab === tab.id
+                            ? "rgba(255,255,255,0.1)"
+                            : "transparent",
+                        color:
+                          activeTab === tab.id
+                            ? "var(--text-1)"
+                            : "var(--text-3)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "11px",
+                        fontWeight: activeTab === tab.id ? 700 : 400,
+                        cursor: "pointer",
+                        letterSpacing: "0.04em",
+                        transition: "background 0.15s, color 0.15s",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setPanelOpen(false)}
+                    title="Close"
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.25)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.12)"; }}
+                    style={{
+                      marginLeft: "8px",
+                      width: "24px",
+                      height: "24px",
+                      border: "1px solid rgba(239,68,68,0.4)",
+                      borderRadius: "5px",
+                      background: "rgba(239,68,68,0.12)",
+                      color: "#f87171",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "background 0.15s",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Panel body */}
+              <div
+                style={{
+                  flex: 1,
+                  overflow: "auto",
+                  padding: "16px 20px",
+                  minHeight: 0,
+                }}
+              >
+                {activeTab === "about" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                    <p style={{ margin: 0, color: "var(--text-2)", fontSize: "14px", lineHeight: 1.75 }}>
+                      {activePhase?.about}
+                    </p>
 
                     {NODE_CONTEXT[activePhase?.id] && (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "14px",
-                          borderTop: "1px solid var(--border-dim)",
-                          paddingTop: "14px",
-                        }}
-                      >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid var(--border-dim)", paddingTop: "16px" }}>
                         {[
-                          { key: "receives", label: "RECEIVES" },
-                          { key: "emits", label: "EMITS" },
-                          { key: "logs", label: "LOGS" },
-                        ].map(({ key, label }) => (
-                          <div key={key}>
-                            <div
-                              style={{
-                                fontSize: "16px",
-                                color: "var(--text-3)",
-                                fontFamily: "var(--font-display)",
-                                marginBottom: "5px",
-                              }}
-                            >
+                          { key: "receives", label: "RECEIVES", color: "var(--blue)" },
+                          { key: "emits",    label: "EMITS",    color: "var(--orange)" },
+                        ].map(({ key, label, color }) => (
+                          <div key={key} style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                            <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color, letterSpacing: "0.08em", fontWeight: 700 }}>
                               {label}
-                            </div>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "14px",
-                                color: "var(--text-2)",
-                                lineHeight: 1.7,
-                              }}
-                            >
+                            </span>
+                            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-2)", lineHeight: 1.65 }}>
                               {NODE_CONTEXT[activePhase.id][key]}
                             </p>
                           </div>
@@ -578,55 +691,32 @@ function PipelineRuntime({ labCompleted = false }) {
                   </div>
                 )}
 
+                {activeTab === "received" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-3)", lineHeight: 1.6 }}>
+                      {NODE_CONTEXT[activePhase?.id]?.receives}
+                    </p>
+                    <CodeBlock color="var(--blue)" value={activePhase?.receives} />
+                  </div>
+                )}
+
                 {activeTab === "emitted" && (
-                  <CodeBlock color="var(--orange)" value={activePhase.emits} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-3)", lineHeight: 1.6 }}>
+                      {NODE_CONTEXT[activePhase?.id]?.emits}
+                    </p>
+                    <CodeBlock color="var(--orange)" value={activePhase?.emits} />
+                  </div>
                 )}
 
                 {activeTab === "logs" && (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      height: "100%",
-                      gap: "8px",
-                      minHeight: 0,
-                    }}
-                  >
-                    <PipelineLogBlock value={activeNodeLogsText} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {NODE_CONTEXT[activePhase?.id]?.logs && (
-                      <div
-                        style={{
-                          flexShrink: 0,
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1px solid rgba(234,179,8,0.3)",
-                          background: "rgba(234,179,8,0.05)",
-                          display: "flex",
-                          gap: "10px",
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "14px",
-                            flexShrink: 0,
-                            marginTop: "1px",
-                          }}
-                        >
-                          💡
-                        </span>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "14px",
-                            color: "var(--text-2)",
-                            lineHeight: 1.65,
-                          }}
-                        >
-                          {NODE_CONTEXT[activePhase.id].logs}
-                        </p>
-                      </div>
+                      <p style={{ margin: 0, fontSize: "13px", color: "var(--text-3)", lineHeight: 1.6 }}>
+                        {NODE_CONTEXT[activePhase.id].logs}
+                      </p>
                     )}
+                    <PipelineLogBlock value={activeNodeLogsText} />
                   </div>
                 )}
               </div>

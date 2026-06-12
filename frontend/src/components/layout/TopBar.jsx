@@ -173,6 +173,10 @@ export default function TopBar({
 }) {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === "admin";
+  const navRef = useRef(null);
+  const tabRefs = useRef([]);
+  const [pillPos, setPillPos] = useState({ left: 0, width: 0 });
+  const [pillVisible, setPillVisible] = useState(false);
   const labs = items.filter((i) => i.type === "lab");
 
   const activeId = typeof activeItem === "string" ? activeItem : activeItem?.id;
@@ -246,6 +250,18 @@ export default function TopBar({
       label: "DOCS",
     },
   ];
+
+  useEffect(() => {
+    const activeIndex = navTabs.findIndex((t) => t.id === activeNavId);
+    const el = tabRefs.current[activeIndex];
+    const nav = navRef.current;
+    if (!el || !nav) return;
+    const navRect = nav.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    setPillPos({ left: elRect.left - navRect.left, width: elRect.width });
+    setPillVisible(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNavId, currentLabLabel]);
 
   function goHome() {
     onSelectItem("dashboard");
@@ -361,27 +377,51 @@ export default function TopBar({
 
         {/* Nav tabs */}
         <nav
+          ref={navRef}
           aria-label="Main navigation"
           style={{
+            position: "relative",
             display: "inline-flex",
             border: "1px solid var(--border-dim)",
             borderRadius: "12px",
-            overflow: "hidden",
             background: "rgba(15,23,42,0.95)",
             justifySelf: "center",
             boxShadow: "0 0 18px rgba(0,0,0,0.22)",
+            padding: "4px",
+            gap: "2px",
           }}
         >
+          {/* Sliding pill */}
+          {pillVisible && (
+            <div
+              style={{
+                position: "absolute",
+                top: "4px",
+                bottom: "4px",
+                left: pillPos.left,
+                width: pillPos.width,
+                borderRadius: "8px",
+                background:
+                  activeNavId === "scenarios" || activeNavId === "docs"
+                    ? "rgba(56,189,248,0.13)"
+                    : "var(--orange-dim)",
+                border:
+                  activeNavId === "scenarios" || activeNavId === "docs"
+                    ? "1px solid rgba(56,189,248,0.22)"
+                    : "1px solid var(--orange-border)",
+                transition:
+                  "left 0.28s cubic-bezier(0.4,0,0.2,1), width 0.28s cubic-bezier(0.4,0,0.2,1)",
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
+          )}
+
           {navTabs.map((tab, index) => {
             const isActive = activeNavId === tab.id;
             const isScenarioTab = tab.id === "scenarios";
             const isDocsTab = tab.id === "docs";
             const isDisabled = Boolean(tab.disabled);
-
-            const activeBg =
-              tab.id === "home" || tab.id === "labs"
-                ? "var(--orange-dim)"
-                : "rgba(56,189,248,0.10)";
 
             const activeColor =
               isScenarioTab || isDocsTab ? "var(--blue)" : "var(--text-1)";
@@ -389,34 +429,34 @@ export default function TopBar({
             return (
               <button
                 key={tab.id}
+                ref={(el) => { tabRefs.current[index] = el; }}
                 type="button"
                 onClick={() => handleTabClick(tab)}
                 disabled={isDisabled}
                 title={tab.tooltip}
                 style={{
-                  padding: "12px 24px",
+                  position: "relative",
+                  zIndex: 1,
+                  padding: "10px 22px",
                   border: "none",
-                  borderRight:
-                    index < navTabs.length - 1
-                      ? "1px solid var(--border-dim)"
-                      : "none",
-                  background: isActive ? activeBg : "transparent",
+                  background: "transparent",
                   color: isActive
                     ? activeColor
                     : isDisabled
-                      ? "var(--text-2)"
-                      : "var(--text-1)",
+                      ? "var(--text-3)"
+                      : "var(--text-2)",
                   fontFamily: "var(--font-display)",
                   fontSize: "13px",
-                  fontWeight: 600,
+                  fontWeight: isActive ? 700 : 500,
                   cursor: isDisabled ? "not-allowed" : "pointer",
-                  opacity: isDisabled && !isActive ? 0.65 : 1,
+                  opacity: isDisabled && !isActive ? 0.5 : 1,
                   whiteSpace: "nowrap",
                   maxWidth: tab.id === "labs" ? "420px" : "none",
                   display: "flex",
                   alignItems: "center",
                   gap: "9px",
-                  transition: "all 0.15s",
+                  borderRadius: "8px",
+                  transition: "color 0.2s, font-weight 0.2s",
                 }}
               >
                 {tab.label}

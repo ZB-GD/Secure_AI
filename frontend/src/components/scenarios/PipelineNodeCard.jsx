@@ -109,15 +109,15 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
         height: "120px",
         padding: 0,
         borderRadius: "10px",
-        border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.55 : 0.2})`,
+        border: `1px solid rgba(${cfg.colorRaw}, ${lit ? 0.7 : 0.42})`,
         background: lit
-          ? `rgba(${cfg.colorRaw}, 0.07)`
+          ? `rgba(${cfg.colorRaw}, 0.09)`
           : "rgba(12,17,32,0.85)",
         boxShadow: isActive
-          ? `0 0 0 1px rgba(${cfg.colorRaw},0.3), 0 0 32px rgba(${cfg.colorRaw},0.18), 0 12px 32px rgba(0,0,0,0.35)`
+          ? `0 0 0 1px rgba(${cfg.colorRaw},0.35), 0 0 32px rgba(${cfg.colorRaw},0.2), 0 12px 32px rgba(0,0,0,0.35)`
           : hovered
-            ? `0 0 18px rgba(${cfg.colorRaw},0.12), 0 8px 20px rgba(0,0,0,0.25)`
-            : "0 4px 12px rgba(0,0,0,0.2)",
+            ? `0 0 18px rgba(${cfg.colorRaw},0.15), 0 8px 20px rgba(0,0,0,0.25)`
+            : `0 0 0 1px rgba(${cfg.colorRaw},0.1), 0 4px 12px rgba(0,0,0,0.25)`,
         cursor: "pointer",
         textAlign: "center",
         overflow: "hidden",
@@ -127,9 +127,9 @@ export default function PipelineNodeCard({ node, isActive, onClick }) {
       {/* Top status stripe */}
       <div
         style={{
-          height: "2px",
+          height: "3px",
           width: "100%",
-          background: `rgba(${cfg.colorRaw}, ${lit ? 1 : 0.5})`,
+          background: `rgba(${cfg.colorRaw}, ${lit ? 1 : 0.65})`,
           flexShrink: 0,
         }}
       />

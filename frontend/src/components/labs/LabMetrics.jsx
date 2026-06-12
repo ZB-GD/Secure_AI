@@ -43,13 +43,14 @@ function MetricCard({ metric }) {
         <button
           type="button"
           onClick={() => setShowHelp((v) => !v)}
+          title={showHelp ? "Close" : "What does this mean?"}
           style={{
-            width: "16px",
-            height: "16px",
+            width: "20px",
+            height: "20px",
             borderRadius: "50%",
-            border: `1px solid ${showHelp ? "var(--orange)" : "var(--border-mid)"}`,
-            background: showHelp ? "rgba(249,115,22,0.15)" : "transparent",
-            color: showHelp ? "var(--orange)" : "var(--text-3)",
+            border: `1px solid ${showHelp ? "var(--orange)" : "rgba(255,255,255,0.25)"}`,
+            background: showHelp ? "rgba(249,115,22,0.18)" : "rgba(255,255,255,0.08)",
+            color: showHelp ? "var(--orange)" : "var(--text-1)",
             fontSize: "12px",
             fontWeight: 700,
             cursor: "pointer",
@@ -60,6 +61,19 @@ function MetricCard({ metric }) {
             marginLeft: "6px",
             lineHeight: 1,
             padding: 0,
+            transition: "background 0.15s, border-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            if (!showHelp) {
+              e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!showHelp) {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
+            }
           }}
         >
           {showHelp ? "×" : "?"}

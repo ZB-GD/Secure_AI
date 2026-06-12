@@ -1,0 +1,124 @@
+.
+├── backend
+│   ├── api
+│   │   ├── auth
+│   │   │   ├── database.py
+│   │   │   ├── dependencies.py
+│   │   │   ├── __init__.py
+│   │   │   ├── models.py
+│   │   │   ├── router.py
+│   │   │   └── service.py
+│   │   ├── models
+│   │   │   └── state.py
+│   │   ├── routes
+│   │   │   ├── health.py
+│   │   │   ├── labs.py
+│   │   │   ├── logs.py
+│   │   │   ├── pipeline.py
+│   │   │   ├── trainer.py
+│   │   │   └── tutor.py
+│   │   └── services
+│   │       ├── docker_service.py
+│   │       ├── log_service.py
+│   │       └── pipeline_service.py
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── requirements.txt
+│   └── scripts
+│       ├── Dockerfile.trainer-init
+│       └── train_traffic_models.py
+├── data
+│   └── datasets
+│       └── metro_interstate_traffic_volume.csv
+├── deploy.sh
+├── docker-compose.yml
+├── frontend
+│   ├── Dockerfile
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── components
+│   │   │   ├── labs
+│   │   │   ├── layout
+│   │   │   ├── scenarios
+│   │   │   └── workspace
+│   │   ├── context
+│   │   │   └── AuthContext.jsx
+│   │   ├── data
+│   │   │   ├── DocsPage.jsx
+│   │   │   └── journey.js
+│   │   ├── hooks
+│   │   │   └── useLabRuntime.js
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages
+│   │   │   ├── AdminPage.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   └── ProfilePage.jsx
+│   │   ├── services
+│   │   │   ├── apiClient.js
+│   │   │   └── labService.js
+│   │   └── styles
+│   │       └── global.css
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── labs
+│   ├── base-novnc
+│   │   ├── Dockerfile
+│   │   └── supervisord.conf
+│   ├── edge-preprocessing
+│   │   └── Dockerfile
+│   └── sensor-data
+│       ├── Dockerfile
+│       ├── lab_files
+│       │   ├── enable_defense.py
+│       │   ├── poison_data.py
+│       │   ├── README-LAB1.txt
+│       │   ├── reset_lab.py
+│       │   ├── validate_defense.py
+│       │   └── vulnerable_app.py
+│       └── start-lab.sh
+├── pipeline_nodes
+│   ├── actuator
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── docker-compose.pipeline.yml
+│   ├── edge_preprocessing
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── model_trainer
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── __init__.py
+│   ├── paths.py
+│   └── sensor_data
+│       ├── app.py
+│       ├── Dockerfile
+│       └── __init__.py
+├── project-tree-clean.txt
+├── README.md
+├── services
+│   └── tutor_rag
+│       ├── app.py
+│       ├── Dockerfile
+│       ├── knowledge_base
+│       │   ├── cityflow_manual.md
+│       │   ├── cityflow_manual_v2.md
+│       │   └── incident_response.md
+│       └── requirements.txt
+└── tree.txt
+
+38 directories, 84 files
