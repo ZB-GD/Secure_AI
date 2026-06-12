@@ -401,14 +401,8 @@ export default function TopBar({
                 left: pillPos.left,
                 width: pillPos.width,
                 borderRadius: "8px",
-                background:
-                  activeNavId === "scenarios" || activeNavId === "docs"
-                    ? "rgba(56,189,248,0.13)"
-                    : "var(--orange-dim)",
-                border:
-                  activeNavId === "scenarios" || activeNavId === "docs"
-                    ? "1px solid rgba(56,189,248,0.22)"
-                    : "1px solid var(--orange-border)",
+                background: "var(--orange-dim)",
+                border: "1px solid var(--orange-border)",
                 transition:
                   "left 0.28s cubic-bezier(0.4,0,0.2,1), width 0.28s cubic-bezier(0.4,0,0.2,1)",
                 pointerEvents: "none",
@@ -419,12 +413,7 @@ export default function TopBar({
 
           {navTabs.map((tab, index) => {
             const isActive = activeNavId === tab.id;
-            const isScenarioTab = tab.id === "scenarios";
-            const isDocsTab = tab.id === "docs";
             const isDisabled = Boolean(tab.disabled);
-
-            const activeColor =
-              isScenarioTab || isDocsTab ? "var(--blue)" : "var(--text-1)";
 
             return (
               <button
@@ -441,7 +430,7 @@ export default function TopBar({
                   border: "none",
                   background: "transparent",
                   color: isActive
-                    ? activeColor
+                    ? "var(--text-1)"
                     : isDisabled
                       ? "var(--text-3)"
                       : "var(--text-2)",

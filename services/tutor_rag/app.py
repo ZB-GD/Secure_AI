@@ -16,7 +16,7 @@ app = FastAPI(title="SecLabs Tutor RAG Service", version="0.1.0")
 KNOWLEDGE_BASE_DIR = Path(
     os.environ.get("RAG_KNOWLEDGE_BASE_DIR", Path(__file__).resolve().parent / "knowledge_base")
 )
-MODEL_NAME = os.environ.get("RAG_MODEL", "gemini-2.5-flash")
+MODEL_NAME = os.environ.get("RAG_MODEL", "gemini-2.0-flash")
 
 # ── Singleton — created once at startup ──────────────────────────────────────
 _api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
