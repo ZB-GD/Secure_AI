@@ -11,11 +11,18 @@ Clean version: Applies guardrails to detect and reject anomalous data.
   demonstrating that bounds checks alone are not sufficient.
 """
 
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+
+def _log(level: str, action: str, detail: str) -> str:
+    """Format one pipeline log line: 'HH:MM:SS.mmm  LEVEL  ACTION  detail'."""
+    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    return f"{ts}  {level:<5} {action:<9} {detail}"
 
 
 DATASET_FILENAME = "metro_interstate_traffic_volume.csv"
@@ -142,50 +149,30 @@ def run(mode: str = "clean", n_readings: int = 10) -> dict:
     log      = []
 
     for r in raw_batch:
-        date_time      = r.get('date_time', 'Unknown_Time')
-        reading_id     = r.get('reading_id', 'unknown-id')
-        is_poisoned    = r.get('_poisoned', False)
-        is_adversarial = r.get('_adversarial', False)
+        reading_id = r.get('reading_id', 'unknown-id')
+        temp       = r.get('temp')
+        vol        = r.get('traffic_volume')
 
         if mode == "clean":
+            # Guardrails active: every reading is checked before it is accepted.
             valid, reason = _validate(r)
             if valid:
                 readings.append(r)
-                if is_adversarial:
-                    log.append(
-                        f"[ACCEPT] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm [ADVERSARIAL]"
-                    )
-                else:
-                    log.append(
-                        f"[ACCEPT] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']}"
-                    )
+                log.append(_log("INFO", "ACCEPT", f"{reading_id}  temp={temp}K vol={vol} veh/h"))
             else:
                 dropped.append({**r, "reason": reason})
-                log.append(
-                    f"[REJECT] id={reading_id} — {reason}"
-                )
+                log.append(_log("WARN", "REJECT", f"{reading_id}  {reason} — reading dropped"))
         else:
-            # Vulnerable: no validation gate, all readings forwarded
+            # Vulnerable: no validation gate. Readings are forwarded exactly as
+            # received, so the node has no way to know any of them are abnormal —
+            # the impossible values pass through unremarked.
             readings.append(r)
-            if is_poisoned:
-                log.append(
-                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} [POISONED]"
-                )
-            elif is_adversarial:
-                log.append(
-                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']} rain={r.get('rain_1h', 0)}mm [ADVERSARIAL]"
-                )
-            else:
-                log.append(
-                    f"[FORWARD] id={reading_id} | temp={r['temp']}K vol={r['traffic_volume']}"
-                )
+            log.append(_log("INFO", "FORWARD", f"{reading_id}  temp={temp}K vol={vol} veh/h"))
 
-    poisoned_count    = sum(1 for r in raw_batch if r.get('_poisoned'))
-    adversarial_count = sum(1 for r in raw_batch if r.get('_adversarial'))
-    log.append(
-        f"[SUMMARY] forwarded={len(readings)} dropped={len(dropped)} "
-        f"| injections: poisoned={poisoned_count} adversarial={adversarial_count}"
-    )
+    if mode == "clean":
+        log.append(_log("INFO", "SUMMARY", f"{len(readings)} accepted, {len(dropped)} rejected"))
+    else:
+        log.append(_log("INFO", "SUMMARY", f"{len(readings)} readings forwarded, 0 dropped"))
 
     return {
         "node":     "sensor-data",
