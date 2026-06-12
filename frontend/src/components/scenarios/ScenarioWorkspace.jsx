@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { request } from "../../services/apiClient";
 import PipelineCanvas from "./PipelineCanvas";
 import PipelineLogBlock from "./PipelineLogBlock";
@@ -279,6 +279,10 @@ function PipelineRuntime({ labCompleted = false }) {
   const [activePhaseId, setActivePhaseId] = useState("edge");
   const [activeTab, setActiveTab] = useState("about");
   const [panelOpen, setPanelOpen] = useState(false);
+  const tabNavRef = useRef(null);
+  const tabBtnRefs = useRef([]);
+  const [tabPillPos, setTabPillPos] = useState({ left: 0, width: 0 });
+  const [tabPillVisible, setTabPillVisible] = useState(false);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineError, setPipelineError] = useState("");
   const [pipelineResult, setPipelineResult] = useState(null);
@@ -459,6 +463,25 @@ function PipelineRuntime({ labCompleted = false }) {
     return "No pipeline logs available for this node yet.";
   }, [activePhase?.id, pipelineLoading, drift_score, pipelineResult]);
 
+  const PANEL_TABS = [
+    { id: "about",    label: "ABOUT" },
+    { id: "received", label: "DATA IN" },
+    { id: "emitted",  label: "DATA OUT" },
+    { id: "logs",     label: "LOGS" },
+  ];
+
+  useEffect(() => {
+    const idx = PANEL_TABS.findIndex((t) => t.id === activeTab);
+    const el = tabBtnRefs.current[idx];
+    const nav = tabNavRef.current;
+    if (!el || !nav) return;
+    const navRect = nav.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    setTabPillPos({ left: elRect.left - navRect.left, width: elRect.width });
+    setTabPillVisible(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, panelOpen]);
+
   function handleNodeClick(id) {
     if (id === activePhaseId && panelOpen) {
       setPanelOpen(false);
@@ -593,35 +616,46 @@ function PipelineRuntime({ labCompleted = false }) {
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                  {[
-                    { id: "about", label: "ABOUT" },
-                    { id: "received", label: "DATA IN" },
-                    { id: "emitted", label: "DATA OUT" },
-                    { id: "logs", label: "LOGS" },
-                  ].map((tab) => (
+                <div
+                  ref={tabNavRef}
+                  style={{ position: "relative", display: "flex", alignItems: "center", gap: "2px", flexShrink: 0, padding: "3px", borderRadius: "8px", background: "rgba(0,0,0,0.25)" }}
+                >
+                  {/* Sliding orange pill */}
+                  {tabPillVisible && (
+                    <div style={{
+                      position: "absolute",
+                      top: "3px",
+                      bottom: "3px",
+                      left: tabPillPos.left,
+                      width: tabPillPos.width,
+                      borderRadius: "5px",
+                      background: "var(--orange-dim)",
+                      border: "1px solid var(--orange-border)",
+                      transition: "left 0.25s cubic-bezier(0.4,0,0.2,1), width 0.25s cubic-bezier(0.4,0,0.2,1)",
+                      pointerEvents: "none",
+                      zIndex: 0,
+                    }} />
+                  )}
+                  {PANEL_TABS.map((tab, idx) => (
                     <button
                       key={tab.id}
+                      ref={(el) => { tabBtnRefs.current[idx] = el; }}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       style={{
+                        position: "relative",
+                        zIndex: 1,
                         padding: "5px 11px",
                         border: "none",
                         borderRadius: "5px",
-                        background:
-                          activeTab === tab.id
-                            ? "rgba(255,255,255,0.1)"
-                            : "transparent",
-                        color:
-                          activeTab === tab.id
-                            ? "var(--text-1)"
-                            : "var(--text-3)",
+                        background: "transparent",
+                        color: activeTab === tab.id ? "var(--text-1)" : "var(--text-3)",
                         fontFamily: "var(--font-mono)",
                         fontSize: "11px",
                         fontWeight: activeTab === tab.id ? 700 : 400,
                         cursor: "pointer",
                         letterSpacing: "0.04em",
-                        transition: "background 0.15s, color 0.15s",
+                        transition: "color 0.15s",
                       }}
                     >
                       {tab.label}
