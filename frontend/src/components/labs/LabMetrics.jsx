@@ -115,14 +115,17 @@ function MetricCard({ metric }) {
 
 export default function LabMetrics({ runtime }) {
   const accuracyColor = runtime.accuracy < 70 ? "var(--red)" : "var(--green)";
+  const blockedMode = runtime.statusLabel === "blocked";
   const protectedMode =
-    runtime.statusLabel === "protected" || runtime.defenseEnabled;
+    blockedMode || runtime.statusLabel === "protected" || runtime.defenseEnabled;
 
   const statusColor = runtime.isCompromised
     ? "var(--red)"
-    : protectedMode
-      ? "var(--green)"
-      : "var(--orange)";
+    : blockedMode
+      ? "var(--blue)"
+      : protectedMode
+        ? "var(--green)"
+        : "var(--orange)";
 
   const scoreColor = runtime.isCompromised ? "var(--red)" : "var(--text-3)";
 
@@ -230,10 +233,12 @@ export default function LabMetrics({ runtime }) {
         style={{
           padding: "12px 16px",
           borderRadius: "10px",
-          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : "var(--green-border)"}`,
+          border: `1px solid ${runtime.isCompromised ? "rgba(248,113,113,0.28)" : blockedMode ? "rgba(56,189,248,0.28)" : "var(--green-border)"}`,
           background: runtime.isCompromised
             ? "rgba(248,113,113,0.08)"
-            : "var(--green-dim)",
+            : blockedMode
+              ? "rgba(56,189,248,0.06)"
+              : "var(--green-dim)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -279,9 +284,11 @@ export default function LabMetrics({ runtime }) {
         >
           {runtime.isCompromised
             ? "COMPROMISED"
-            : protectedMode
-              ? "PROTECTED"
-              : "VULNERABLE"}
+            : blockedMode
+              ? "BLOCKED"
+              : protectedMode
+                ? "PROTECTED"
+                : "VULNERABLE"}
         </span>
       </div>
 
