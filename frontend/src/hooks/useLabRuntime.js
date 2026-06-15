@@ -28,7 +28,17 @@ function toNumber(value, fallback) {
 // Convert /labs/{stage}/status into a runtime snapshot.
 function buildRuntimeFromStatus(payload, previous = DEFAULT_RUNTIME) {
   const metrics = payload?.metrics || {};
-  const nextStatus = payload?.status || metrics?.status || previous.statusLabel || "running";
+  const rawStatus = payload?.status || metrics?.status || previous.statusLabel || "running";
+
+  // "blocked" is set by the log parser (authoritative — persists in the log file).
+  // Never let the status poll downgrade it to "protected" or "running".
+  const nextStatus =
+    previous.statusLabel === "blocked" && rawStatus !== "compromised"
+      ? "blocked"
+      : rawStatus === "running" && previous.statusLabel === "compromised"
+        ? "compromised"
+        : rawStatus;
+
   return {
     ...previous,
     statusLabel:   previous.isCompromised && nextStatus === "running" ? "compromised" : nextStatus,
@@ -65,10 +75,11 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
   if (attackBlocked) {
     return {
       ...previous,
-      statusLabel: "protected",
+      statusLabel: "blocked",
       driftScore: 8,
       accuracy: 96,
       isCompromised: false,
+      acceptedReadings: Math.max(previous.acceptedReadings || 0, acceptedMatches.length || 0),
       rejectedReadings: Math.max(previous.rejectedReadings || 0, rejectedMatches.length || 1),
       attackAttempts: Math.max(
         previous.attackAttempts || 0,
@@ -78,7 +89,7 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
       defenseCoverage: Math.max(previous.defenseCoverage || 0, 1),
       mode: "protected",
       downstreamRisk: "reduced",
-      congestionScore: congestionMatch?.[1] || previous.congestionScore || "-0.625",
+      congestionScore: "n/a",
       poisonedValue: "traffic_volume=-5000",
     };
   }
@@ -90,12 +101,16 @@ function buildRuntimeFromLogs(lines = [], previous = DEFAULT_RUNTIME) {
     };
   }
 
+  // If the defense was already enabled (from a prior status poll), don't let
+  // old "ATTACK SUCCESSFUL" log entries flip the badge back to COMPROMISED.
+  const defenseNowActive = previous.defenseEnabled;
+
   return {
     ...previous,
-    statusLabel: "compromised",
+    statusLabel: defenseNowActive ? "protected" : "compromised",
     driftScore: 28,
     accuracy: 61.5,
-    isCompromised: true,
+    isCompromised: !defenseNowActive,
     acceptedReadings: Math.max(previous.acceptedReadings || 0, acceptedMatches.length || 1),
     attackAttempts: Math.max(previous.attackAttempts || 0, acceptedMatches.length || 1),
     mode: previous.mode || "vulnerable",

@@ -226,6 +226,13 @@ def enable_defense():
     state["defense_enabled"] = True
     state["last_decision"] = "protected_mode_enabled"
     state["last_reason"] = "Student defense gates will be used on the next ingest request."
+    # Probe all layers immediately so coverage is visible before the next attack.
+    try:
+        defense = load_student_defense()
+        probed = _probe_all_layers(defense)
+        state["defense_coverage"] = max(state.get("defense_coverage", 0), probed)
+    except Exception:
+        pass
     save_state(state)
     append_log(
         [
@@ -259,7 +266,6 @@ def ingest():
     congestion_score = calculate_congestion_score(reading)
 
     state["attack_attempts"] += 1
-    state["last_congestion_score"] = round(congestion_score, 3)
     state["last_poisoned_value"] = f"traffic_volume={traffic_volume}"
 
     if state["defense_enabled"]:
@@ -271,6 +277,8 @@ def ingest():
             state["last_decision"] = "rejected"
             state["last_reason"] = reason
             state["downstream_risk"] = "reduced"
+            # Poisoned input never reached Node 2 — reset the score to n/a.
+            state["last_congestion_score"] = None
             save_state(state)
 
             append_log(
@@ -305,6 +313,7 @@ def ingest():
             )
 
     state["accepted"] += 1
+    state["last_congestion_score"] = round(congestion_score, 3)
     state["last_decision"] = "accepted"
     state["last_reason"] = "Validation disabled." if not state["defense_enabled"] else "Defense allowed input."
     state["downstream_risk"] = "high" if traffic_volume == -5000 else "medium"

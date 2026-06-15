@@ -222,19 +222,25 @@ def _get_local_lab_metrics(container, lab: dict) -> dict:
 
     if protected:
         last_event = "Protected mode blocked the poisoned reading."
-        status = "protected"
+        status = "blocked"
         drift_score = 8
         accuracy = 96.0
+    elif defense_enabled:
+        # Defense is active but hasn't blocked an attack yet.
+        # If a prior attack succeeded, the model is still corrupted — reflect that.
+        last_event = (
+            "Defense enabled — model was previously compromised. Rerun the attack to test your defenses."
+            if compromised
+            else "Protected mode enabled. Rerun the attack to test it."
+        )
+        status = "protected"
+        drift_score = 28 if compromised else 12
+        accuracy = 61.5 if compromised else 98.5
     elif compromised:
         last_event = "The local vulnerable node accepted poisoned data."
         status = "compromised"
         drift_score = 28
         accuracy = 61.5
-    elif defense_enabled:
-        last_event = "Protected mode enabled. Rerun the attack to test it."
-        status = "protected"
-        drift_score = 12
-        accuracy = 98.5
     else:
         last_event = "Local Lab 1 target is waiting for an attack."
         status = "running"
@@ -252,7 +258,7 @@ def _get_local_lab_metrics(container, lab: dict) -> dict:
         "congestion_score": "n/a" if last_score is None else str(last_score),
         "drift_score": drift_score,
         "accuracy": accuracy,
-        "compromised": compromised,
+        "compromised": compromised and not defense_enabled,
         "last_event": last_event,
         "last_reason": state.get("last_reason", ""),
         "downstream_risk": state.get("downstream_risk", "low"),
