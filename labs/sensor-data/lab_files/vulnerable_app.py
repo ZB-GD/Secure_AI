@@ -115,23 +115,60 @@ def calculate_congestion_score(reading: dict[str, Any]) -> float:
         return 0.0
 
 
+def _probe_all_layers(defense) -> int:
+    """Probe all 3 defense layers with known test inputs; return count of correctly implemented ones."""
+    count = 0
+
+    # Layer 1: validate_reading must reject traffic_volume=-5000
+    try:
+        valid, _ = defense.validate_reading(
+            {"traffic_volume": -5000, "temp": 290.0, "rain_1h": 0.0, "clouds_all": 0.0}
+        )
+        if not valid:
+            count += 1
+    except Exception:
+        pass
+
+    # Layer 2: detect_anomaly must flag congestion_score=-0.625 as anomalous
+    try:
+        is_anomaly, _, _ = defense.detect_anomaly({"congestion_score": -0.625, "traffic_volume": -5000})
+        if is_anomaly:
+            count += 1
+    except Exception:
+        pass
+
+    # Layer 3: evaluate_drift must recommend halting for drift_score=0.28 (above threshold)
+    try:
+        action = defense.evaluate_drift(0.28)
+        if any(word in action.lower() for word in ["halt", "pause", "stop", "abort", "block"]):
+            count += 1
+    except Exception:
+        pass
+
+    return count
+
+
 def evaluate_defense(reading: dict[str, Any], congestion_score: float) -> tuple[bool, str, int]:
-    """Return (allowed, reason, coverage)."""
+    """Return (allowed, reason, coverage).
+
+    Coverage counts all implemented layers, probed independently so that a
+    correct Layer 1 blocking the attack does not hide Layers 2 and 3.
+    """
     try:
         defense = load_student_defense()
     except Exception as exc:
         return False, f"Defense failed to load: {type(exc).__name__}: {exc}", 0
 
-    coverage = 0
+    # Count all implemented layers before running the real attack check.
+    total_coverage = _probe_all_layers(defense)
 
     try:
         valid, reason = defense.validate_reading(reading)
     except Exception as exc:
-        return False, f"validate_reading() crashed: {type(exc).__name__}: {exc}", coverage
+        return False, f"validate_reading() crashed: {type(exc).__name__}: {exc}", total_coverage
 
     if not valid:
-        return False, f"Layer 1 rejected input: {reason}", 1
-    coverage = 1
+        return False, f"Layer 1 rejected input: {reason}", total_coverage
 
     feature = {
         "congestion_score": congestion_score,
@@ -140,22 +177,20 @@ def evaluate_defense(reading: dict[str, Any], congestion_score: float) -> tuple[
     try:
         anomaly, z_score, action = defense.detect_anomaly(feature)
     except Exception as exc:
-        return False, f"detect_anomaly() crashed: {type(exc).__name__}: {exc}", coverage
+        return False, f"detect_anomaly() crashed: {type(exc).__name__}: {exc}", total_coverage
 
     if anomaly:
-        return False, f"Layer 2 quarantined feature: Z={z_score}, action={action}", 2
-    coverage = 2
+        return False, f"Layer 2 quarantined feature: Z={z_score}, action={action}", total_coverage
 
     try:
         drift_action = defense.evaluate_drift(0.28)
     except Exception as exc:
-        return False, f"evaluate_drift() crashed: {type(exc).__name__}: {exc}", coverage
+        return False, f"evaluate_drift() crashed: {type(exc).__name__}: {exc}", total_coverage
 
-    coverage = 3
     if any(word in drift_action.lower() for word in ["halt", "pause", "stop", "abort", "block"]):
-        return False, f"Layer 3 halted retraining: {drift_action}", coverage
+        return False, f"Layer 3 halted retraining: {drift_action}", total_coverage
 
-    return True, "All defense layers passed.", coverage
+    return True, "All defense layers passed.", total_coverage
 
 
 @app.get("/health")
@@ -191,6 +226,13 @@ def enable_defense():
     state["defense_enabled"] = True
     state["last_decision"] = "protected_mode_enabled"
     state["last_reason"] = "Student defense gates will be used on the next ingest request."
+    # Probe all layers immediately so coverage is visible before the next attack.
+    try:
+        defense = load_student_defense()
+        probed = _probe_all_layers(defense)
+        state["defense_coverage"] = max(state.get("defense_coverage", 0), probed)
+    except Exception:
+        pass
     save_state(state)
     append_log(
         [
@@ -224,7 +266,6 @@ def ingest():
     congestion_score = calculate_congestion_score(reading)
 
     state["attack_attempts"] += 1
-    state["last_congestion_score"] = round(congestion_score, 3)
     state["last_poisoned_value"] = f"traffic_volume={traffic_volume}"
 
     if state["defense_enabled"]:
@@ -236,6 +277,8 @@ def ingest():
             state["last_decision"] = "rejected"
             state["last_reason"] = reason
             state["downstream_risk"] = "reduced"
+            # Poisoned input never reached Node 2 — reset the score to n/a.
+            state["last_congestion_score"] = None
             save_state(state)
 
             append_log(
@@ -270,6 +313,7 @@ def ingest():
             )
 
     state["accepted"] += 1
+    state["last_congestion_score"] = round(congestion_score, 3)
     state["last_decision"] = "accepted"
     state["last_reason"] = "Validation disabled." if not state["defense_enabled"] else "Defense allowed input."
     state["downstream_risk"] = "high" if traffic_volume == -5000 else "medium"
